@@ -1,6 +1,9 @@
 import argparse
-from os.path import basename
+from os.path import basename, join, dirname, exists
+from os import makedirs
+from fuzzywuzzy import process
 from ArmPackManager import Cache
+from json import dump
 
 parser = argparse.ArgumentParser(description='A Handy little utility for keeping your cache of pack files up to date.')
 subparsers = parser.add_subparsers(title="Commands")
@@ -113,6 +116,26 @@ def command_find_part (cache, matches, long=False) :
         print part
         if long :
             pp.pprint(cache.index[part])
+
+@subcommand('dump-parts',
+            dict(name='out', help='directory to dump to'),
+            dict(name='parts', nargs='+', help='parts to dump')
+)
+def command_dump_parts (cache, out, parts) :
+    index = {}
+    for part in parts :
+        index.update(dict(cache.find_device(part)))
+    for n, p in index.iteritems() :
+        try :
+            if not exists(join(out, dirname(p['algorithm']))) :
+                makedirs(join(out, dirname(p['algorithm'])))
+            with open(join(out, p['algorithm']), "wb+") as fd :
+                fd.write(cache.get_flash_algorthim_binary(n).read())
+        except KeyError:
+            print("[Warning] {} does not have an associated flashing algorithm".format(n))
+    with open(join(out, "index.json"), "wb+") as fd :
+        dump(index,fd)
+
 
 @subcommand('cache-part',
             dict(name='matches', nargs="+", help="words to match to devices"))

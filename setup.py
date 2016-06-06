@@ -9,7 +9,7 @@ setup(
                         'fuzzywuzzy>=0.10.0'],
     entry_points = {
         'console_scripts' : [
-            'pack-manager = ArmPackManager.cli:main'
+            'pack-manager = ArmPackManager.pack_manager:main'
         ]
     }
 )
