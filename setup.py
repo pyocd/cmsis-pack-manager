@@ -6,5 +6,10 @@ setup(
     install_requires = ['pycurl>=7.43.0',
                         'pyxdg>=0.25',
                         'beautifulsoup4>=4.4.1',
-                        'fuzzywuzzy>=0.10.0']
+                        'fuzzywuzzy>=0.10.0'],
+    entry_points = {
+        'console_scripts' : [
+            'pack-manager = ArmPackManager.cli:main'
+        ]
+    }
 )
