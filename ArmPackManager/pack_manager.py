@@ -78,7 +78,8 @@ def fuzzy_find(matches, urls) :
             dict(name=['-d','--descriptors'], action="store_true",
                  help="download all descriptors"),
             dict(name=["-b","--batch"], action="store_true",
-                 help="don't ask for user input and assume download all"))
+                 help="don't ask for user input and assume download all"),
+            help="Cache a group of PACK or PDSC files")
 def command_cache (cache, matches, everything=False, descriptors=False, batch=False, verbose= False) :
     if everything :
         cache.cache_everything()
@@ -105,7 +106,8 @@ def command_cache (cache, matches, everything=False, descriptors=False, batch=Fa
 @subcommand('find-part',
             dict(name='matches', nargs="+", help="words to match to processors"),
             dict(name=['-l',"--long"], action="store_true",
-                 help="print out part details with part"))
+                 help="print out part details with part"),
+            help="Find a Part and it's description within the cache")
 def command_find_part (cache, matches, long=False) :
     if long :
         import pprint
@@ -119,7 +121,8 @@ def command_find_part (cache, matches, long=False) :
 
 @subcommand('dump-parts',
             dict(name='out', help='directory to dump to'),
-            dict(name='parts', nargs='+', help='parts to dump')
+            dict(name='parts', nargs='+', help='parts to dump'),
+            help='Create a directory with an index.json describing the part and all of their associated flashing algorithms.'
 )
 def command_dump_parts (cache, out, parts) :
     index = {}
@@ -138,7 +141,8 @@ def command_dump_parts (cache, out, parts) :
 
 
 @subcommand('cache-part',
-            dict(name='matches', nargs="+", help="words to match to devices"))
+            dict(name='matches', nargs="+", help="words to match to devices"),
+            help='Cache PACK files associated with the parts matching the provided words')
 def command_cache_part (cache, matches) :
     index = cache.load_index()
     choices = fuzzy_find(matches, index.keys())
