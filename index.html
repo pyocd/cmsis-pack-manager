@@ -391,7 +391,11 @@ A user of the API must explicitly call caching functions.</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">ArmPackManager</span> <span class="k">import</span> <span class="n">Cache</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">Cache</span><span class="p">()</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="s2">&quot;LPC1768&quot;</span><span class="p">]</span>
-<span class="go">{u&#39;algorithm&#39;: u&#39;Flash/LPC_IAP_512.FLM&#39;,</span>
+<span class="go">{u&#39;algorithm&#39;: {u&#39;RAMsize&#39;: u&#39;0x0FE0&#39;,</span>
+<span class="go">        u&#39;RAMstart&#39;: u&#39;0x10000000&#39;,</span>
+<span class="go">        u&#39;name&#39;: u&#39;Flash/LPC_IAP_512.FLM&#39;,</span>
+<span class="go">        u&#39;size&#39;: u&#39;0x80000&#39;,</span>
+<span class="go">        u&#39;start&#39;: u&#39;0x00000000&#39;},</span>
 <span class="go"> u&#39;compile&#39;: [u&#39;Device/Include/LPC17xx.h&#39;, u&#39;LPC175x_6x&#39;],</span>
 <span class="go"> u&#39;debug&#39;: u&#39;SVD/LPC176x5x.svd&#39;,</span>
 <span class="go"> u&#39;file&#39;: u&#39;http://www.keil.com/pack/Keil.LPC1700_DFP.pdsc&#39;,</span>
