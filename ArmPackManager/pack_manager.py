@@ -1,6 +1,7 @@
 import argparse
 from os.path import basename, join, dirname, exists
 from os import makedirs
+from itertools import takewhile
 from fuzzywuzzy import process
 from ArmPackManager import Cache
 from json import dump
@@ -112,7 +113,7 @@ def command_find_part (cache, matches, long=False) :
     if long :
         import pprint
         pp = pprint.PrettyPrinter()
-    parts = cache.load_index()
+    parts = cache.index
     choices = fuzzy_find(matches, parts.keys())
     for part in choices :
         print part
@@ -144,7 +145,7 @@ def command_dump_parts (cache, out, parts) :
             dict(name='matches', nargs="+", help="words to match to devices"),
             help='Cache PACK files associated with the parts matching the provided words')
 def command_cache_part (cache, matches) :
-    index = cache.load_index()
+    index = cache.index
     choices = fuzzy_find(matches, index.keys())
     urls = [index[c]['file'] for c in choices]
     cache.cache_pack_list(urls)
