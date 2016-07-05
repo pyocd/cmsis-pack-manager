@@ -123,7 +123,7 @@ class Cache () :
         :return: The url of the PACK file.
         :rtype: str
         """
-        content = self.pull_from_cache(url)
+        content = self.pdsc_from_cache(url)
         new_url = content.package.url.get_text()
         if not new_url.endswith("/") :
             new_url = new_url + "/"
@@ -148,13 +148,13 @@ class Cache () :
         :rtype: [str]
         """
         if not self.urls :
-            try : root_data = self.pull_from_cache(RootPackURL)
+            try : root_data = self.pdsc_from_cache(RootPackURL)
             except IOError : root_data = self.cache_and_parse(RootPackURL)
             self.urls = [join(pdsc.get('url'), pdsc.get('name')) for pdsc in root_data.find_all("pdsc")]
         return self.urls
 
-    def _extract_dict(self, device, filename) :
-        to_ret = dict(file=filename)
+    def _extract_dict(self, device, filename, pack) :
+        to_ret = dict(pdsc_file=filename, pack_file=pack)
         try :
             to_ret["memory"] = dict([(m["id"], dict(start=m["start"],
                                                     size=m["size"]))
@@ -172,8 +172,9 @@ class Cache () :
 
     def _generate_index_helper(self, d) :
         try :
-            self._index.update(dict([(dev['dname'], self._extract_dict(dev, d)) for dev in
-                                    (self.pull_from_cache(d)("device"))]))
+            pack = pdsc_to_pack(d)
+            self._index.update(dict([(dev['dname'], self._extract_dict(dev, d, pack)) for dev in
+                                    (self.pdsc_from_cache(d)("device"))]))
         except AttributeError as e :
             print(e)
         self.counter += 1
@@ -189,10 +190,21 @@ class Cache () :
         :return: A file-like object that, when read, is the ELF file that describes the flashing algorithm
         :rtype: ZipExtFile
         """
-        device = self.index[device_name]
-        pack = ZipFile(join(save_data_path('arm-pack-manager'),
-                            strip_protocol(self.pdsc_to_pack(device['file']))))
-        return pack.open(device['algorithm'])
+        pack = self.pack_from_cache(self.index[device_name])
+        return pack.open(device['algorithm']['file'])
+
+    def get_svd_file(self, device_name) :
+        """Retrieve the flash algorithm file for a particular part.
+
+        Assumes that both the PDSC and the PACK file associated with that part are in the cache.
+
+        :param device_name: The exact name of a device
+        :type device_name: str
+        :return: A file-like object that, when read, is the ELF file that describes the flashing algorithm
+        :rtype: ZipExtFile
+        """
+        pack = self.pack_from_cache(self.index[device_name])
+        return pack.open(device['debug'])
 
     def generate_index(self) :
         self._index = {}
@@ -228,7 +240,7 @@ class Cache () :
                 u'start': u'0x00000000'},
          u'compile': [u'Device/Include/LPC17xx.h', u'LPC175x_6x'],
          u'debug': u'SVD/LPC176x5x.svd',
-         u'file': u'http://www.keil.com/pack/Keil.LPC1700_DFP.pdsc',
+         u'pdsc_file': u'http://www.keil.com/pack/Keil.LPC1700_DFP.pdsc',
          u'memory': {u'IRAM1': {u'size': u'0x8000', u'start': u'0x10000000'},
                      u'IRAM2': {u'size': u'0x8000', u'start': u'0x2007C000'},
                      u'IROM1': {u'size': u'0x80000', u'start': u'0x00000000'}}}
@@ -285,7 +297,7 @@ class Cache () :
         do_queue(Cacher, self.cache_pdsc_and_pack, list)
         stdout.write("\n")
 
-    def pull_from_cache(self, url) :
+    def pdsc_from_cache(self, url) :
         """Low level inteface for extracting a PDSC file from the cache.
 
         Assumes that the file specified is a PDSC file and is in the cache.
@@ -299,8 +311,21 @@ class Cache () :
         with open(dest, "r") as fd :
             return BeautifulSoup(fd, "html.parser")
 
+    def pack_from_cache(self, url) :
+        """Low level inteface for extracting a PACK file from the cache.
+
+        Assumes that the file specified is a PACK file and is in the cache.
+
+        :param url: The URL of a PACK file.
+        :type url: str
+        :return: A parsed representation of the PACK file.
+        :rtype: ZipFile
+        """
+        return ZipFile(join(save_data_path('arm-pack-manager'),
+                            strip_protocol(device['pack_file'])))
+
     def gen_dict_from_cache() :
-        pdsc_files = pull_from_cache(RootPackUrl)
+        pdsc_files = pdsc_from_cache(RootPackUrl)
 
     def cache_and_parse(self, url) :
         """A low level shortcut that Caches and Parses a PDSC file.
@@ -311,5 +336,5 @@ class Cache () :
         :rtype: BeautifulSoup
         """
         self.cache_file(Curl(), url)
-        return self.pull_from_cache(url)
+        return self.pdsc_from_cache(url)
 
