@@ -65,12 +65,12 @@ def user_selection (message, options) :
 def fuzzy_find(matches, urls) :
     choices = {}
     for match in matches :
-        for key, value in process.extract(match, urls, limit=len(urls)) :
+        for key, value in process.extract(match, urls, limit=None) :
             choices.setdefault(key, 0)
             choices[key] += value
     choices = sorted([(v, k) for k, v in choices.iteritems()], reverse=True)
     if not choices : return []
-    elif len(choices) == 1 : return choices[0][1]
+    elif len(choices) == 1 : return [choices[0][1]]
     elif choices[0][0] > choices[1][0] : choices = choices[:1]
     else : choices = list(takewhile(lambda t: t[0] == choices[0][0], choices))
     return [v for k,v in choices]
@@ -99,7 +99,7 @@ def command_cache (cache, matches, everything=False, descriptors=False, batch=Fa
         if intersection :
             choices = fuzzy_find(matches, map(basename, urls))
         else :
-            choices = sum([fuzzy_find([m], map(basename, urls) for m in matches)])
+            choices = sum([fuzzy_find([m], map(basename, urls)) for m in matches], [])
         if not batch and len(choices) > 1 :
             choices = user_selection("Please select a file to cache", choices)
         to_download = []
@@ -122,9 +122,9 @@ def command_find_part (cache, matches, long=False, intersection=True) :
         pp = pprint.PrettyPrinter()
     parts = cache.index
     if intersection :
-        choices = fuzzy_find(matches, map(basename, index.keys()))
+        choices = fuzzy_find(matches, parts.keys())
     else :
-        choices = sum([fuzzy_find([m], map(basename, index.keys()) for m in matches)])
+        choices = sum([fuzzy_find([m], parts.keys()) for m in matches], [])
     for part in choices :
         print part
         if long :
@@ -135,10 +135,10 @@ def command_find_part (cache, matches, long=False, intersection=True) :
             dict(name='parts', nargs='+', help='parts to dump'),
             help='Create a directory with an index.json describing the part and all of their associated flashing algorithms.'
 )
-def command_dump_parts (cache, out, parts, intersection=True) :
+def command_dump_parts (cache, out, parts, intersection=False) :
     index = {}
     if intersection :
-        for part in fuzzy_find(matches, map(basename, urls)):
+        for part in fuzzy_find(parts, cache.index):
             index.update(cache.index[part])
     else :
         for part in parts :
@@ -158,13 +158,13 @@ def command_dump_parts (cache, out, parts, intersection=True) :
 @subcommand('cache-part',
             dict(name='matches', nargs="+", help="words to match to devices"),
             help='Cache PACK files associated with the parts matching the provided words')
-def command_cache_part (cache, matches) :
+def command_cache_part (cache, matches, intersection=True) :
     index = cache.index
     if intersection :
-        choices = fuzzy_find(matches, map(basename, index.keys()))
+        choices = fuzzy_find(matches, index.keys())
     else :
-        choices = sum([fuzzy_find([m], map(basename, index.keys()) for m in matches)])
-    urls = [index[c]['file'] for c in choices]
+        choices = sum([fuzzy_find([m], index.keys()) for m in matches], [])
+    urls = list(set([index[c]['pdsc_file'] for c in choices]))
     cache.cache_pack_list(urls)
 
 def get_argparse() :

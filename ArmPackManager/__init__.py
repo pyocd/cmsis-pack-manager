@@ -134,7 +134,7 @@ class Cache () :
     def cache_pdsc_and_pack (self, curl, url) :
         self.cache_file(curl, url)
         try :
-            self. cache_file(curl, self.pdsc_to_pack(url))
+            self.cache_file(curl, self.pdsc_to_pack(url))
         except AttributeError :
             stderr.write("[ ERROR ] {} does not appear to be a conforming .pdsc file\n".format(url))
             self.counter += 1
@@ -155,6 +155,7 @@ class Cache () :
 
     def _extract_dict(self, device, filename, pack) :
         to_ret = dict(pdsc_file=filename, pack_file=pack)
+        if device == u'301': stderr.write(filename+"\n")
         try :
             to_ret["memory"] = dict([(m["id"], dict(start=m["start"],
                                                     size=m["size"]))
@@ -172,10 +173,11 @@ class Cache () :
 
     def _generate_index_helper(self, d) :
         try :
-            pack = pdsc_to_pack(d)
+            pack = self.pdsc_to_pack(d)
             self._index.update(dict([(dev['dname'], self._extract_dict(dev, d, pack)) for dev in
                                     (self.pdsc_from_cache(d)("device"))]))
         except AttributeError as e :
+            stderr.write("[ ERROR ] file {}\n".format(d))
             print(e)
         self.counter += 1
         self.display_counter("Generating Index")
