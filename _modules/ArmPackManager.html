@@ -166,7 +166,7 @@
 <span class="sd">        :return: The url of the PACK file.</span>
 <span class="sd">        :rtype: str</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">content</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pull_from_cache</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pdsc_from_cache</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
         <span class="n">new_url</span> <span class="o">=</span> <span class="n">content</span><span class="o">.</span><span class="n">package</span><span class="o">.</span><span class="n">url</span><span class="o">.</span><span class="n">get_text</span><span class="p">()</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">new_url</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span> <span class="p">:</span>
             <span class="n">new_url</span> <span class="o">=</span> <span class="n">new_url</span> <span class="o">+</span> <span class="s2">&quot;/&quot;</span>
@@ -177,7 +177,7 @@
     <span class="k">def</span> <span class="nf">cache_pdsc_and_pack</span> <span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">curl</span><span class="p">,</span> <span class="n">url</span><span class="p">)</span> <span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">cache_file</span><span class="p">(</span><span class="n">curl</span><span class="p">,</span> <span class="n">url</span><span class="p">)</span>
         <span class="k">try</span> <span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span> <span class="n">cache_file</span><span class="p">(</span><span class="n">curl</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pdsc_to_pack</span><span class="p">(</span><span class="n">url</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cache_file</span><span class="p">(</span><span class="n">curl</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pdsc_to_pack</span><span class="p">(</span><span class="n">url</span><span class="p">))</span>
         <span class="k">except</span> <span class="ne">AttributeError</span> <span class="p">:</span>
             <span class="n">stderr</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;[ ERROR ] {} does not appear to be a conforming .pdsc file</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">url</span><span class="p">))</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">counter</span> <span class="o">+=</span> <span class="mi">1</span>
@@ -191,13 +191,14 @@
 <span class="sd">        :rtype: [str]</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">urls</span> <span class="p">:</span>
-            <span class="k">try</span> <span class="p">:</span> <span class="n">root_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pull_from_cache</span><span class="p">(</span><span class="n">RootPackURL</span><span class="p">)</span>
+            <span class="k">try</span> <span class="p">:</span> <span class="n">root_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pdsc_from_cache</span><span class="p">(</span><span class="n">RootPackURL</span><span class="p">)</span>
             <span class="k">except</span> <span class="ne">IOError</span> <span class="p">:</span> <span class="n">root_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache_and_parse</span><span class="p">(</span><span class="n">RootPackURL</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">urls</span> <span class="o">=</span> <span class="p">[</span><span class="n">join</span><span class="p">(</span><span class="n">pdsc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;url&#39;</span><span class="p">),</span> <span class="n">pdsc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">))</span> <span class="k">for</span> <span class="n">pdsc</span> <span class="ow">in</span> <span class="n">root_data</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s2">&quot;pdsc&quot;</span><span class="p">)]</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">urls</span></div>
 
-    <span class="k">def</span> <span class="nf">_extract_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">filename</span><span class="p">)</span> <span class="p">:</span>
-        <span class="n">to_ret</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">file</span><span class="o">=</span><span class="n">filename</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">_extract_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">pack</span><span class="p">)</span> <span class="p">:</span>
+        <span class="n">to_ret</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">pdsc_file</span><span class="o">=</span><span class="n">filename</span><span class="p">,</span> <span class="n">pack_file</span><span class="o">=</span><span class="n">pack</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">device</span> <span class="o">==</span> <span class="s1">u&#39;301&#39;</span><span class="p">:</span> <span class="n">stderr</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">filename</span><span class="o">+</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="k">try</span> <span class="p">:</span>
             <span class="n">to_ret</span><span class="p">[</span><span class="s2">&quot;memory&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">([(</span><span class="n">m</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">],</span> <span class="nb">dict</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="n">m</span><span class="p">[</span><span class="s2">&quot;start&quot;</span><span class="p">],</span>
                                                     <span class="n">size</span><span class="o">=</span><span class="n">m</span><span class="p">[</span><span class="s2">&quot;size&quot;</span><span class="p">]))</span>
@@ -215,9 +216,11 @@
 
     <span class="k">def</span> <span class="nf">_generate_index_helper</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span> <span class="p">:</span>
         <span class="k">try</span> <span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_index</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="nb">dict</span><span class="p">([(</span><span class="n">dev</span><span class="p">[</span><span class="s1">&#39;dname&#39;</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">_extract_dict</span><span class="p">(</span><span class="n">dev</span><span class="p">,</span> <span class="n">d</span><span class="p">))</span> <span class="k">for</span> <span class="n">dev</span> <span class="ow">in</span>
-                                    <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pull_from_cache</span><span class="p">(</span><span class="n">d</span><span class="p">)(</span><span class="s2">&quot;device&quot;</span><span class="p">))]))</span>
+            <span class="n">pack</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pdsc_to_pack</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_index</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="nb">dict</span><span class="p">([(</span><span class="n">dev</span><span class="p">[</span><span class="s1">&#39;dname&#39;</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">_extract_dict</span><span class="p">(</span><span class="n">dev</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">pack</span><span class="p">))</span> <span class="k">for</span> <span class="n">dev</span> <span class="ow">in</span>
+                                    <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pdsc_from_cache</span><span class="p">(</span><span class="n">d</span><span class="p">)(</span><span class="s2">&quot;device&quot;</span><span class="p">))]))</span>
         <span class="k">except</span> <span class="ne">AttributeError</span> <span class="k">as</span> <span class="n">e</span> <span class="p">:</span>
+            <span class="n">stderr</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;[ ERROR ] file {}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">d</span><span class="p">))</span>
             <span class="k">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">counter</span> <span class="o">+=</span> <span class="mi">1</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">display_counter</span><span class="p">(</span><span class="s2">&quot;Generating Index&quot;</span><span class="p">)</span>
@@ -232,10 +235,21 @@
 <span class="sd">        :return: A file-like object that, when read, is the ELF file that describes the flashing algorithm</span>
 <span class="sd">        :rtype: ZipExtFile</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">device</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="n">device_name</span><span class="p">]</span>
-        <span class="n">pack</span> <span class="o">=</span> <span class="n">ZipFile</span><span class="p">(</span><span class="n">join</span><span class="p">(</span><span class="n">save_data_path</span><span class="p">(</span><span class="s1">&#39;arm-pack-manager&#39;</span><span class="p">),</span>
-                            <span class="n">strip_protocol</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pdsc_to_pack</span><span class="p">(</span><span class="n">device</span><span class="p">[</span><span class="s1">&#39;file&#39;</span><span class="p">]))))</span>
-        <span class="k">return</span> <span class="n">pack</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">device</span><span class="p">[</span><span class="s1">&#39;algorithm&#39;</span><span class="p">])</span></div>
+        <span class="n">pack</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pack_from_cache</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="n">device_name</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">pack</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">device</span><span class="p">[</span><span class="s1">&#39;algorithm&#39;</span><span class="p">][</span><span class="s1">&#39;file&#39;</span><span class="p">])</span></div>
+
+<div class="viewcode-block" id="Cache.get_svd_file"><a class="viewcode-back" href="../index.html#ArmPackManager.Cache.get_svd_file">[docs]</a>    <span class="k">def</span> <span class="nf">get_svd_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">device_name</span><span class="p">)</span> <span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Retrieve the flash algorithm file for a particular part.</span>
+
+<span class="sd">        Assumes that both the PDSC and the PACK file associated with that part are in the cache.</span>
+
+<span class="sd">        :param device_name: The exact name of a device</span>
+<span class="sd">        :type device_name: str</span>
+<span class="sd">        :return: A file-like object that, when read, is the ELF file that describes the flashing algorithm</span>
+<span class="sd">        :rtype: ZipExtFile</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">pack</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pack_from_cache</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="n">device_name</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">pack</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">device</span><span class="p">[</span><span class="s1">&#39;debug&#39;</span><span class="p">])</span></div>
 
     <span class="k">def</span> <span class="nf">generate_index</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_index</span> <span class="o">=</span> <span class="p">{}</span>
@@ -248,8 +262,7 @@
     <span class="k">def</span> <span class="nf">find_device</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">match</span><span class="p">)</span> <span class="p">:</span>
         <span class="n">choices</span> <span class="o">=</span> <span class="n">process</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span><span class="n">match</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span> <span class="n">limit</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">))</span>
         <span class="n">choices</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">([(</span><span class="n">v</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">choices</span><span class="p">],</span> <span class="n">reverse</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">choices</span> <span class="p">:</span> <span class="k">return</span> <span class="p">[]</span>
-        <span class="k">else</span> <span class="p">:</span> <span class="n">choices</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">takewhile</span><span class="p">(</span><span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="n">t</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">choices</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">choices</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">choices</span> <span class="p">:</span> <span class="n">choices</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">takewhile</span><span class="p">(</span><span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="n">t</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">choices</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">choices</span><span class="p">))</span>
         <span class="k">return</span> <span class="p">[(</span><span class="n">v</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="n">v</span><span class="p">])</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="n">choices</span><span class="p">]</span>
 
     <span class="k">def</span> <span class="nf">dump_index_to_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">file</span><span class="p">)</span> <span class="p">:</span>
@@ -272,7 +285,7 @@
 <span class="sd">                u&#39;start&#39;: u&#39;0x00000000&#39;},</span>
 <span class="sd">         u&#39;compile&#39;: [u&#39;Device/Include/LPC17xx.h&#39;, u&#39;LPC175x_6x&#39;],</span>
 <span class="sd">         u&#39;debug&#39;: u&#39;SVD/LPC176x5x.svd&#39;,</span>
-<span class="sd">         u&#39;file&#39;: u&#39;http://www.keil.com/pack/Keil.LPC1700_DFP.pdsc&#39;,</span>
+<span class="sd">         u&#39;pdsc_file&#39;: u&#39;http://www.keil.com/pack/Keil.LPC1700_DFP.pdsc&#39;,</span>
 <span class="sd">         u&#39;memory&#39;: {u&#39;IRAM1&#39;: {u&#39;size&#39;: u&#39;0x8000&#39;, u&#39;start&#39;: u&#39;0x10000000&#39;},</span>
 <span class="sd">                     u&#39;IRAM2&#39;: {u&#39;size&#39;: u&#39;0x8000&#39;, u&#39;start&#39;: u&#39;0x2007C000&#39;},</span>
 <span class="sd">                     u&#39;IROM1&#39;: {u&#39;size&#39;: u&#39;0x80000&#39;, u&#39;start&#39;: u&#39;0x00000000&#39;}}}</span>
@@ -329,7 +342,7 @@
         <span class="n">do_queue</span><span class="p">(</span><span class="n">Cacher</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache_pdsc_and_pack</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span>
         <span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="Cache.pull_from_cache"><a class="viewcode-back" href="../index.html#ArmPackManager.Cache.pull_from_cache">[docs]</a>    <span class="k">def</span> <span class="nf">pull_from_cache</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">url</span><span class="p">)</span> <span class="p">:</span>
+<div class="viewcode-block" id="Cache.pdsc_from_cache"><a class="viewcode-back" href="../index.html#ArmPackManager.Cache.pdsc_from_cache">[docs]</a>    <span class="k">def</span> <span class="nf">pdsc_from_cache</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">url</span><span class="p">)</span> <span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Low level inteface for extracting a PDSC file from the cache.</span>
 
 <span class="sd">        Assumes that the file specified is a PDSC file and is in the cache.</span>
@@ -343,8 +356,21 @@
         <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">dest</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fd</span> <span class="p">:</span>
             <span class="k">return</span> <span class="n">BeautifulSoup</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="s2">&quot;html.parser&quot;</span><span class="p">)</span></div>
 
+<div class="viewcode-block" id="Cache.pack_from_cache"><a class="viewcode-back" href="../index.html#ArmPackManager.Cache.pack_from_cache">[docs]</a>    <span class="k">def</span> <span class="nf">pack_from_cache</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">url</span><span class="p">)</span> <span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Low level inteface for extracting a PACK file from the cache.</span>
+
+<span class="sd">        Assumes that the file specified is a PACK file and is in the cache.</span>
+
+<span class="sd">        :param url: The URL of a PACK file.</span>
+<span class="sd">        :type url: str</span>
+<span class="sd">        :return: A parsed representation of the PACK file.</span>
+<span class="sd">        :rtype: ZipFile</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">ZipFile</span><span class="p">(</span><span class="n">join</span><span class="p">(</span><span class="n">save_data_path</span><span class="p">(</span><span class="s1">&#39;arm-pack-manager&#39;</span><span class="p">),</span>
+                            <span class="n">strip_protocol</span><span class="p">(</span><span class="n">device</span><span class="p">[</span><span class="s1">&#39;pack_file&#39;</span><span class="p">])))</span></div>
+
     <span class="k">def</span> <span class="nf">gen_dict_from_cache</span><span class="p">()</span> <span class="p">:</span>
-        <span class="n">pdsc_files</span> <span class="o">=</span> <span class="n">pull_from_cache</span><span class="p">(</span><span class="n">RootPackUrl</span><span class="p">)</span>
+        <span class="n">pdsc_files</span> <span class="o">=</span> <span class="n">pdsc_from_cache</span><span class="p">(</span><span class="n">RootPackUrl</span><span class="p">)</span>
 
 <div class="viewcode-block" id="Cache.cache_and_parse"><a class="viewcode-back" href="../index.html#ArmPackManager.Cache.cache_and_parse">[docs]</a>    <span class="k">def</span> <span class="nf">cache_and_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">url</span><span class="p">)</span> <span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;A low level shortcut that Caches and Parses a PDSC file.</span>
@@ -355,7 +381,7 @@
 <span class="sd">        :rtype: BeautifulSoup</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">cache_file</span><span class="p">(</span><span class="n">Curl</span><span class="p">(),</span> <span class="n">url</span><span class="p">)</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">pull_from_cache</span><span class="p">(</span><span class="n">url</span><span class="p">)</span></div></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">pdsc_from_cache</span><span class="p">(</span><span class="n">url</span><span class="p">)</span></div></div>
 
 </pre></div>
 

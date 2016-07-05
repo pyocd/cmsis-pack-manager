@@ -51,6 +51,7 @@
 <dt><strong>cache</strong></dt>
 <dd><p class="first">Cache a group of PACK or PDSC files</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">pack</span><span class="o">-</span><span class="n">manager</span> <span class="n">cache</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">e</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">d</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">b</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">v</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">vv</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">timeouts</span><span class="p">]</span>
+                          <span class="p">[</span><span class="o">--</span><span class="ow">and</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="ow">or</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">union</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">intersection</span><span class="p">]</span>
                           <span class="p">[</span><span class="n">matches</span> <span class="p">[</span><span class="n">matches</span> <span class="o">...</span><span class="p">]]</span>
 </pre></div>
 </div>
@@ -95,6 +96,19 @@
 <kbd><span class="option">--no-timeouts=False</span></kbd></td>
 </tr>
 <tr><td>&nbsp;</td><td>Remove all timeouts and try to download unconditionally</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--and=False</span></kbd></td>
+<td>combine search terms as if with an and</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--or=True</span></kbd></td>
+<td>combine search terms as if with an or</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--union=True</span></kbd></td>
+<td>combine search terms as if with a set union</td></tr>
+<tr><td class="option-group" colspan="2">
+<kbd><span class="option">--intersection=False</span></kbd></td>
+</tr>
+<tr><td>&nbsp;</td><td>combine search terms as if with a set intersection</td></tr>
 </tbody>
 </table>
 </dd>
@@ -102,7 +116,8 @@
 </dd>
 <dt><strong>find-part</strong></dt>
 <dd><p class="first">Find a Part and it&#8217;s description within the cache</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">pack</span><span class="o">-</span><span class="n">manager</span> <span class="n">find</span><span class="o">-</span><span class="n">part</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">l</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">v</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">vv</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">timeouts</span><span class="p">]</span>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">pack</span><span class="o">-</span><span class="n">manager</span> <span class="n">find</span><span class="o">-</span><span class="n">part</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">l</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">v</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">vv</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">timeouts</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="ow">and</span><span class="p">]</span>
+                              <span class="p">[</span><span class="o">--</span><span class="ow">or</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">union</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">intersection</span><span class="p">]</span>
                               <span class="n">matches</span> <span class="p">[</span><span class="n">matches</span> <span class="o">...</span><span class="p">]</span>
 </pre></div>
 </div>
@@ -139,6 +154,19 @@
 <kbd><span class="option">--no-timeouts=False</span></kbd></td>
 </tr>
 <tr><td>&nbsp;</td><td>Remove all timeouts and try to download unconditionally</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--and=False</span></kbd></td>
+<td>combine search terms as if with an and</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--or=True</span></kbd></td>
+<td>combine search terms as if with an or</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--union=True</span></kbd></td>
+<td>combine search terms as if with a set union</td></tr>
+<tr><td class="option-group" colspan="2">
+<kbd><span class="option">--intersection=False</span></kbd></td>
+</tr>
+<tr><td>&nbsp;</td><td>combine search terms as if with a set intersection</td></tr>
 </tbody>
 </table>
 </dd>
@@ -146,7 +174,8 @@
 </dd>
 <dt><strong>dump-parts</strong></dt>
 <dd><p class="first">Create a directory with an index.json describing the part and all of their associated flashing algorithms.</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">pack</span><span class="o">-</span><span class="n">manager</span> <span class="n">dump</span><span class="o">-</span><span class="n">parts</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">v</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">vv</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">timeouts</span><span class="p">]</span>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">pack</span><span class="o">-</span><span class="n">manager</span> <span class="n">dump</span><span class="o">-</span><span class="n">parts</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">v</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">vv</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">timeouts</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="ow">and</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="ow">or</span><span class="p">]</span>
+                               <span class="p">[</span><span class="o">--</span><span class="n">union</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">intersection</span><span class="p">]</span>
                                <span class="n">out</span> <span class="n">parts</span> <span class="p">[</span><span class="n">parts</span> <span class="o">...</span><span class="p">]</span>
 </pre></div>
 </div>
@@ -182,6 +211,19 @@
 <kbd><span class="option">--no-timeouts=False</span></kbd></td>
 </tr>
 <tr><td>&nbsp;</td><td>Remove all timeouts and try to download unconditionally</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--and=False</span></kbd></td>
+<td>combine search terms as if with an and</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--or=True</span></kbd></td>
+<td>combine search terms as if with an or</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--union=True</span></kbd></td>
+<td>combine search terms as if with a set union</td></tr>
+<tr><td class="option-group" colspan="2">
+<kbd><span class="option">--intersection=False</span></kbd></td>
+</tr>
+<tr><td>&nbsp;</td><td>combine search terms as if with a set intersection</td></tr>
 </tbody>
 </table>
 </dd>
@@ -189,7 +231,8 @@
 </dd>
 <dt><strong>cache-part</strong></dt>
 <dd><p class="first">Cache PACK files associated with the parts matching the provided words</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">pack</span><span class="o">-</span><span class="n">manager</span> <span class="n">cache</span><span class="o">-</span><span class="n">part</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">v</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">vv</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">timeouts</span><span class="p">]</span>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">pack</span><span class="o">-</span><span class="n">manager</span> <span class="n">cache</span><span class="o">-</span><span class="n">part</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">v</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">vv</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">timeouts</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="ow">and</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="ow">or</span><span class="p">]</span>
+                               <span class="p">[</span><span class="o">--</span><span class="n">union</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">intersection</span><span class="p">]</span>
                                <span class="n">matches</span> <span class="p">[</span><span class="n">matches</span> <span class="o">...</span><span class="p">]</span>
 </pre></div>
 </div>
@@ -222,6 +265,19 @@
 <kbd><span class="option">--no-timeouts=False</span></kbd></td>
 </tr>
 <tr><td>&nbsp;</td><td>Remove all timeouts and try to download unconditionally</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--and=False</span></kbd></td>
+<td>combine search terms as if with an and</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--or=True</span></kbd></td>
+<td>combine search terms as if with an or</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--union=True</span></kbd></td>
+<td>combine search terms as if with a set union</td></tr>
+<tr><td class="option-group" colspan="2">
+<kbd><span class="option">--intersection=False</span></kbd></td>
+</tr>
+<tr><td>&nbsp;</td><td>combine search terms as if with a set intersection</td></tr>
 </tbody>
 </table>
 </dd>
@@ -360,6 +416,25 @@ A user of the API must explicitly call caching functions.</p>
 </dd></dl>
 
 <dl class="method">
+<dt id="ArmPackManager.Cache.get_svd_file">
+<code class="descname">get_svd_file</code><span class="sig-paren">(</span><em>device_name</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ArmPackManager.html#Cache.get_svd_file"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ArmPackManager.Cache.get_svd_file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Retrieve the flash algorithm file for a particular part.</p>
+<p>Assumes that both the PDSC and the PACK file associated with that part are in the cache.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>device_name</strong> (<em>str</em>) &#8211; The exact name of a device</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A file-like object that, when read, is the ELF file that describes the flashing algorithm</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">ZipExtFile</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="ArmPackManager.Cache.get_urls">
 <code class="descname">get_urls</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ArmPackManager.html#Cache.get_urls"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ArmPackManager.Cache.get_urls" title="Permalink to this definition">¶</a></dt>
 <dd><p>Extract the URLs of all know PDSC files.</p>
@@ -398,12 +473,50 @@ A user of the API must explicitly call caching functions.</p>
 <span class="go">        u&#39;start&#39;: u&#39;0x00000000&#39;},</span>
 <span class="go"> u&#39;compile&#39;: [u&#39;Device/Include/LPC17xx.h&#39;, u&#39;LPC175x_6x&#39;],</span>
 <span class="go"> u&#39;debug&#39;: u&#39;SVD/LPC176x5x.svd&#39;,</span>
-<span class="go"> u&#39;file&#39;: u&#39;http://www.keil.com/pack/Keil.LPC1700_DFP.pdsc&#39;,</span>
+<span class="go"> u&#39;pdsc_file&#39;: u&#39;http://www.keil.com/pack/Keil.LPC1700_DFP.pdsc&#39;,</span>
 <span class="go"> u&#39;memory&#39;: {u&#39;IRAM1&#39;: {u&#39;size&#39;: u&#39;0x8000&#39;, u&#39;start&#39;: u&#39;0x10000000&#39;},</span>
 <span class="go">             u&#39;IRAM2&#39;: {u&#39;size&#39;: u&#39;0x8000&#39;, u&#39;start&#39;: u&#39;0x2007C000&#39;},</span>
 <span class="go">             u&#39;IROM1&#39;: {u&#39;size&#39;: u&#39;0x80000&#39;, u&#39;start&#39;: u&#39;0x00000000&#39;}}}</span>
 </pre></div>
 </div>
+</dd></dl>
+
+<dl class="method">
+<dt id="ArmPackManager.Cache.pack_from_cache">
+<code class="descname">pack_from_cache</code><span class="sig-paren">(</span><em>url</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ArmPackManager.html#Cache.pack_from_cache"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ArmPackManager.Cache.pack_from_cache" title="Permalink to this definition">¶</a></dt>
+<dd><p>Low level inteface for extracting a PACK file from the cache.</p>
+<p>Assumes that the file specified is a PACK file and is in the cache.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>url</strong> (<em>str</em>) &#8211; The URL of a PACK file.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A parsed representation of the PACK file.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">ZipFile</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ArmPackManager.Cache.pdsc_from_cache">
+<code class="descname">pdsc_from_cache</code><span class="sig-paren">(</span><em>url</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ArmPackManager.html#Cache.pdsc_from_cache"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ArmPackManager.Cache.pdsc_from_cache" title="Permalink to this definition">¶</a></dt>
+<dd><p>Low level inteface for extracting a PDSC file from the cache.</p>
+<p>Assumes that the file specified is a PDSC file and is in the cache.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>url</strong> (<em>str</em>) &#8211; The URL of a PDSC file.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A parsed representation of the PDSC file.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">BeautifulSoup</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
@@ -420,25 +533,6 @@ A user of the API must explicitly call caching functions.</p>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">The url of the PACK file.</td>
 </tr>
 <tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">str</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="ArmPackManager.Cache.pull_from_cache">
-<code class="descname">pull_from_cache</code><span class="sig-paren">(</span><em>url</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ArmPackManager.html#Cache.pull_from_cache"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ArmPackManager.Cache.pull_from_cache" title="Permalink to this definition">¶</a></dt>
-<dd><p>Low level inteface for extracting a PDSC file from the cache.</p>
-<p>Assumes that the file specified is a PDSC file and is in the cache.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>url</strong> (<em>str</em>) &#8211; The URL of a PDSC file.</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A parsed representation of the PDSC file.</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">BeautifulSoup</td>
 </tr>
 </tbody>
 </table>
