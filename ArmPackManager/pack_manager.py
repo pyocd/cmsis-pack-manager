@@ -26,10 +26,10 @@ def subcommand(name, *args, **kwargs):
         subparser.add_argument("-v", "--verbose", action="store_true", dest="verbose", help="Verbose diagnostic output")
         subparser.add_argument("-vv", "--very_verbose", action="store_true", dest="very_verbose", help="Very verbose diagnostic output")
         subparser.add_argument("--no-timeouts", action="store_true", help="Remove all timeouts and try to download unconditionally")
-        subparser.add_argument("--and", action=s"store_true", dest="intersection" help="combine search terms as if with an and")
-        subparser.add_argument("--or", action=s"store_false", dest="intersection" help="combine search terms as if with an or")
-        subparser.add_argument("--union", action=s"store_false", dest="intersection" help="combine search terms as if with a set union")
-        subparser.add_argument("--intersection", action=s"store_true", dest="intersection" help="combine search terms as if with a set intersection")
+        subparser.add_argument("--and", action="store_true", dest="intersection", help="combine search terms as if with an and")
+        subparser.add_argument("--or", action="store_false", dest="intersection", help="combine search terms as if with an or")
+        subparser.add_argument("--union", action="store_false", dest="intersection", help="combine search terms as if with a set union")
+        subparser.add_argument("--intersection", action="store_true", dest="intersection", help="combine search terms as if with a set intersection")
         
         def thunk(parsed_args):
             cache = Cache(not parsed_args.verbose, parsed_args.no_timeouts)
