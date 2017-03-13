@@ -1,5 +1,4 @@
-from xdg.BaseDirectory import save_data_path
-from pycurl import Curl
+from urllib2 import urlopen, URLError
 from bs4 import BeautifulSoup
 from os.path import join, dirname, basename
 from os import makedirs
@@ -8,13 +7,23 @@ from threading import Thread
 from Queue import Queue
 from re import compile, sub
 from sys import stderr, stdout
-from fuzzywuzzy import process
 from itertools import takewhile
 import argparse
 from json import dump, load
 from zipfile import ZipFile
+from tempfile import gettempdir
+import warnings
+from distutils.version import LooseVersion
+
+warnings.filterwarnings("ignore")
+
+from fuzzywuzzy import process
 
 RootPackURL = "http://www.keil.com/pack/index.idx"
+
+LocalPackDir = dirname(__file__)
+LocalPackIndex = join(LocalPackDir, "index.json")
+LocalPackAliases = join(LocalPackDir, "aliases.json")
 
 
 protocol_matcher = compile("\w*://")
@@ -22,7 +31,8 @@ def strip_protocol(url) :
     return protocol_matcher.sub("", str(url))
 
 def largest_version(content) :
-    return sorted([t['version'] for t in content.package.releases('release')], reverse=True)[0]
+    return sorted([t['version'] for t in content.package.releases('release')],
+                  reverse=True, key=lambda v: LooseVersion(v))[0]
 
 def do_queue(Class, function, interable) :
     q = Queue()
@@ -45,19 +55,6 @@ class Reader (Thread) :
             self.func(url)
             self.queue.task_done()
 
-class Cacher (Thread) :
-    def __init__(self, queue, func) :
-        Thread.__init__(self)
-        self.queue = queue
-        self.curl = Curl()
-        self.curl.setopt(self.curl.FOLLOWLOCATION, True)
-        self.func = func
-    def run(self) :
-        while True :
-            url = self.queue.get()
-            self.func(self.curl, url)
-            self.queue.task_done()
-
 
 class Cache () :
     """ The Cache object is the only relevant API object at the moment
@@ -78,39 +75,31 @@ class Cache () :
         self._aliases = {}
         self.urls = None
         self.no_timeouts = no_timeouts
+        self.data_path = gettempdir()
 
     def display_counter (self, message) :
         stdout.write("{} {}/{}\r".format(message, self.counter, self.total))
         stdout.flush()
 
-    def cache_file (self, curl, url) :
+    def cache_file (self, url) :
         """Low level interface to caching a single file.
 
-        :param curl: The user is responsible for providing a curl.Curl object as the curl parameter.
-        :type curl: curl.Curl
         :param url: The URL to cache.
         :type url: str
         :rtype: None
         """
         if not self.silent : print("Caching {}...".format(url))
-        dest = join(save_data_path('arm-pack-manager'), strip_protocol(url))
+        dest = join(self.data_path, strip_protocol(url))
         try :
             makedirs(dirname(dest))
         except OSError as exc :
             if exc.errno == EEXIST : pass
             else : raise
-        with open(dest, "wb+") as fd :
-            curl.setopt(curl.URL, url)
-            curl.setopt(curl.FOLLOWLOCATION, True)
-            curl.setopt(curl.WRITEDATA, fd)
-            if not self.no_timeouts :
-                curl.setopt(curl.CONNECTTIMEOUT, 2)
-                curl.setopt(curl.LOW_SPEED_LIMIT, 50 * 1024)
-                curl.setopt(curl.LOW_SPEED_TIME, 2)
-            try :
-                curl.perform()
-            except Exception as e :
-                stderr.write("[ ERROR ] file {} did not download {}\n".format(url, str(e)))
+        try:
+            with open(dest, "wb+") as fd :
+                fd.write(urlopen(url).read())
+        except URLError as e:
+            stderr.write(e.reason)
         self.counter += 1
         self.display_counter("Caching Files")
 
@@ -132,10 +121,10 @@ class Cache () :
                 content.package.find('name').get_text() + "." +
                 largest_version(content) + ".pack")
 
-    def cache_pdsc_and_pack (self, curl, url) :
-        self.cache_file(curl, url)
+    def cache_pdsc_and_pack (self, url) :
+        self.cache_file(url)
         try :
-            self.cache_file(curl, self.pdsc_to_pack(url))
+            self.cache_file(self.pdsc_to_pack(url))
         except AttributeError :
             stderr.write("[ ERROR ] {} does not appear to be a conforming .pdsc file\n".format(url))
             self.counter += 1
@@ -162,14 +151,22 @@ class Cache () :
                                                       size=m["size"]))
                                        for m in device("memory")])
         except (KeyError, TypeError, IndexError) as e : pass
-        try: to_ret["algorithm"] = dict(name=device.algorithm["name"].replace('\\','/'),
-                                       start=device.algorithm["start"],
-                                       size=device.algorithm["size"],
-                                       RAMstart=device.algorithm.get("ramstart",None),
-                                       RAMsize=device.algorithm.get("ramsize",None))
-
-
-        except (KeyError, TypeError, IndexError) as e : pass
+        try: algorithms = device("algorithm")
+        except:
+            try: algorithms = device.parent("algorithm")
+            except: pass
+        else:
+            if not algorithms:
+                try: algorithms = device.parent("algorithm")
+                except: pass
+        try : to_ret["algorithm"] = dict([(algo.get("name").replace('\\','/'),
+                                           dict(start=algo["start"],
+                                                size=algo["size"],
+                                                ramstart=algo.get("ramstart",None),
+                                                ramsize=algo.get("ramsize",None),
+                                                default=algo.get("default",1)))
+                                       for algo in algorithms])
+        except (KeyError, TypeError, IndexError) as e: pass
         try: to_ret["debug"] = device.parent.parent.debug["svd"]
         except (KeyError, TypeError, IndexError) as e : pass
         try: to_ret["debug"] = device.parent.debug["svd"]
@@ -225,48 +222,11 @@ class Cache () :
 
         return to_ret
 
-    def _apply_device_debug(self, device, debug):
-        if device:
-            self._index[device].setdefault('debug-interface', [])
-            if "JTAG" not in debug and \
-               debug not in self._index[device]['debug-interface']:
-                self._index[device]['debug-interface'].append(debug)
-
-    def _apply_group_debug(self, key, search_val, pdsc, debug):
-        for fam in pdsc.findAll(key, {'d'+key: search_val}):
-            for dev in fam.findAll("device"):
-                self._apply_device_debug(dev("dname"), debug)
-
-    def _update_debug(self, d):
-        try:
-            pdsc = self.pdsc_from_cache(d)
-            for dev in pdsc("board"):
-                try:
-                    debug = dev.debuginterface['adapter']
-                except:
-                    try:
-                        odbg = dev.find("feature",{"type":"ODbg"})
-                        debug = odbg["name"]
-                    except:
-                        continue
-                for device in dev("compatibledevice") + dev("mounteddevice"):
-                    self._apply_group_debug("family",
-                                            device.get("dfamily",None),
-                                            pdsc, debug)
-                    self._apply_group_debug("subfamily",
-                                            device.get("dsubfamily", None),
-                                            pdsc, debug)
-                    self._apply_device_debug(device.get("dname", None), debug)
-        except (KeyError, TypeError, IndexError) as e:
-            stderr.write("[ ERROR ] file {}\n".format(d))
-            print(e)
-
     def _generate_index_helper(self, d) :
         try :
             pack = self.pdsc_to_pack(d)
             self._index.update(dict([(dev['dname'], self._extract_dict(dev, d, pack)) for dev in
                                     (self.pdsc_from_cache(d)("device"))]))
-            self._update_debug(d)
         except AttributeError as e :
             stderr.write("[ ERROR ] file {}\n".format(d))
             print(e)
@@ -287,18 +247,23 @@ class Cache () :
         self.counter += 1
         self.display_counter("Scanning for Aliases")
 
-    def get_flash_algorthim_binary(self, device_name) :
+    def get_flash_algorthim_binary(self, device_name, all=False) :
         """Retrieve the flash algorithm file for a particular part.
 
         Assumes that both the PDSC and the PACK file associated with that part are in the cache.
 
         :param device_name: The exact name of a device
+        :param all: Return an iterator of all flash algos for this device
         :type device_name: str
         :return: A file-like object that, when read, is the ELF file that describes the flashing algorithm
-        :rtype: ZipExtFile
+        :return: A file-like object that, when read, is the ELF file that describes the flashing algorithm.
+                 When "all" is set to True then an iterator for file-like objects is returned
+        :rtype: ZipExtFile or ZipExtFile iterator if all is True
         """
-        pack = self.pack_from_cache(self.index[device_name])
-        return pack.open(device['algorithm']['file'])
+        device = self.index[device_name]
+        pack = self.pack_from_cache(device)
+        algo_itr = (pack.open(path) for path in device['algorithm'].keys())
+        return algo_itr if all else algo_itr.next()
 
     def get_svd_file(self, device_name) :
         """Retrieve the flash algorithm file for a particular part.
@@ -310,14 +275,16 @@ class Cache () :
         :return: A file-like object that, when read, is the ELF file that describes the flashing algorithm
         :rtype: ZipExtFile
         """
-        pack = self.pack_from_cache(self.index[device_name])
+        device = self.index[device_name]
+        pack = self.pack_from_cache(device)
         return pack.open(device['debug'])
 
     def generate_index(self) :
         self._index = {}
         self.counter = 0
         do_queue(Reader, self._generate_index_helper, self.get_urls())
-        with open(join(save_data_path('arm-pack-manager'), "index.json"), "wb+") as out:
+        with open(LocalPackIndex, "wb+") as out:
+            self._index["version"] = "0.1.0"
             dump(self._index, out)
         stdout.write("\n")
 
@@ -325,7 +292,7 @@ class Cache () :
         self._aliases = {}
         self.counter = 0
         do_queue(Reader, self._generate_aliases_helper, self.get_urls())
-        with open(join(save_data_path('arm-pack-manager'), "aliases.json"), "wb+") as out:
+        with open(LocalPackAliases, "wb+") as out:
             dump(self._aliases, out)
         stdout.write("\n")
 
@@ -363,11 +330,8 @@ class Cache () :
 
         """
         if not self._index :
-            try :
-                with open(join(save_data_path('arm-pack-manager'), "index.json")) as i :
-                    self._index = load(i)
-            except IOError :
-                self.generate_index()
+            with open(LocalPackIndex) as i :
+                self._index = load(i)
         return self._index
     @property
     def aliases(self) :
@@ -393,11 +357,8 @@ class Cache () :
 
         """
         if not self._aliases :
-            try :
-                with open(join(save_data_path('arm-pack-manager'), "aliases.json")) as i :
-                    self._aliases = load(i)
-            except IOError :
-                self.generate_aliases()
+            with open(LocalPackAliases) as i :
+                self._aliases = load(i)
         return self._aliases
 
     def cache_everything(self) :
@@ -430,7 +391,7 @@ class Cache () :
         """
         self.total = len(list)
         self.display_counter("Caching Files")
-        do_queue(Cacher, self.cache_file, list)
+        do_queue(Reader, self.cache_file, list)
         stdout.write("\n")
 
     def cache_pack_list(self, list) :
@@ -441,7 +402,7 @@ class Cache () :
         """
         self.total = len(list) * 2
         self.display_counter("Caching Files")
-        do_queue(Cacher, self.cache_pdsc_and_pack, list)
+        do_queue(Reader, self.cache_pdsc_and_pack, list)
         stdout.write("\n")
 
     def pdsc_from_cache(self, url) :
@@ -454,11 +415,11 @@ class Cache () :
         :return: A parsed representation of the PDSC file.
         :rtype: BeautifulSoup
         """
-        dest = join(save_data_path('arm-pack-manager'), strip_protocol(url))
+        dest = join(self.data_path, strip_protocol(url))
         with open(dest, "r") as fd :
             return BeautifulSoup(fd, "html.parser")
 
-    def pack_from_cache(self, url) :
+    def pack_from_cache(self, device) :
         """Low level inteface for extracting a PACK file from the cache.
 
         Assumes that the file specified is a PACK file and is in the cache.
@@ -468,7 +429,7 @@ class Cache () :
         :return: A parsed representation of the PACK file.
         :rtype: ZipFile
         """
-        return ZipFile(join(save_data_path('arm-pack-manager'),
+        return ZipFile(join(self.data_path,
                             strip_protocol(device['pack_file'])))
 
     def gen_dict_from_cache() :
@@ -482,6 +443,6 @@ class Cache () :
         :return: A parsed representation of the PDSC file.
         :rtype: BeautifulSoup
         """
-        self.cache_file(Curl(), url)
+        self.cache_file(url)
         return self.pdsc_from_cache(url)
 
