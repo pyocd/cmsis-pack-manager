@@ -1,3 +1,4 @@
+from xdg.BaseDirectory import save_data_path
 from urllib2 import urlopen, URLError
 from bs4 import BeautifulSoup
 from os.path import join, dirname, basename
@@ -11,7 +12,6 @@ from itertools import takewhile
 import argparse
 from json import dump, load
 from zipfile import ZipFile
-from tempfile import gettempdir
 import warnings
 from distutils.version import LooseVersion
 
@@ -20,10 +20,6 @@ warnings.filterwarnings("ignore")
 from fuzzywuzzy import process
 
 RootPackURL = "http://www.keil.com/pack/index.idx"
-
-LocalPackDir = dirname(__file__)
-LocalPackIndex = join(LocalPackDir, "index.json")
-LocalPackAliases = join(LocalPackDir, "aliases.json")
 
 
 protocol_matcher = compile("\w*://")
@@ -67,7 +63,9 @@ class Cache () :
     :param no_timeouts: A boolean that, when True, disables the default connection timeout and low speed timeout for downloading things.
     :type no_timeouts: bool
     """
-    def __init__ (self, silent, no_timeouts) :
+    def __init__ (self, silent, no_timeouts, json_path=None, data_path=None) :
+        default_path = save_data_path('arm-pack-manager')
+        json_path = default_path if json_path is None else json_path
         self.silent = silent
         self.counter = 0
         self.total = 1
@@ -75,7 +73,9 @@ class Cache () :
         self._aliases = {}
         self.urls = None
         self.no_timeouts = no_timeouts
-        self.data_path = gettempdir()
+        self.index_path = join(json_path, "index.json")
+        self.aliases_path = join(json_path, "aliases.json")
+        self.data_path = default_path if data_path is None else data_path
 
     def display_counter (self, message) :
         stdout.write("{} {}/{}\r".format(message, self.counter, self.total))
@@ -283,7 +283,7 @@ class Cache () :
         self._index = {}
         self.counter = 0
         do_queue(Reader, self._generate_index_helper, self.get_urls())
-        with open(LocalPackIndex, "wb+") as out:
+        with open(self.index_path, "wb+") as out:
             self._index["version"] = "0.1.0"
             dump(self._index, out)
         stdout.write("\n")
@@ -292,7 +292,7 @@ class Cache () :
         self._aliases = {}
         self.counter = 0
         do_queue(Reader, self._generate_aliases_helper, self.get_urls())
-        with open(LocalPackAliases, "wb+") as out:
+        with open(self.aliases_path, "wb+") as out:
             dump(self._aliases, out)
         stdout.write("\n")
 
@@ -330,7 +330,7 @@ class Cache () :
 
         """
         if not self._index :
-            with open(LocalPackIndex) as i :
+            with open(self.index_path) as i :
                 self._index = load(i)
         return self._index
     @property
@@ -357,7 +357,7 @@ class Cache () :
 
         """
         if not self._aliases :
-            with open(LocalPackAliases) as i :
+            with open(self.aliases_path) as i :
                 self._aliases = load(i)
         return self._aliases
 
