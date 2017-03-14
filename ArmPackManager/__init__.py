@@ -41,9 +41,8 @@ protocol_matcher = compile("\w*://")
 def strip_protocol(url) :
     return protocol_matcher.sub("", str(url))
 
-def largest_version(content) :
-    return sorted([t['version'] for t in content.package.releases('release')],
-                  reverse=True, key=lambda v: LooseVersion(v))[0]
+def largest_version(versions) :
+    return sorted(versions, reverse=True, key=lambda v: LooseVersion(v))[0]
 
 def do_queue(Class, function, interable) :
     q = Queue()
@@ -80,7 +79,7 @@ class Cache () :
     """
     def __init__ (self, silent, no_timeouts, json_path=None, data_path=None) :
         default_path = save_data_path('arm-pack-manager')
-        json_path = default_path if json_path is None else json_path
+        json_path = default_path if not json_path else json_path
         self.silent = silent
         self.counter = 0
         self.total = 1
@@ -90,7 +89,7 @@ class Cache () :
         self.no_timeouts = no_timeouts
         self.index_path = join(json_path, "index.json")
         self.aliases_path = join(json_path, "aliases.json")
-        self.data_path = default_path if data_path is None else data_path
+        self.data_path = default_path if not data_path else data_path
 
     def display_counter (self, message) :
         stdout.write("{} {}/{}\r".format(message, self.counter, self.total))
@@ -134,7 +133,8 @@ class Cache () :
             new_url = new_url + "/"
         return (new_url + content.package.vendor.get_text() + "." +
                 content.package.find('name').get_text() + "." +
-                largest_version(content) + ".pack")
+                largest_version([t['version'] for t in
+                                 content.package.releases('release')]) + ".pack")
 
     def cache_pdsc_and_pack (self, url) :
         self.cache_file(url)
