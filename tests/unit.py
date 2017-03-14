@@ -1,5 +1,6 @@
 """Unit tests for the ArmPackManager module"""
 
+from os.path import join
 from string import ascii_lowercase
 from mock import patch, MagicMock
 from hypothesis import given, settings, example
@@ -50,4 +51,29 @@ def test_cache_file(url, contents):
         _urlopen.assert_called_with(url)
         _open.assert_called()
         _open.return_value.__enter__.return_value.write.assert_called_with(contents)
+    inner_test()
+
+
+@given(text(alphabet=ascii_lowercase + "/", min_size=1),
+       text(alphabet=ascii_lowercase +"/", min_size=1))
+def test_pdsc_from_cache(data_path, url):
+    @patch("ArmPackManager.BeautifulSoup")
+    @patch("ArmPackManager.open", create=True)
+    def inner_test(_open, _bs):
+        _open.return_value.__enter__.return_value = MagicMock
+        c = ArmPackManager.Cache(True, True, data_path=data_path)
+        c.pdsc_from_cache(url)
+        _open.called_with(join(data_path, url), "r")
+        _bs.called_with(_open.return_value.__enter__.return_value, "html.parser")
+    inner_test()
+
+@given(text(alphabet=ascii_lowercase + "/", min_size=1),
+       text(alphabet=ascii_lowercase +"/", min_size=1))
+def test_pack_from_cache(data_path, url):
+    @patch("ArmPackManager.ZipFile")
+    def inner_test(_zf):
+        c = ArmPackManager.Cache(True, True, data_path=data_path)
+        device = {'pack_file': url}
+        c.pack_from_cache(device)
+        _zf.called_with(join(data_path, url))
     inner_test()
