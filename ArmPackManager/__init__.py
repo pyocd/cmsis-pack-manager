@@ -155,7 +155,7 @@ class Cache () :
         if not self.urls :
             try : root_data = self.pdsc_from_cache(RootPackURL)
             except IOError : root_data = self.cache_and_parse(RootPackURL)
-            self.urls = ["/".join([pdsc.get('url').strip("/"),
+            self.urls = ["/".join([pdsc.get('url').rstrip("/"),
                                    pdsc.get('name').strip("/")])
                          for pdsc in root_data.find_all("pdsc")]
         return self.urls
