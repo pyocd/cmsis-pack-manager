@@ -1,0 +1,9 @@
+machine:
+  python:
+    version: 2.7.12
+dependencies:
+  pre:
+    - pip install hypothesis==3.5.2 pytest==3.0.2 mock==2.0.0 Jinja2==2.9.5
+test:
+  override:
+    - py.test tests/unit.py
