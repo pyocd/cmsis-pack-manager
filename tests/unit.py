@@ -43,17 +43,18 @@ def test_strip_protocol(protocol, url):
 
 @given(text(alphabet=ascii_lowercase + ":/_."), text())
 def test_cache_file(url, contents):
+    @patch("ArmPackManager.Cache._cache_lookup")
     @patch("ArmPackManager.Cache.display_counter")
     @patch("ArmPackManager.urlopen")
     @patch("ArmPackManager.makedirs")
     @patch("ArmPackManager.open", create=True)
-    def inner_test(_open, _, _urlopen, __):
+    def inner_test(_open, _, _urlopen, __, _cache_lookup):
         _open.return_value = MagicMock(spec=file)
         _urlopen.return_value.read.return_value = contents
         c = ArmPackManager.Cache(True, True)
         c.cache_file(url)
         _urlopen.assert_called_with(url)
-        _open.assert_called()
+        _open.assert_called_with(_cache_lookup.return_value, "wb+")
         _open.return_value.__enter__.return_value.write.assert_called_with(contents)
     inner_test()
 
@@ -97,18 +98,40 @@ VERSION_TEMPLATE = (
 @given(text(alphabet=ascii_lowercase), text(alphabet=ascii_lowercase),
        text(alphabet=ascii_lowercase + ":/_."),
        lists(text(min_size=1), min_size=1))
-def test_pdsc_to_pack(name, vendor, url, versions):
+def test_get_pack_url(name, vendor, url, versions):
     xml = Template(VERSION_TEMPLATE).render(name=name, vendor=vendor, url=url,
                                             versions=versions)
     @patch("ArmPackManager.largest_version")
-    @patch("ArmPackManager.Cache.pdsc_from_cache")
-    def inner_test(pdsc_from_cache, largest_version):
-        pdsc_from_cache.return_value = BeautifulSoup(xml, "html.parser")
+    def inner_test(largest_version):
+        pdsc_contents = BeautifulSoup(xml, "html.parser")
         largest_version.return_value = versions[0]
         c = ArmPackManager.Cache(True, True)
-        new_url = c.pdsc_to_pack(url + "desc.pdsc")
+        new_url = c.get_pack_url(pdsc_contents)
         assert new_url.startswith(url)
         assert new_url.endswith("%s.%s.%s.pack" % (vendor, name, versions[0]))
+    inner_test()
+
+@given(text(alphabet=ascii_lowercase), text(alphabet=ascii_lowercase),
+       text(alphabet=ascii_lowercase + ":/_."),
+       text(alphabet=ascii_lowercase + "."))
+def test_get_pdsc_url(name, vendor, url, pdsc_filename):
+    xml = Template(VERSION_TEMPLATE).render(name=name, vendor=vendor, url=url,
+                                            versions=[])
+    pdsc_contents = BeautifulSoup(xml, "html.parser")
+    c = ArmPackManager.Cache(True, True)
+    new_url = c.get_pdsc_url(pdsc_contents, pdsc_filename)
+    assert new_url.startswith(url)
+    assert new_url.endswith(pdsc_filename)
+
+@given(text(alphabet=ascii_lowercase + ":/_."))
+def test_pdsc_to_pack(url):
+    @patch("ArmPackManager.Cache.get_pack_url")
+    @patch("ArmPackManager.Cache.pdsc_from_cache")
+    def inner_test(pdsc_from_cache, get_pack_url):
+        c = ArmPackManager.Cache(True, True)
+        new_url = c.pdsc_to_pack(url)
+        pdsc_from_cache.assert_called_with(url)
+        get_pack_url.assert_called_with(pdsc_from_cache.return_value)
     inner_test()
 
 @given(text(alphabet=ascii_lowercase + ":/_."),
