@@ -16,7 +16,7 @@
 from xdg.BaseDirectory import save_data_path
 from urllib2 import urlopen, URLError
 from bs4 import BeautifulSoup
-from os.path import join, dirname, basename
+from os.path import join, dirname, basename, exists
 from os import makedirs
 from errno import EEXIST
 from threading import Thread
@@ -29,6 +29,7 @@ from json import dump, load
 from zipfile import ZipFile
 import warnings
 from distutils.version import LooseVersion
+from shutil import copyfile
 
 warnings.filterwarnings("ignore")
 
@@ -95,6 +96,17 @@ class Cache () :
         stdout.write("{} {}/{}\r".format(message, self.counter, self.total))
         stdout.flush()
 
+    def _cache_lookup(self, url):
+        """Low level lookup of a file in the cache
+
+        Note: Does not check if the file exists
+
+        :param url: The URL to lookup in the cache.
+        :type url: str
+        :rtype: FileString
+        """
+        return join(self.data_path, strip_protocol(url))
+
     def cache_file (self, url) :
         """Low level interface to caching a single file.
 
@@ -103,7 +115,7 @@ class Cache () :
         :rtype: None
         """
         if not self.silent : print("Caching {}...".format(url))
-        dest = join(self.data_path, strip_protocol(url))
+        dest = self._cache_lookup(url)
         try :
             makedirs(dirname(dest))
         except OSError as exc :
@@ -118,7 +130,7 @@ class Cache () :
         self.display_counter("Caching Files")
 
     def pdsc_to_pack (self, url) :
-        """Find the URL of the specified pack file described by a PDSC.
+        """Find the URL of the specified pack file described by a PDSC URL.
 
         The PDSC is assumed to be cached and is looked up in the cache by its URL.
 
@@ -128,6 +140,31 @@ class Cache () :
         :rtype: str
         """
         content = self.pdsc_from_cache(url)
+        return self.get_pack_url(content)
+
+    @staticmethod
+    def get_pdsc_url(content, filename):
+        """Find the URL of the specified PDSC file described by a PDSC.
+
+        :param content: The contents of a PDSC file
+        :type content: BeautifulSoup
+        :return: The url of the PDSC file.
+        :rtype: str
+        """
+        new_url = content.package.url.get_text()
+        if not new_url.endswith("/") :
+            new_url = new_url + "/"
+        return new_url + filename
+
+    @staticmethod
+    def get_pack_url(content):
+        """Find the URL of the specified pack file described by a PDSC.
+
+        :param content: The contents of a PDSC file
+        :type content: BeautifulSoup
+        :return: The url of the PACK file.
+        :rtype: str
+        """
         new_url = content.package.url.get_text()
         if not new_url.endswith("/") :
             new_url = new_url + "/"
@@ -237,13 +274,20 @@ class Cache () :
 
         return to_ret
 
-    def _generate_index_helper(self, d) :
+    def _merge_targets(self, pdsc_url, pack_url, pdsc_contents):
+        to_merge = {}
+        for device in pdsc_contents("device"):
+            to_merge[device['dname']] = self._extract_dict(
+                device, pdsc_url, pack_url)
+        self._index.update(to_merge)
+
+    def _generate_index_helper(self, pdsc_url) :
         try :
-            pack = self.pdsc_to_pack(d)
-            self._index.update(dict([(dev['dname'], self._extract_dict(dev, d, pack)) for dev in
-                                    (self.pdsc_from_cache(d)("device"))]))
+            pack_url = self.pdsc_to_pack(pdsc_url)
+            pdsc_contens = self.pdsc_from_cache(pdsc_url)
+            self._merge_targets(pdsc_url, pack_url, pdsc_contents)
         except AttributeError as e :
-            stderr.write("[ ERROR ] file {}\n".format(d))
+            stderr.write("[ ERROR ] file {}\n".format(pdsc_url))
             print(e)
         self.counter += 1
         self.display_counter("Generating Index")
@@ -461,3 +505,36 @@ class Cache () :
         self.cache_file(url)
         return self.pdsc_from_cache(url)
 
+    @staticmethod
+    def find_pdsc(zipfile):
+        """Find the PDSC file within a PACK file
+
+        :param zipfile: The PACK to scan
+        :type zipfile: ZipFile
+        :return: The location of the PDSC file within the PACK file
+        :rtype: str
+        """
+        for zipinfo in zipfile.infolist():
+            if (zipinfo.filename.upper().endswith(".PDSC")):
+                return zipinfo.filename
+        return None
+
+    def add_local_pack_file(self, filename):
+        """Add a single pack file to the index
+
+        :param filename: The pack file to add to the index
+        """
+        _ = self.index # Force the cache to be loaded
+        zipfile = ZipFile(open(filename), "rb")
+        pdsc_filename = self.find_pdsc(zipfile)
+        if not pdsc_filename:
+            raise Exception("PDSC file not found in PACK %s" % filename)
+        with zipfile.open(pdsc_filename) as pdsc:
+            pdsc_content = BeautifulSoup(pdsc, "html.parser")
+        pdsc_url = self.get_pdsc_url(pdsc_contents, pdsc_filename)
+        pack_url = self.get_pack_url(pdsc_contents)
+        self._merge_target(pdsc_url, pack_url, pdsc_content)
+        pack_loc = self._cache_lookup(pack_url)
+        if not exists(dirname(pack_loc)):
+            makedirs(dirname(pack_loc))
+        copyfile(filename, pack_loc)
