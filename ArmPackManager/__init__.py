@@ -39,7 +39,7 @@ RootPackURL = "http://www.keil.com/pack/index.idx"
 
 protocol_matcher = compile("\w*://")
 def strip_protocol(url) :
-    return protocol_matcher.sub("", str(url))
+    return protocol_matcher.sub("", str(url), count=1)
 
 def largest_version(versions) :
     return sorted(versions, reverse=True, key=lambda v: LooseVersion(v))[0]

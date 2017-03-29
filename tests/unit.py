@@ -36,6 +36,7 @@ def test_do_queue(queue):
 
 @given(text(alphabet=ascii_lowercase), text(alphabet=ascii_lowercase + ":/_."))
 @example("http", "google.com")
+@example("http", "google.com://foo")
 def test_strip_protocol(protocol, url):
     uri = protocol + "://" + url
     assert(ArmPackManager.strip_protocol(uri) == url)
