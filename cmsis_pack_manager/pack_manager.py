@@ -18,7 +18,7 @@ from os.path import basename, join, dirname, exists
 from os import makedirs
 from itertools import takewhile
 from fuzzywuzzy import process
-from ArmPackManager import Cache
+from cmsis_pack_manager import Cache
 
 parser = argparse.ArgumentParser(description='A Handy little utility for keeping your cache of pack files up to date.')
 subparsers = parser.add_subparsers(title="Commands")
