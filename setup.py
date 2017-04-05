@@ -15,7 +15,7 @@
 
 from setuptools import setup, find_packages
 setup(
-    name = "arm-pack-manager",
+    name = "cmsis-pack-manager",
     version = "0.0",
     packages = find_packages(),
     install_requires = ['pycurl>=7.43.0',
@@ -24,7 +24,7 @@ setup(
                         'fuzzywuzzy>=0.10.0'],
     entry_points = {
         'console_scripts' : [
-            'pack-manager = arm_pack_manager.pack_manager:main'
+            'pack-manager = cmsis_pack_manager.pack_manager:main'
         ]
     }
 )
