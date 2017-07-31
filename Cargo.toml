@@ -1,0 +1,8 @@
+[package]
+name = "cmsis-pack-manager"
+version = "0.1.0"
+authors = ["Jimmy Brisson <theotherjimmy@gmail.com>"]
+
+[dependencies]
+minidom = "*"
+quick-xml = "*"
