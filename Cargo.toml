@@ -6,3 +6,6 @@ authors = ["Jimmy Brisson <theotherjimmy@gmail.com>"]
 [dependencies]
 minidom = "*"
 quick-xml = "*"
+hyper = "0.11"
+futures = "0.1"
+tokio-core = "0.1"

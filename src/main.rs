@@ -1,5 +1,8 @@
 extern crate minidom;
 extern crate quick_xml;
+extern crate futures;
+extern crate tokio_core;
+extern crate hyper;
 
 use std::fs::File;
 use std::io::BufReader;
@@ -9,6 +12,11 @@ use minidom::Element;
 use minidom::Children;
 use minidom::error::Error;
 use quick_xml::reader::Reader;
+
+use std::io::{self, Write};
+use futures::{Future, Stream};
+use hyper::Client;
+use tokio_core::reactor::Core;
 
 #[derive(Debug)]
 struct Pdsc{
@@ -84,6 +92,39 @@ fn parse(path: &Path) -> Result<Vidx, Error> {
     })
 }
 
+static PIDX_SUFFIX: &'static str = ".pidx";
+
+fn get_vidx(vidx: Vidx) -> Result<(), Error> {
+    let mut core = Core::new().unwrap();
+    let client = Client::new(&core.handle());
+    if let Some(vidxs) = vidx.vendorIndex {
+        for Pidx{url, vendor, ..} in vidxs {
+            let mut urlname = String::with_capacity(url.len() + vendor.len() + PIDX_SUFFIX.len());
+            urlname += &url;
+            urlname += &vendor;
+            urlname += &PIDX_SUFFIX;
+            println!("{}", urlname);
+            match urlname.parse() {
+                Ok(uri) => {
+                    let work = client.get(uri).map(|res|{
+                        println!("Response: {}", res.status());
+                        res.body().for_each(move |body| {
+                            println!("{:?}", body);
+                            Ok(())
+                        })
+                    });
+                    core.run(work).unwrap();
+                }
+                Err(e) => {
+                    println!("{}", e)
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+
 fn main() {
-    println!("{:#?}", parse(Path::new("keil.vidx")))
+    parse(Path::new("keil.vidx")).and_then(get_vidx);
 }
