@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<index schemaVersion="1.0" xmlns:xs="http://www.w3.org/2001/XMLSchema-instance" xs:noNamespaceSchemaLocation="PackIndex.xsd">
+  <vendor>Keil</vendor>
+  <url>www.keil.com/pack</url>
+  <timestamp>2017-01-08T10:30:00</timestamp>
+  <vindex>
+    <pidx url="http://www.active-semi.com/keil_pack/" vendor="Active-Semi" />
+    <pidx url="http://download.analog.com/tools/" vendor="AnalogDevices" />
+    <pidx url="http://s3.ambiqmicro.com/pack/" vendor="AmbiqMicro" />
+    <pidx url="http://software-dl.ti.com/msp430/msp430_public_sw/mcu/msp430/mspkeil/" vendor="TexasInstruments" />
+    <pidx url="http://mcuxpresso.nxp.com/cmsis_pack/repo/" vendor="NXP" />
+  </vindex> 
+  <pindex>
+    <pdsc url="http://www.abov.co.kr/data/mds/PACK/" vendor="ABOV" name="CM3_DFP" version="1.2.1" />
+    <pdsc url="http://dave.infineon.com/Libraries/CMSIS_PACK/" vendor="Infineon" name="TLE986x_DFP" version="1.2.4" />
+    <pdsc url="http://dave.infineon.com/Libraries/CMSIS_PACK/" vendor="Infineon" name="TLE987x_DFP" version="1.2.4" />
+    <pdsc url="http://dave.infineon.com/Libraries/CMSIS_PACK/" vendor="Infineon" name="TLE984x_DFP" version="1.0.0" />
+    <pdsc url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_Libraries/" vendor="NordicSemiconductor" name="nRF_Libraries" version="4.0.0-2.alpha" />
+    <pdsc url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_IoT_lwIP/" vendor="NordicSemiconductor" name="nRF_IoT_lwIP" version="1.4.1-1" />
+    <pdsc url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_IoT_Libraries/" vendor="NordicSemiconductor" name="nRF_IoT_Libraries" version="0.8.0" />
+    <pdsc url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_IoT_Examples/" vendor="NordicSemiconductor" name="nRF_IoT_Examples" version="0.8.0" />
+    <pdsc url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_Examples/" vendor="NordicSemiconductor" name="nRF_Examples" version="11.0.0-2.alpha" />
+    <pdsc url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_Drivers_External/" vendor="NordicSemiconductor" name="nRF_Drivers_External" version="1.2.1-2.alpha" />
+    <pdsc url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_Drivers/" vendor="NordicSemiconductor" name="nRF_Drivers" version="4.0.0-2.alpha" />
+    <pdsc url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_BLE/" vendor="NordicSemiconductor" name="nRF_BLE" version="4.0.0-2.alpha" />
+    <pdsc url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_ANT/" vendor="NordicSemiconductor" name="nRF_ANT" version="2.0.1-2.alpha" />
+    <pdsc url="http://www.mindmotion.com.cn/Download/MDK_KEIL/" vendor="MindMotion" name="MM32x103_DFP" version="1.1.0" />
+    <pdsc url="http://www.mindmotion.com.cn/Download/MDK_KEIL/" vendor="MindMotion" name="MM32x031_DFP" version="1.0.0" />
+    <pdsc url="http://www.actel-ip.com/repositories/CMSIS-Pack/" vendor="Microsemi" name="M2Sxxx" version="1.0.63" />
+    <pdsc url="http://www.micrium.com/cmsis-pack/" vendor="Micrium" name="RTOS" version="1.0.0" />
+    <pdsc url="http://download.labs.mediatek.com/" vendor="MediaTek" name="MTx" version="4.1.0" />
+    <pdsc url="http://www.ixys.com/Zilog/packs/" vendor="Zilog" name="ZNEO32_DFP" version="1.0.2" />
+    <pdsc url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_SoftDevice_S1xx_iot/" vendor="NordicSemiconductor" name="nRF_SoftDevice_S1xx_iot" version="0.0.1-prototype2" />
+    <pdsc url="https://realtimelogic.com/downloads/arm-mdk-packs/" vendor="RealTimeLogic" name="SharkSSL-Lite" version="38.9.8" />
+    <pdsc url="https://realtimelogic.com/downloads/arm-mdk-packs/" vendor="RealTimeLogic" name="SMQ" version="38.9.8" />
+    <pdsc url="https://www.oryx-embedded.com/download/pack/" vendor="Oryx-Embedded" name="Middleware" version="1.7.6" />
+    <pdsc url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_SoftDevice_S310/" vendor="NordicSemiconductor" name="nRF_SoftDevice_S310" version="3.0.1" />
+    <pdsc url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_SoftDevice_S210/" vendor="NordicSemiconductor" name="nRF_SoftDevice_S210" version="5.0.2" />
+    <pdsc url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_SoftDevice_S132/" vendor="NordicSemiconductor" name="nRF_SoftDevice_S132" version="2.0.0-7.alpha" />
+    <pdsc url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_SoftDevice_S130/" vendor="NordicSemiconductor" name="nRF_SoftDevice_S130" version="2.0.0-7.alpha" />
+    <pdsc url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_SoftDevice_S120/" vendor="NordicSemiconductor" name="nRF_SoftDevice_S120" version="2.1.1" />
+    <pdsc url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_SoftDevice_S110/" vendor="NordicSemiconductor" name="nRF_SoftDevice_S110" version="8.0.3" />
+    <pdsc url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_Serialization/" vendor="NordicSemiconductor" name="nRF_Serialization" version="2.1.0" />
+    <pdsc url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_Properitary_RF/" vendor="NordicSemiconductor" name="nRF_Properitary_RF" version="1.2.3-2.alpha" />
+    <pdsc url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_SoftDevice_Common/" vendor="NordicSemiconductor" name="nRF_SoftDevice_Common" version="2.0.0-2.alpha" />
+    <pdsc url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_RTX/" vendor="NordicSemiconductor" name="nRF_RTX" version="4.74.0-9" />
+    <pdsc url="http://developer.nordicsemi.com/nRF51_SDK/pieces/nRF_NFC/" vendor="NordicSemiconductor" name="nRF_NFC" version="1.0.0-2.alpha" />
+    <pdsc url="http://clarinox.com/cmsis/" vendor="Clarinox" name="Wireless" version="2.0.1" />
+    <pdsc url="http://mcu.holtek.com.tw/pack/" vendor="Holtek" name="HT32_DFP" version="1.0.5" />
+    <pdsc url="http://liveupdate.sonix.com.tw/sonix/develop_tool/MCU/DFP/" vendor="SONiX" name="SN32F7_DFP" version="1.2.2" />
+    <pdsc url="http://liveupdate.sonix.com.tw/sonix/develop_tool/MCU/DFP/" vendor="SONiX" name="SN32F2_DFP" version="1.2.1" />
+    <pdsc url="http://liveupdate.sonix.com.tw/sonix/develop_tool/MCU/DFP/" vendor="SONiX" name="SN32F1_DFP" version="1.0.1" />
+    <pdsc url="http://www.abov.co.kr/data/mds/PACK/" vendor="ABOV" name="CM0_DFP" version="1.0.0" />
+    <pdsc url="http://developer.nordicsemi.com/nRF5_SDK/pieces/nRF_DeviceFamilyPack/" vendor="NordicSemiconductor" name="nRF_DeviceFamilyPack" version="8.7.1" />
+    <pdsc url="http://dave.infineon.com/Libraries/CMSIS_PACK/" vendor="Infineon" name="XMC4000_DFP" version="2.7.1" />
+    <pdsc url="http://dave.infineon.com/Libraries/CMSIS_PACK/" vendor="Infineon" name="XMC1000_DFP" version="2.5.1" />
+    <pdsc url="http://www.nuvoton.com/hq/enu/Documents/KEILSoftwarePack/" vendor="Nuvoton" name="NuMicro_DFP" version="1.0.9" />
+    <pdsc url="http://obs.cn-north-1.myhwclouds.com/iot-liteos/" vendor="Huawei" name="LiteOS" version="1.0.0" />
+    <pdsc url="http://gd32mcu.21ic.com/data/documents/yingyongruanjian/" vendor="GigaDevice" name="GD32F1x0_DFP" version="3.0.0" />
+    <pdsc url="http://gd32mcu.21ic.com/data/documents/yingyongruanjian/GD32F4/" vendor="GigaDevice" name="GD32F4xx_DFP" version="1.0.1" />
+    <pdsc url="https://www.wolfssl.com/files/ide/" vendor="wolfSSL" name="wolfSSL" version="3.9.0" />
+    <pdsc url="http://www.lapis-semi.com/en/data/sample-file_db/miconlp/" vendor="LAPISSemiconductor" name="ML630Q46x_DFP" version="1.0.0" />  
+    <pdsc url="http://www.rt-thread.org/download/mdk/" vendor="rt-thread" name="rtthread" version="2.1.1"/>
+  </pindex>
+</index>
+
+
