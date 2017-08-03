@@ -97,8 +97,8 @@ pub struct Vidx {
     pub vendor: String,
     pub url: String,
     pub timestamp: Option<String>,
-    pub pdscIndex: Option<Vec<Pdsc>>,
-    pub vendorIndex: Option<Vec<Pidx>>,
+    pub pdsc_index: Option<Vec<Pdsc>>,
+    pub vendor_index: Option<Vec<Pidx>>,
 }
 
 static PIDX_SUFFIX: &'static str = ".pidx";
@@ -127,9 +127,14 @@ impl Vidx {
                 ErrorKind::Msg(String::from("url not found"))))?;
         Ok(Vidx {
             vendor, url,
-            timestamp:  root.get_child("timestamp", "http://www.w3.org/2001/XMLSchema-instance").map(Element::text),
-            vendorIndex: root.get_child("vindex", "http://www.w3.org/2001/XMLSchema-instance").map(Element::children).and_then(Pidx::vec_from_children),
-            pdscIndex: root.get_child("pindex", "http://www.w3.org/2001/XMLSchema-instance").map(Element::children).and_then(Pdsc::vec_from_children),
+            timestamp:  root.get_child("timestamp", "http://www.w3.org/2001/XMLSchema-instance")
+                .map(Element::text),
+            vendor_index: root.get_child("vindex", "http://www.w3.org/2001/XMLSchema-instance")
+                .map(Element::children)
+                .and_then(Pidx::vec_from_children),
+            pdsc_index: root.get_child("pindex", "http://www.w3.org/2001/XMLSchema-instance")
+                .map(Element::children)
+                .and_then(Pdsc::vec_from_children),
         })
     }
 }

@@ -5,7 +5,7 @@ extern crate quick_xml;
 extern crate test;
 
 use test::{Bencher, black_box};
-use cmsis_pack_manager::pack_index::{Vidx, Pidx, Pdsc, Error};
+use cmsis_pack_manager::pack_index::{Vidx, Pidx, PdscRef, Error};
 use self::minidom::Element;
 use self::quick_xml::reader::Reader;
 
@@ -21,7 +21,7 @@ fn parse_pdsc(b: &mut Bencher){
         let mut r = Reader::from_reader(src);
         r.check_end_names(false).check_comments(false);
         let root = Element::from_reader(&mut r).unwrap();
-        black_box(Pdsc::from_elem(&root));
+        black_box(PdscRef::from_elem(&root));
     });
 }
 
