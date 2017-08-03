@@ -115,6 +115,7 @@ impl Vidx {
     }
 
     pub fn from_reader<F: BufRead>(reader: &mut Reader<F>) -> Result<Vidx, Error> {
+        reader.check_end_names(false).check_comments(false);
         let root = Element::from_reader(reader)?;
         let vendor = root.get_child("vendor", "http://www.w3.org/2001/XMLSchema-instance")
             .map(Element::text)

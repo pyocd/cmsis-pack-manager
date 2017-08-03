@@ -19,6 +19,7 @@ fn parse_pdsc(b: &mut Bencher){
     let src: &[u8] = include_bytes!("bench.pdsc");
     b.iter(|| {
         let mut r = Reader::from_reader(src);
+        r.check_end_names(false).check_comments(false);
         let root = Element::from_reader(&mut r).unwrap();
         black_box(Pdsc::from_elem(&root));
     });
@@ -29,6 +30,7 @@ fn parse_pidx(b: &mut Bencher){
     let src: &[u8] = include_bytes!("bench.pidx");
     b.iter(|| {
         let mut r = Reader::from_reader(src);
+        r.check_end_names(false).check_comments(false);
         let root = Element::from_reader(&mut r).unwrap();
         black_box(Pidx::from_elem(&root));
     });
