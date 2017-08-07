@@ -1,11 +1,15 @@
 extern crate smallstring;
+extern crate futures;
+extern crate tokio_core;
+extern crate hyper;
+extern crate minidom;
 
 use self::smallstring::SmallString;
 
 pub mod network;
 pub mod parse;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PdscRef{
     pub url: String,
     pub vendor: SmallString,
