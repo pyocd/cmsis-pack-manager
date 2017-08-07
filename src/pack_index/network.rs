@@ -12,7 +12,7 @@ use std::slice::Iter;
 use minidom;
 
 use super::{PdscRef, Vidx, Pidx};
-use super::parse::FromElem;
+use ::parse::FromElem;
 
 static PIDX_SUFFIX: &'static str = ".pidx";
 

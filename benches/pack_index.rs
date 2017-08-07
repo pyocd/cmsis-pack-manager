@@ -5,10 +5,10 @@ extern crate quick_xml;
 extern crate test;
 
 use cmsis_pack_manager::pack_index::{Vidx, Pidx, PdscRef};
-use cmsis_pack_manager::pack_index::parse::FromElem;
+use cmsis_pack_manager::parse::FromElem;
 use test::Bencher;
 
-trait BenchParse: FromElem {
+TRAIT BenchParse: FromElem {
     const src:  &'static [u8];
 
     #[bench]
