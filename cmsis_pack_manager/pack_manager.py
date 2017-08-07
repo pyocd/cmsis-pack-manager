@@ -20,7 +20,7 @@ from itertools import takewhile
 from fuzzywuzzy import process
 from cmsis_pack_manager import Cache
 
-parser = argparse.ArgumentParser(description='A Handy little utility for keeping your cache of pack files up to date.')
+parser = argparse.ArgumentParser(description='A utility that keeps your cache of pack files up to date.')
 subparsers = parser.add_subparsers(title="Commands")
 
 def subcommand(name, *args, **kwargs):
@@ -40,10 +40,10 @@ def subcommand(name, *args, **kwargs):
         subparser.add_argument("-v", "--verbose", action="store_true", dest="verbose", help="Verbose diagnostic output")
         subparser.add_argument("-vv", "--very_verbose", action="store_true", dest="very_verbose", help="Very verbose diagnostic output")
         subparser.add_argument("--no-timeouts", action="store_true", help="Remove all timeouts and try to download unconditionally")
-        subparser.add_argument("--and", action="store_true", dest="intersection", help="combine search terms as if with an and")
-        subparser.add_argument("--or", action="store_false", dest="intersection", help="combine search terms as if with an or")
-        subparser.add_argument("--union", action="store_false", dest="intersection", help="combine search terms as if with a set union")
-        subparser.add_argument("--intersection", action="store_true", dest="intersection", help="combine search terms as if with a set intersection")
+        subparser.add_argument("--and", action="store_true", dest="intersection", help="Combine search terms as if with an `and`")
+        subparser.add_argument("--or", action="store_false", dest="intersection", help="Combine search terms as if with an `or`")
+        subparser.add_argument("--union", action="store_false", dest="intersection", help="Combine search terms as if with a set union")
+        subparser.add_argument("--intersection", action="store_true", dest="intersection", help="Combine search terms as if with a set intersection")
         
         def thunk(parsed_args):
             cache = Cache(not parsed_args.verbose, parsed_args.no_timeouts)
@@ -93,11 +93,11 @@ def fuzzy_find(matches, urls) :
             dict(name='matches', nargs="*",
                  help="a bunch of things to search for in part names"),
             dict(name=['-e','--everything'], action="store_true",
-                 help="download everything possible"),
+                 help="Download everything possible"),
             dict(name=['-d','--descriptors'], action="store_true",
-                 help="download all descriptors"),
+                 help="Download all descriptors"),
             dict(name=["-b","--batch"], action="store_true",
-                 help="don't ask for user input and assume download all"),
+                 help="Don't ask for user input and assume download all"),
             help="Cache a group of PACK or PDSC files")
 def command_cache (cache, matches, everything=False, descriptors=False, batch=False, verbose= False, intersection=True) :
     if everything :
@@ -126,12 +126,12 @@ def command_cache (cache, matches, everything=False, descriptors=False, batch=Fa
 
 
 @subcommand('find-part',
-            dict(name='matches', nargs="+", help="words to match to processors"),
+            dict(name='matches', nargs="+", help="Words to match to processors"),
             dict(name=['-l',"--long"], action="store_true",
-                 help="print out part details with part"),
+                 help="Print out part details with part"),
             dict(name=['-p', '--parts-only'], action="store_false", dest="print_aliases"),
             dict(name=['-a', '--aliases-only'], action="store_false", dest="print_parts"),
-            help="Find a Part and it's description within the cache")
+            help="Find a part and its description within the cache")
 def command_find_part (cache, matches, long=False, intersection=True,
                        print_aliases=True, print_parts=True) :
     if long :
@@ -156,9 +156,9 @@ def command_find_part (cache, matches, long=False, intersection=True,
                 pp.pprint(cache.index[cache.aliases[alias]])
 
 @subcommand('dump-parts',
-            dict(name='out', help='directory to dump to'),
-            dict(name='parts', nargs='+', help='parts to dump'),
-            help='Create a directory with an index.json describing the part and all of their associated flashing algorithms.'
+            dict(name='out', help='Directory to dump to'),
+            dict(name='parts', nargs='+', help='Parts to dump'),
+            help='Create a directory with an `index.json` describing the part and all of the associated flashing algorithms.'
 )
 def command_dump_parts (cache, out, parts, intersection=False) :
     index = {}
