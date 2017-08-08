@@ -19,7 +19,6 @@ pub trait FromElem: Sized {
         let mut r = Reader::from_file(p)?;
         Self::from_reader(&mut r)
     }
-
     fn vec_from_children(clds: Children) -> Vec<Self> {
         clds.flat_map(|cld|{
             Self::from_elem(cld).into_iter()

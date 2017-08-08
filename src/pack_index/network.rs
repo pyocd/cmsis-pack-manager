@@ -1,9 +1,9 @@
-use futures::Stream;
+use futures::{Stream};
 use futures::future::Executor;
-use futures::stream::{FuturesUnordered};
-use futures::sync::mpsc::{self, channel};
+use futures::stream::{FuturesUnordered, Concat2};
+use futures::sync::mpsc::{self, channel, Receiver};
 use hyper::{self, Client, Response, Body};
-use tokio_core::reactor::Core;
+use tokio_core::reactor::{Core, Handle};
 
 use minidom;
 
@@ -24,15 +24,13 @@ error_chain!{
 
 future_chain!{}
 
-pub fn flatten_to_pdsc(vidx: Vidx) -> Result<Vec<PdscRef>> {
-    let mut core = Core::new().unwrap();
-    let handle = core.handle();
-    let client = Client::new(&handle);
+fn void<T>(_: T) -> () { () }
+
+pub fn flatten_to_pdsc_future(vendor_index: Vec<Pidx>, client: Client, core: Handle) ->
+    Concat2<Receiver<Vec<PdscRef>>> {
     let mut jobs = FuturesUnordered::new();
-    let mut toret = Vec::new();
-    toret.extend(vidx.pdsc_index);
-    let (sender, reciever) = channel(vidx.vendor_index.len());
-    for Pidx{url, vendor, ..} in vidx.vendor_index {
+    let (sender, reciever) = channel(vendor_index.len());
+    for Pidx{url, vendor, ..} in vendor_index {
         let urlname = format!("{}{}{}", url, vendor, PIDX_SUFFIX);
         match urlname.parse() {
             Ok(uri) => {
@@ -55,7 +53,19 @@ pub fn flatten_to_pdsc(vidx: Vidx) -> Result<Vec<PdscRef>> {
             }
         }
     }
-    core.execute(jobs.forward(sender).map(|_| {()}).map_err(|_| {()})).unwrap();
-    toret.extend(core.run(reciever.concat2()).unwrap());
+    core.execute(jobs.forward(sender).map(void).map_err(void)).unwrap();
+    reciever.concat2()
+}
+
+pub fn download_pdscs(vidx: Vidx) -> Result<()> {
+}
+
+pub fn flatten_to_pdsc(vidx: Vidx) -> Result<Vec<PdscRef>> {
+    let mut core = Core::new().unwrap();
+    let handle = core.handle();
+    let mut toret = Vec::new();
+    let client = Client::new(&handle);
+    toret.extend(vidx.pdsc_index);
+    toret.extend(core.run(flatten_to_pdsc_future(vidx.vendor_index, handle)).unwrap());
     Ok(toret)
 }
