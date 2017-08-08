@@ -10,5 +10,4 @@ extern crate quick_xml;
 extern crate smallstring;
 
 pub mod pack_index;
-pub mod pack_description;
 pub mod parse;

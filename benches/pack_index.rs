@@ -1,4 +1,4 @@
-#![feature(test)]
+#![feature(test, associated_consts)]
 extern crate cmsis_pack_manager;
 extern crate minidom;
 extern crate quick_xml;
@@ -8,25 +8,24 @@ use cmsis_pack_manager::pack_index::{Vidx, Pidx, PdscRef};
 use cmsis_pack_manager::parse::FromElem;
 use test::Bencher;
 
-TRAIT BenchParse: FromElem {
-    const src:  &'static [u8];
+trait BenchParse: FromElem {
+    const SRC: &'static [u8];
 
-    #[bench]
     fn parse(b: &mut Bencher){
         b.iter(|| {
-            assert!(Self::from_string(String::from_utf8_lossy(Self::src).into_owned().as_str()).is_ok());
+            assert!(Self::from_string(String::from_utf8_lossy(Self::SRC).into_owned().as_str()).is_ok());
         });
     }
 }
 
 impl BenchParse for PdscRef{
-    const src: &'static [u8] = include_bytes!("bench.pdsc");
+    const SRC: &'static [u8] = include_bytes!("bench.pdsc");
 }
 impl BenchParse for Pidx{
-    const src: &'static [u8] = include_bytes!("bench.pidx");
+    const SRC: &'static [u8] = include_bytes!("bench.pidx");
 }
 impl BenchParse for Vidx{
-    const src: &'static [u8] = include_bytes!("bench.vidx");
+    const SRC: &'static [u8] = include_bytes!("bench.vidx");
 }
 
 #[bench]
