@@ -1,13 +1,9 @@
-use futures::{self, Stream, Async};
-use futures::future::{Executor, IntoFuture, IntoStream};
-use futures::stream::{futures_unordered, FuturesUnordered};
-use futures::task::{Spawn};
-use futures::sync::mpsc::{channel, SendError};
-use futures::sink::{Sink};
+use futures::Stream;
+use futures::future::Executor;
+use futures::stream::{FuturesUnordered};
+use futures::sync::mpsc::{self, channel};
 use hyper::{self, Client, Response, Body};
 use tokio_core::reactor::Core;
-use std::rc::{Rc};
-use std::slice::Iter;
 
 use minidom;
 
@@ -21,7 +17,7 @@ error_chain!{
         MinidomErr(minidom::Error, minidom::ErrorKind);
     }
     foreign_links{
-        SinkErr(futures::sync::mpsc::SendError<Vec<PdscRef>>);
+        SinkErr(mpsc::SendError<Vec<PdscRef>>);
         HttpErr(hyper::Error);
     }
 }
@@ -40,7 +36,7 @@ pub fn flatten_to_pdsc(vidx: Vidx) -> Result<Vec<PdscRef>> {
         let urlname = format!("{}{}{}", url, vendor, PIDX_SUFFIX);
         match urlname.parse() {
             Ok(uri) => {
-                let mut work = client.get(uri)
+                let work = client.get(uri)
                     .map(Response::body)
                     .and_then(Body::concat2)
                     .and_then(move |body| {

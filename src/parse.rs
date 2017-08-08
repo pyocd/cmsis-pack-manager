@@ -1,5 +1,5 @@
 use std::path::Path;
-use std::io::{Read, BufRead};
+use std::io::BufRead;
 
 use minidom::{Element, Children, Error};
 use quick_xml::reader::Reader;
@@ -21,12 +21,8 @@ pub trait FromElem: Sized {
     }
 
     fn vec_from_children(clds: Children) -> Vec<Self> {
-        let mut toret = Vec::new();
-        for child in clds {
-            if let Ok(parsed) = Self::from_elem(child) {
-                toret.push(parsed);
-            }
-        }
-        toret
+        clds.flat_map(|cld|{
+            Self::from_elem(cld).into_iter()
+        }).collect()
     }
 }
