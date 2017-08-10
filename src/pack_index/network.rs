@@ -1,8 +1,9 @@
 use futures::{Stream};
 use futures::future::Executor;
-use futures::stream::{FuturesUnordered, Concat2};
+use futures::stream::{iter, empty, FuturesUnordered, Concat2};
 use futures::sync::mpsc::{self, channel, Receiver};
 use hyper::{self, Client, Response, Body};
+use hyper::client::{Connect};
 use tokio_core::reactor::{Core, Handle};
 
 use minidom;
@@ -18,6 +19,7 @@ error_chain!{
     }
     foreign_links{
         SinkErr(mpsc::SendError<Vec<PdscRef>>);
+        SinkErr2(mpsc::SendError<PdscRef>);
         HttpErr(hyper::Error);
     }
 }
@@ -26,9 +28,12 @@ future_chain!{}
 
 fn void<T>(_: T) -> () { () }
 
-pub fn flatten_to_pdsc_future(vendor_index: Vec<Pidx>, client: Client, core: Handle) ->
-    Concat2<Receiver<Vec<PdscRef>>> {
-    let mut jobs = FuturesUnordered::new();
+pub fn flatten_to_pdsc_future<C>(vendor_index: Vec<Pidx>,
+                                 client: Client<C, Body>,
+                                 core: Handle) ->
+    Receiver<PdscRef>
+    where C: Connect {
+    let mut job = FuturesUnordered::new();
     let (sender, reciever) = channel(vendor_index.len());
     for Pidx{url, vendor, ..} in vendor_index {
         let urlname = format!("{}{}{}", url, vendor, PIDX_SUFFIX);
@@ -36,16 +41,21 @@ pub fn flatten_to_pdsc_future(vendor_index: Vec<Pidx>, client: Client, core: Han
             Ok(uri) => {
                 let work = client.get(uri)
                     .map(Response::body)
-                    .and_then(Body::concat2)
+                    .flatten_stream()
+                    .concat2()
+                    .map_err(Error::from)
                     .and_then(move |body| {
-                        Ok(Vidx::from_string(String::from_utf8_lossy(body.as_ref())
-                                             .into_owned()
-                                             .as_str())
-                           .map(|next_vidx| {next_vidx.pdsc_index})
-                           .unwrap_or(Vec::new()))
-                    })
-                    .map_err(Error::from);
-                jobs.push(work);
+                        Vidx::from_string(String::from_utf8_lossy(body.as_ref())
+                                          .into_owned()
+                                          .as_str())
+                            .map_err(Error::from)
+                            .map(|next_vidx| {
+                                next_vidx.pdsc_index
+                                    .into_iter()
+                                    .map(Ok::<_, Error>)
+                            })
+                    });
+                job.push(work)
 
             }
             Err(e) => {
@@ -53,11 +63,16 @@ pub fn flatten_to_pdsc_future(vendor_index: Vec<Pidx>, client: Client, core: Han
             }
         }
     }
-    core.execute(jobs.forward(sender).map(void).map_err(void)).unwrap();
-    reciever.concat2()
+    core.execute(job.map(|j| iter(j)).flatten().forward(sender).map(void).map_err(void)).unwrap();
+    reciever
 }
 
-pub fn download_pdscs(vidx: Vidx) -> Result<()> {
+pub fn download_pdscs<F, C>(stream: F,
+                            client: Client<C, Body>,
+                            core: Handle) -> Result<()>
+    where F: Stream<Item = PdscRef>,
+          C: Connect{
+    unimplemented!()
 }
 
 pub fn flatten_to_pdsc(vidx: Vidx) -> Result<Vec<PdscRef>> {
@@ -66,6 +81,7 @@ pub fn flatten_to_pdsc(vidx: Vidx) -> Result<Vec<PdscRef>> {
     let mut toret = Vec::new();
     let client = Client::new(&handle);
     toret.extend(vidx.pdsc_index);
-    toret.extend(core.run(flatten_to_pdsc_future(vidx.vendor_index, handle)).unwrap());
+    toret.extend(core.run(flatten_to_pdsc_future(vidx.vendor_index,
+                                                 client, handle).collect()).unwrap());
     Ok(toret)
 }
