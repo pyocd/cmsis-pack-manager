@@ -7,14 +7,13 @@ authors = ["Jimmy Brisson <theotherjimmy@gmail.com>"]
 error-chain = "0.10.0"
 futures = "0.1.14"
 futures-error-chain = "0.1.0"
-handy_async = "0.2.11"
 hyper = "0.11.2"
 minidom = "0.5.0"
 quick-xml = "0.7.3"
 smallstring = "*"
-tokio-file-unix = "0.3.0"
 tokio-core = "0.1.6"
 tokio-io = "0.1.2"
+xdg = "2.1.0"
 
 [dev-dependencies]
 time = "*"

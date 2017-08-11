@@ -1,29 +1,32 @@
 use futures::{Stream};
-use futures::future::{ok, Executor, IntoFuture};
-use futures::stream::{iter, empty, FuturesUnordered, Concat2};
+use futures::future::{Executor};
+use futures::stream::{iter, FuturesUnordered};
 use futures::unsync::mpsc::{self, channel, unbounded, Receiver, UnboundedReceiver};
-use hyper::{self, Client, Response, Body};
+use hyper::{self, Client, Response, Body, Chunk, Uri};
 use hyper::client::{Connect};
 use tokio_core::reactor::{Core, Handle};
-use tokio_io::io::write_all;
-use tokio_io::AsyncWrite;
-use tokio_file_unix;
-use std::fs::{File, OpenOptions};
-use std::io::{self, BufWriter, Write};
+use smallstring::SmallString;
+use std::fs::{OpenOptions};
+use std::io::{self, Write};
+use std::path::PathBuf;
+use std::iter::Map;
+use std::vec::IntoIter;
 
 use minidom;
 
 use super::{PdscRef, Vidx, Pidx};
 use ::parse::FromElem;
+use ::config::{self, Config};
 
 static PIDX_SUFFIX: &'static str = ".pidx";
 
 error_chain!{
     links{
         MinidomErr(minidom::Error, minidom::ErrorKind);
+        ConfigErr(config::Error, config::ErrorKind);
     }
     foreign_links{
-        SinkErr(mpsc::SendError<Option<String>>);
+        SinkErr(mpsc::SendError<Option<PathBuf>>);
         SinkErr2(mpsc::SendError<PdscRef>);
         HttpErr(hyper::Error);
         UriErr(hyper::error::UriError);
@@ -35,44 +38,52 @@ future_chain!{}
 
 fn void<T>(_: T) -> () { () }
 
+pub fn download_vidx_list<C> (list: Vec<String>,
+                              client: &Client<C, Body>,
+                              core: Handle) -> Receiver<Vidx> {
+    unimplemented!()
+}
+
+fn make_stream_pdscs(vendor: SmallString)
+                     -> impl Fn(Chunk) -> impl Iterator<Item = Result<PdscRef>>
+{
+    move |body| {
+        let string = String::from_utf8_lossy(body.as_ref()).into_owned();
+        match Vidx::from_string(string.as_str()) {
+            Ok(next_vidx) => {
+                next_vidx.pdsc_index
+            }
+            Err(e) => {
+                println!("Error: Could not parse index from {}: {}", vendor, e);
+                Vec::new()
+            }
+        }.into_iter().map(Ok::<_, Error>)
+    }
+}
+
 pub fn flatten_to_pdsc_future<C>
     (Vidx{vendor_index, pdsc_index, ..}: Vidx,
      client: &Client<C, Body>,
      core: Handle) -> Receiver<PdscRef>
-    where C: Connect {
+    where C: Connect
+{
     let mut job = FuturesUnordered::new();
     let (sender, reciever) = channel(vendor_index.len());
     for Pidx{url, vendor, ..} in vendor_index {
         let urlname = format!("{}{}{}", url, vendor, PIDX_SUFFIX);
         match urlname.parse() {
             Ok(uri) => {
+                let stream_pdscs = make_stream_pdscs(vendor);
                 let work = client.get(uri)
                     .map(Response::body)
                     .flatten_stream()
                     .concat2()
-                    .map_err(Error::from)
-                    .and_then(move |body| {
-                        let string = String::from_utf8_lossy(body.as_ref())
-                            .into_owned();
-                        Vidx::from_string(string.as_str())
-                            .map_err(Error::from)
-                            .map(|next_vidx| {
-                                next_vidx.pdsc_index
-                                    .into_iter()
-                                    .map(Ok::<_, Error>)
-                            })
-                            .or_else(|e|{
-                                println!("Error: Could not parse index from {}: {}", vendor, e);
-                                Ok(Vec::new()
-                                   .into_iter()
-                                   .map(Ok::<_, Error>))
-                            })
-                    });
+                    .map(stream_pdscs)
+                    .from_err::<Error>();
                 job.push(work)
-
             }
             Err(e) => {
-                println!("{}", e)
+                println!("url {} did not parse {}", urlname, e)
             }
         }
     }
@@ -82,29 +93,46 @@ pub fn flatten_to_pdsc_future<C>
     reciever
 }
 
-pub fn download_pdscs<F, C>(stream: F,
-                            client: &Client<C, Body>,
-                            core: &mut Core) -> UnboundedReceiver<Option<String>>
-    where F: Stream<Item = PdscRef, Error = ()>,
-          C: Connect{
+pub fn flatten_to_pdsc(vidx: Vidx) -> Result<Vec<PdscRef>> {
+    let mut core = Core::new().unwrap();
     let handle = core.handle();
+    let mut toret = Vec::new();
+    let client = Client::new(&handle);
+    toret.extend(core.run(flatten_to_pdsc_future(vidx, &client, handle).collect()).unwrap());
+    Ok(toret)
+}
+
+fn make_uri_fd_pair(config: &Config, PdscRef{url, vendor, name, version, ..}: PdscRef)
+                    -> Result<(Uri, PathBuf, SmallString)> {
+    let uri = format!("{}{}.{}.pdsc", url, vendor, name)
+        .parse()?;
+    let filename =
+        config.pack_store.place_data_file(
+            format!("{}.{}.{}.pdsc",
+                    vendor,
+                    name,
+                    version))?;
+    Ok((uri, filename, name))
+}
+
+pub fn download_pdscs<F, C>
+    (config: &Config, stream: F, client: &Client<C, Body>, core: &mut Core)
+     -> impl Stream<Item = Option<PathBuf>, Error = ()>
+    where F: Stream<Item = PdscRef, Error = ()>,
+          C: Connect
+{
     let (sender, reciever) = unbounded();
     let mut job = FuturesUnordered::new();
     core.run(stream
-             .and_then(move |PdscRef{url, vendor, name, version, ..}| {
-                 let uri = format!("{}{}.{}.pdsc", url, vendor, name)
-                     .parse()
-                     .map_err(void)?;
-                 let filename = format!("{}.{}.{}.pdsc", vendor, name, version);
-                 Ok((uri, filename))
-             })
-             .map(|(uri, filename)| {
+             .and_then( move |pdscref| make_uri_fd_pair(config, pdscref).map_err(void))
+             .map(|(uri, filename, name)| {
                  job.push(client.get(uri)
                           .map(Response::body)
                           .flatten_stream()
                           .concat2()
                           .map_err(Error::from)
                           .and_then(move |bytes|{
+                              println!("downloaded to {:?}", &filename);
                               let mut fd = OpenOptions::new()
                                   .write(true)
                                   .create(true)
@@ -119,24 +147,20 @@ pub fn download_pdscs<F, C>(stream: F,
              })
              .collect()
              .map(void)
-    );
-    core.execute(job.forward(sender).map(void).map_err(void));
+    ).unwrap();
+    core.execute(job.forward(sender).map(void).map_err(void)).unwrap();
     reciever
 }
 
-pub fn flatten_to_pdsc(vidx: Vidx) -> Result<Vec<PdscRef>> {
+pub fn flatten_to_downloaded_pdscs(config: &Config, vidx: Vidx) -> Option<()> {
     let mut core = Core::new().unwrap();
     let handle = core.handle();
-    let mut toret = Vec::new();
-    let client = Client::new(&handle);
-    toret.extend(core.run(flatten_to_pdsc_future(vidx, &client, handle).collect()).unwrap());
-    Ok(toret)
-}
-
-pub fn flatten_to_downloaded_pdscs(vidx: Vidx) -> Option<()> {
-    let mut core = Core::new().unwrap();
-    let handle = core.handle();
-    let client = Client::new(&handle);
-    let future = download_pdscs(flatten_to_pdsc_future(vidx, &client, handle), &client, &mut core).collect();
+    let client = Client::configure()
+        .keep_alive(true)
+        .build(&handle);
+    let future = download_pdscs(config,
+                                flatten_to_pdsc_future(vidx, &client, handle),
+                                &client,
+                                &mut core).collect();
     core.run(future).map(void).ok()
 }
