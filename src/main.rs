@@ -9,7 +9,7 @@ use std::path::Path;
 
 fn main() {
     println!("{:?}",
-             Config::default()
+             Config::new()
              .map_err(Error::from)
              .and_then(|config| {
                  config.read_vidx_list();
