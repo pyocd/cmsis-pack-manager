@@ -55,7 +55,7 @@ fn make_stream_pdscs(vendor: SmallString)
                 next_vidx.pdsc_index
             }
             Err(e) => {
-                error!("parse failed for {} index as {}", vendor, e);
+                error!("failed to parse vendor index for {} because {}", vendor, e);
                 Vec::new()
             }
         }.into_iter().map(Ok::<_, Error>)

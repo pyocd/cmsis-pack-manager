@@ -16,7 +16,6 @@ tokio-core = "0.1.6"
 tokio-io = "0.1.2"
 xdg = "2.1.0"
 log = "0.3.8"
-simple-logging = "1.0.1"
 
 [dev-dependencies]
 time = "*"

@@ -47,7 +47,7 @@ impl FromElem for PdscRef {
         let url = (e.attr("url")
                    .map(String::from)
                    .ok_or(Error::from_kind(
-                       ErrorKind::Msg(String::from("url not found")))))?;
+                       ErrorKind::Msg(String::from("url not found in pdsc element")))))?;
         let vendor = (e.attr("vendor")
                       .map(SmallString::from)
                       .ok_or(Error::from_kind(
@@ -55,11 +55,11 @@ impl FromElem for PdscRef {
         let name = (e.attr("name")
                     .map(SmallString::from)
                     .ok_or(Error::from_kind(
-                        ErrorKind::Msg(String::from("name not found")))))?;
+                        ErrorKind::Msg(String::from("name not found in pdsc element")))))?;
         let version = (e.attr("version")
                        .map(SmallString::from)
                        .ok_or(Error::from_kind(
-                           ErrorKind::Msg(String::from("version not found")))))?;
+                           ErrorKind::Msg(String::from("version not found in pdsc element")))))?;
         Ok(Self{
             url, vendor, name, version,
             date: e.attr("date").map(String::from),
@@ -75,10 +75,10 @@ impl FromElem for Pidx {
     fn from_elem(e: &Element) -> Result<Self, Error> {
         let url = (e.attr("url").map(String::from).ok_or(
             Error::from_kind(
-                ErrorKind::Msg(String::from("url not found")))))?;
+                ErrorKind::Msg(String::from("url not found in pidx element")))))?;
         let vendor = (e.attr("vendor").map(SmallString::from).ok_or(
             Error::from_kind(
-                ErrorKind::Msg(String::from("vendor not found")))))?;
+                ErrorKind::Msg(String::from("vendor not found in pidx element")))))?;
         Ok(Self{
             url, vendor,
             date: e.attr("date").map(String::from),
@@ -90,14 +90,22 @@ static DEFAULT_NS: &'static str = "http://www.w3.org/2001/XMLSchema-instance";
 
 impl FromElem for Vidx {
     fn from_elem(root: &Element) -> Result<Self, Error> {
+        let name = root.name();
+        if name != "index"{
+            return Err(Error::from_kind(
+                ErrorKind::Msg(
+                    String::from(
+                        format!("root XML element is named incorrectly. Expected index; found {}.",
+                                name)))));
+        }
         let vendor = root.get_child("vendor", DEFAULT_NS)
             .map(Element::text)
             .ok_or(Error::from_kind(
-                ErrorKind::Msg(String::from("vendor not found in root element"))))?;
+                ErrorKind::Msg(String::from("vendor not found in vidx element"))))?;
         let url = root.get_child("url", DEFAULT_NS)
             .map(Element::text)
             .ok_or(Error::from_kind(
-                ErrorKind::Msg(String::from("url not found in root element"))))?;
+                ErrorKind::Msg(String::from("url not found in vidx element"))))?;
         Ok(Vidx {
             vendor, url,
             timestamp:  root.get_child("timestamp", DEFAULT_NS)

@@ -18,4 +18,5 @@ extern crate xdg;
 pub mod pack_index;
 pub mod parse;
 pub mod config;
+pub mod logging;
 
