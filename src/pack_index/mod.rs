@@ -51,7 +51,7 @@ impl FromElem for PdscRef {
         let vendor = (e.attr("vendor")
                       .map(SmallString::from)
                       .ok_or(Error::from_kind(
-                          ErrorKind::Msg(String::from("vendor not found")))))?;
+                          ErrorKind::Msg(String::from("vendor not found in pdsc element")))))?;
         let name = (e.attr("name")
                     .map(SmallString::from)
                     .ok_or(Error::from_kind(
@@ -93,11 +93,11 @@ impl FromElem for Vidx {
         let vendor = root.get_child("vendor", DEFAULT_NS)
             .map(Element::text)
             .ok_or(Error::from_kind(
-                ErrorKind::Msg(String::from("vendor not found"))))?;
+                ErrorKind::Msg(String::from("vendor not found in root element"))))?;
         let url = root.get_child("url", DEFAULT_NS)
             .map(Element::text)
             .ok_or(Error::from_kind(
-                ErrorKind::Msg(String::from("url not found"))))?;
+                ErrorKind::Msg(String::from("url not found in root element"))))?;
         Ok(Vidx {
             vendor, url,
             timestamp:  root.get_child("timestamp", DEFAULT_NS)

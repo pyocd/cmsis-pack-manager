@@ -31,29 +31,46 @@ impl Config {
             Ok(r) => {
                 BufReader::new(r)
                     .lines()
-                    .flat_map(|line| {
-                        line.map_err(Error::from)
+                    .enumerate()
+                    .flat_map(|(linenum, line)| {
+                        line.map_err(|e|{
+                            error!(target: "Configuration",
+                                   "Could not parse line #{}: {}", linenum, e)
+                        })
                             .into_iter()
                     })
                     .collect()
             }
             Err(_) => {
-                println!("Failed to open vendor index list read only. Recreating.");
+                warn!(target: "Configuration",
+                      "Failed to open vendor index list read only. Recreating.");
                 let new_content = vec![String::from("www.keil.com/pack/keil.vidx"),
                                    String::from("www.keil.com/pack/keil.pidx")];
-                if let Some(par) = self.vidx_list.parent() {
-                    create_dir_all(par).unwrap();
-                } else {
-                    println!("Config directory creation failed")
+                match self.vidx_list.parent() {
+                    Some(par) => {
+                        create_dir_all(par).unwrap_or_else(|e| {
+                            error!(target: "Configuration",
+                                   "Could not create parent directory for vendor index list. Error: {}",
+                                   e);
+                        });
+                    }
+                    None => {
+                        error!(target: "Configuration",
+                               "Could not get parent directory for vendors.list");
+                    }
                 }
-                if let Ok(mut fd) = OpenOptions::new()
-                    .create(true)
-                    .write(true)
-                    .open(&self.vidx_list) {
+                match OpenOptions::new().create(true).write(true).open(&self.vidx_list) {
+                    Ok(mut fd) =>{
                         let lines = new_content.join("\n");
-                        fd.write_all(lines.as_bytes()).unwrap();
-                } else {
-                    println!("Config file creation failed")
+                        fd.write_all(lines.as_bytes()).unwrap_or_else(|e| {
+                            error!(target: "Configuration",
+                                   "Could not create vendor list file: {}", e);
+                        });
+                    }
+                    Err(e) => {
+                        error!(target: "Configuration",
+                               "Could not open vendors index list file for writing {}", e)
+                    }
                 }
                 new_content
             }

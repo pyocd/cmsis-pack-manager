@@ -1,13 +1,18 @@
 extern crate cmsis_pack_manager;
+extern crate simple_logging;
+extern crate log;
 
 use cmsis_pack_manager::pack_index::Vidx;
 use cmsis_pack_manager::parse::FromElem;
 use cmsis_pack_manager::config::Config;
 use cmsis_pack_manager::pack_index::network::{flatten_to_downloaded_pdscs, Error};
+use log::LogLevelFilter;
+use simple_logging::log_to_stderr;
 
 use std::path::Path;
 
 fn main() {
+    log_to_stderr(LogLevelFilter::Warn);
     println!("{:?}",
              Config::new()
              .map_err(Error::from)

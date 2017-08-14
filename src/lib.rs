@@ -3,6 +3,8 @@
 extern crate error_chain;
 #[macro_use]
 extern crate futures_error_chain;
+#[macro_use]
+extern crate log;
 extern crate futures;
 extern crate tokio_core;
 extern crate tokio_io;

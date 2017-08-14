@@ -54,7 +54,7 @@ fn make_stream_pdscs(vendor: SmallString)
                 next_vidx.pdsc_index
             }
             Err(e) => {
-                println!("Error: Could not parse index from {}: {}", vendor, e);
+                error!("parse failed for {} index because {}", vendor, e);
                 Vec::new()
             }
         }.into_iter().map(Ok::<_, Error>)
@@ -83,7 +83,7 @@ pub fn flatten_to_pdsc_future<C>
                 job.push(work)
             }
             Err(e) => {
-                println!("url {} did not parse {}", urlname, e)
+                error!("Url {} did not parse {}", urlname, e)
             }
         }
     }
@@ -103,7 +103,7 @@ pub fn flatten_to_pdsc(vidx: Vidx) -> Result<Vec<PdscRef>> {
 }
 
 fn make_uri_fd_pair(config: &Config, PdscRef{url, vendor, name, version, ..}: PdscRef)
-                    -> Result<(Uri, PathBuf, SmallString)> {
+                    -> Result<(Uri, String, PathBuf, SmallString)> {
     let uri = format!("{}{}.{}.pdsc", url, vendor, name)
         .parse()?;
     let filename =
@@ -112,7 +112,7 @@ fn make_uri_fd_pair(config: &Config, PdscRef{url, vendor, name, version, ..}: Pd
                     vendor,
                     name,
                     version))?;
-    Ok((uri, filename, name))
+    Ok((uri, url, filename, name))
 }
 
 pub fn download_pdscs<F, C>
@@ -125,14 +125,13 @@ pub fn download_pdscs<F, C>
     let mut job = FuturesUnordered::new();
     core.run(stream
              .and_then( move |pdscref| make_uri_fd_pair(config, pdscref).map_err(void))
-             .map(|(uri, filename, name)| {
+             .map(|(uri, url, filename, name)| {
                  job.push(client.get(uri)
                           .map(Response::body)
                           .flatten_stream()
                           .concat2()
                           .map_err(Error::from)
                           .and_then(move |bytes|{
-                              println!("downloaded to {:?}", &filename);
                               let mut fd = OpenOptions::new()
                                   .write(true)
                                   .create(true)
@@ -142,7 +141,10 @@ pub fn download_pdscs<F, C>
                                   .map_err(Error::from)
                                   .map(|_| Some(filename))
                           })
-                          .or_else(|_| Ok::<_, Error>(None)));
+                          .or_else(move |e|{
+                              error!("HTTP request for {} failed with {}", url, e);
+                              Ok::<_, Error>(None)
+                          }));
                  Ok::<_, ()>(())
              })
              .collect()
