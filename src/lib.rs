@@ -9,6 +9,7 @@ extern crate futures;
 extern crate tokio_core;
 extern crate tokio_io;
 extern crate hyper;
+extern crate hyper_tls;
 extern crate minidom;
 extern crate quick_xml;
 extern crate smallstring;

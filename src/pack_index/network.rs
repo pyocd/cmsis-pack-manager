@@ -4,6 +4,7 @@ use futures::stream::{iter, FuturesUnordered};
 use futures::unsync::mpsc::{self, channel, unbounded, Receiver, UnboundedReceiver};
 use hyper::{self, Client, Response, Body, Chunk, Uri};
 use hyper::client::{Connect};
+use hyper_tls::HttpsConnector;
 use tokio_core::reactor::{Core, Handle};
 use smallstring::SmallString;
 use std::fs::{OpenOptions};
@@ -54,7 +55,7 @@ fn make_stream_pdscs(vendor: SmallString)
                 next_vidx.pdsc_index
             }
             Err(e) => {
-                error!("parse failed for {} index because {}", vendor, e);
+                error!("parse failed for {} index as {}", vendor, e);
                 Vec::new()
             }
         }.into_iter().map(Ok::<_, Error>)
@@ -91,15 +92,6 @@ pub fn flatten_to_pdsc_future<C>
         .chain(job.map(iter).flatten());
     core.execute(stream.forward(sender).map(void).map_err(void)).unwrap();
     reciever
-}
-
-pub fn flatten_to_pdsc(vidx: Vidx) -> Result<Vec<PdscRef>> {
-    let mut core = Core::new().unwrap();
-    let handle = core.handle();
-    let mut toret = Vec::new();
-    let client = Client::new(&handle);
-    toret.extend(core.run(flatten_to_pdsc_future(vidx, &client, handle).collect()).unwrap());
-    Ok(toret)
 }
 
 fn make_uri_fd_pair(config: &Config, PdscRef{url, vendor, name, version, ..}: PdscRef)
@@ -159,6 +151,7 @@ pub fn flatten_to_downloaded_pdscs(config: &Config, vidx: Vidx) -> Option<()> {
     let handle = core.handle();
     let client = Client::configure()
         .keep_alive(true)
+        .connector(HttpsConnector::new(4, &handle).unwrap())
         .build(&handle);
     let future = download_pdscs(config,
                                 flatten_to_pdsc_future(vidx, &client, handle),
