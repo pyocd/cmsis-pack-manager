@@ -1,6 +1,6 @@
 use std::path::PathBuf;
-use std::io::{self, BufRead, BufReader};
-use std::fs::{OpenOptions};
+use std::io::{self, BufRead, BufReader, Write};
+use std::fs::{create_dir_all, OpenOptions};
 
 use xdg::{self, BaseDirectories};
 
@@ -22,23 +22,40 @@ impl Config {
         let vidx_list = pack_store.place_config_file("vendors.list")?;
         Ok(Config{pack_store, vidx_list})
     }
+
     pub fn read_vidx_list(&self) -> Vec<String> {
-        let default_config = vec![String::from("www.keil.com/pack/keil.vidx"),
-                                  String::from("www.keil.com/pack/keil.pidx")];
-        match OpenOptions::new().read(true).open(&self.vidx_list) {
-            Ok(fd) => {
-                let br = BufReader::new(fd);
-                let mut res = Vec::new();
-                for line in br.lines() {
-                    if let Ok(l) = line {
-                        res.push(l);
-                    }
-                }
-                res
+        let fd = OpenOptions::new()
+            .read(true)
+            .open(&self.vidx_list);
+        match fd.map_err(Error::from) {
+            Ok(r) => {
+                BufReader::new(r)
+                    .lines()
+                    .flat_map(|line| {
+                        line.map_err(Error::from)
+                            .into_iter()
+                    })
+                    .collect()
             }
             Err(_) => {
-                println!("No vendor index list found. Creating.");
-                default_config
+                println!("Failed to open vendor index list read only. Recreating.");
+                let new_content = vec![String::from("www.keil.com/pack/keil.vidx"),
+                                   String::from("www.keil.com/pack/keil.pidx")];
+                if let Some(par) = self.vidx_list.parent() {
+                    create_dir_all(par).unwrap();
+                } else {
+                    println!("Config directory creation failed")
+                }
+                if let Ok(mut fd) = OpenOptions::new()
+                    .create(true)
+                    .write(true)
+                    .open(&self.vidx_list) {
+                        let lines = new_content.join("\n");
+                        fd.write_all(lines.as_bytes()).unwrap();
+                } else {
+                    println!("Config file creation failed")
+                }
+                new_content
             }
         }
     }
