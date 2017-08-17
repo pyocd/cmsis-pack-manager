@@ -44,8 +44,8 @@ impl Config {
             Err(_) => {
                 warn!(target: "Configuration",
                       "Failed to open vendor index list read only. Recreating.");
-                let new_content = vec![String::from("www.keil.com/pack/keil.vidx"),
-                                   String::from("www.keil.com/pack/keil.pidx")];
+                let new_content = vec![String::from("http://www.keil.com/pack/keil.vidx"),
+                                       String::from("http://www.keil.com/pack/keil.pidx")];
                 match self.vidx_list.parent() {
                     Some(par) => {
                         create_dir_all(par).unwrap_or_else(|e| {

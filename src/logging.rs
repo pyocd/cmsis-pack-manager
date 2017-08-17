@@ -10,7 +10,6 @@ pub struct SimpleLogger<T: Write> {
 }
 
 impl<T: Write> SimpleLogger<T> {
-    /// Create a new `SimpleLogger`.
     pub fn new(sink: T) -> Self {
         SimpleLogger {
             sink:  Mutex::new(sink),
