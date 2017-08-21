@@ -186,7 +186,7 @@ pub fn download_pdscs<'a, F, C>
 // This will "trick" the borrow checker into thinking that the lifetimes for
 // client and core are at least as big as the lifetime for pdscs, which they actually are
 fn flatten_inner<C>
-    (config: &Config, vidx_list: Vec<String>, mut core: &mut Core, client: Client<C, Body>)
+    (config: &Config, vidx_list: Vec<String>, core: &mut Core, client: Client<C, Body>)
      -> Result<Vec<PathBuf>>
     where C: Connect
 {
