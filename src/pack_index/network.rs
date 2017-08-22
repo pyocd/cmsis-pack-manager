@@ -1,4 +1,4 @@
-use futures::{Stream};
+use futures::{Stream, Poll, Async};
 use futures::stream::{iter, FuturesUnordered};
 use hyper::{self, Client, Response, Body, Chunk, Uri};
 use hyper::client::{Connect};
@@ -30,7 +30,42 @@ error_chain!{
 
 future_chain!{}
 
-fn void<T>(_: T) -> () { () }
+struct Redirect<'a, C>
+    where C: Connect
+{
+    urls: Vec<Uri>,
+    current: Box<Future<Item = Response, Error = hyper::Error>>,
+    client: &'a Client<C, Body>
+}
+
+//impl<'a, C> Redirect<'a, C>
+    //where C: Connect
+//{
+    //fn new<T>(current:  T, client: &'a Client<C, Body>) -> Self
+        //where T: Future<Item = Response, Error = hyper::Error>
+    //{
+        //Self{
+            //urls: Vec::new(),
+            //current: Box::new(current),
+            //client
+        //}
+    //}
+//}
+
+impl<'a, C> Future for Redirect<'a, C>
+    where C: Connect
+{
+    type Item = Response;
+    type Error = hyper::Error;
+    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+        match self.current.poll() {
+            Ok(Async::NotReady) => Ok(Async::NotReady),
+            Err(e) => Err(e),
+            Ok(Async::Ready(res)) => Ok(Async::Ready(res))
+        }
+    }
+
+}
 
 pub fn download_vidx_list<C>
     (list: Vec<String>, client: &Client<C, Body>)
@@ -152,7 +187,7 @@ pub fn download_pdscs<'a, F, C>
 // client and core are at least as big as the lifetime for pdscs, which they actually are
 fn flatten_inner<C>
     (config: &Config, vidx_list: Vec<String>, mut core: &mut Core, client: Client<C, Body>)
-     -> Result<()>
+     -> Result<Vec<PathBuf>>
     where C: Connect
 {
     let parsed_vidx = download_vidx_list(vidx_list, &client);
@@ -160,10 +195,10 @@ fn flatten_inner<C>
         flatten_to_pdsc_future(vidx, &client)
     }).flatten();
     let pdscs = download_pdscs(config, pdsc_list, &client);
-    core.run(pdscs.collect()).map(void)
+    core.run(pdscs.filter_map(|x| x).collect())
 }
 
-pub fn flatten(config: &Config, vidx_list: Vec<String>) -> Result<()> {
+pub fn flatten(config: &Config, vidx_list: Vec<String>) -> Result<Vec<PathBuf>> {
     let mut core = Core::new().unwrap();
     let handle = core.handle();
     let client = Client::configure()
