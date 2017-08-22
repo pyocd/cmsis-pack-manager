@@ -1,7 +1,7 @@
 use futures::{Stream, Poll, Async};
 use futures::stream::{iter, FuturesUnordered};
 use hyper::{self, Client, Response, Body, Chunk, Uri};
-use hyper::client::{Connect};
+use hyper::client::{FutureResponse, Connect};
 use hyper_tls::HttpsConnector;
 use tokio_core::reactor::{Core};
 use std::fs::{OpenOptions};
@@ -34,23 +34,23 @@ struct Redirect<'a, C>
     where C: Connect
 {
     urls: Vec<Uri>,
-    current: Box<Future<Item = Response, Error = hyper::Error>>,
+    current: FutureResponse,
     client: &'a Client<C, Body>
 }
 
-//impl<'a, C> Redirect<'a, C>
-    //where C: Connect
-//{
-    //fn new<T>(current:  T, client: &'a Client<C, Body>) -> Self
-        //where T: Future<Item = Response, Error = hyper::Error>
-    //{
-        //Self{
-            //urls: Vec::new(),
-            //current: Box::new(current),
-            //client
-        //}
-    //}
-//}
+impl<'a, C> Redirect<'a, C>
+    where C: Connect
+{
+    fn new(uri: Uri, client: &'a Client<C, Body>) -> Self
+    {
+        let current = client.get(uri);
+        Self{
+            urls: Vec::new(),
+            current,
+            client
+        }
+    }
+}
 
 impl<'a, C> Future for Redirect<'a, C>
     where C: Connect
