@@ -1,7 +1,8 @@
 use futures::{Stream, Poll, Async};
 use futures::stream::{iter, FuturesUnordered};
-use hyper::{self, Client, Response, Body, Chunk, Uri};
+use hyper::{self, Client, Response, Body, Chunk, Uri, StatusCode};
 use hyper::client::{FutureResponse, Connect};
+use hyper::header::Location;
 use hyper_tls::HttpsConnector;
 use tokio_core::reactor::{Core};
 use std::fs::{OpenOptions};
@@ -43,9 +44,9 @@ impl<'a, C> Redirect<'a, C>
 {
     fn new(client: &'a Client<C, Body>, uri: Uri) -> Self
     {
-        let current = client.get(uri);
+        let current = client.get(uri.clone());
         Self{
-            urls: Vec::new(),
+            urls: vec![uri],
             current,
             client
         }
@@ -58,25 +59,46 @@ impl<'a, C> Future for Redirect<'a, C>
     type Item = Response;
     type Error = hyper::Error;
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        match self.current.poll() {
-            Ok(Async::NotReady) => Ok(Async::NotReady),
-            Err(e) => Err(e),
-            Ok(Async::Ready(res)) => Ok(Async::Ready(res))
+        loop {
+            match self.current.poll()? {
+                Async::NotReady => {
+                    return Ok(Async::NotReady);
+                },
+                Async::Ready(res) => {
+                    match res.status() {
+                        StatusCode::MovedPermanently |
+                        StatusCode::Found |
+                        StatusCode::SeeOther |
+                        StatusCode::TemporaryRedirect |
+                        StatusCode::PermanentRedirect => {
+                            info!("Redirecting");
+                            let uri: Uri = res.headers()
+                                .get::<Location>()
+                                .unwrap_or(&Location::new(""))
+                                .parse()?;
+                            self.urls.push(uri.clone());
+                            self.current = self.client.get(uri);
+                        }
+                        _ => {
+                            return Ok(Async::Ready(res));
+                        }
+                    }
+                }
+            }
         }
     }
-
 }
 
-pub fn download_vidx_list<C>
-    (list: Vec<String>, client: &Client<C, Body>)
-    -> impl Stream<Item = Vidx, Error = Error>
+pub fn download_vidx_list<'a, C>
+    (list: Vec<String>, client: &'a Client<C, Body>)
+    -> impl Stream<Item = Vidx, Error = Error> + 'a
     where C: Connect
 {
     let mut job = FuturesUnordered::new();
     for vidx_ref in list {
         match vidx_ref.parse() {
             Ok(uri) => {
-                job.push(client.get(uri)
+                job.push(Redirect::new(client, uri)
                          .map(Response::body)
                          .flatten_stream()
                          .concat2()
