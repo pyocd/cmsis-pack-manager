@@ -71,11 +71,13 @@ impl<'a, C> Future for Redirect<'a, C>
                         StatusCode::SeeOther |
                         StatusCode::TemporaryRedirect |
                         StatusCode::PermanentRedirect => {
-                            info!("Redirecting");
                             let uri: Uri = res.headers()
                                 .get::<Location>()
                                 .unwrap_or(&Location::new(""))
                                 .parse()?;
+                            if let Some(old_uri) = self.urls.last() {
+                                info!("Redirecting from {} to {}", old_uri, uri);
+                            }
                             self.urls.push(uri.clone());
                             self.current = self.client.get(uri);
                         }
@@ -220,6 +222,7 @@ fn flatten_inner<C>
     core.run(pdscs.filter_map(|x| x).collect())
 }
 
+/// Flatten a list of Vidx Urls into a list of updated CMSIS packs
 pub fn flatten(config: &Config, vidx_list: Vec<String>) -> Result<Vec<PathBuf>> {
     let mut core = Core::new().unwrap();
     let handle = core.handle();
