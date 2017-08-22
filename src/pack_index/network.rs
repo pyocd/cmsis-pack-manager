@@ -158,8 +158,11 @@ pub fn flatten_to_pdsc_future<'a, C>
 
 fn make_uri_fd_pair(config: &Config, PdscRef{url, vendor, name, version, ..}: PdscRef)
                     -> Result<Option<(Uri, String, PathBuf)>> {
-    let uri = format!("{}{}.{}.pdsc", url, vendor, name)
-        .parse()?;
+    let uri = if url.ends_with("/") {
+        format!("{}{}.{}.pdsc", url, vendor, name)
+    } else{
+        format!("{}/{}.{}.pdsc", url, vendor, name)
+    }.parse()?;
     let filename =
         config.pack_store.place_data_file(
             format!("{}.{}.{}.pdsc",
