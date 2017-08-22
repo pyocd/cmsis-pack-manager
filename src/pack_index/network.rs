@@ -26,12 +26,6 @@ error_chain!{
         UriErr(hyper::error::UriError);
         IOErr(io::Error);
     }
-    errors{
-        AlreadyDownloaded(url: Uri) {
-            description("The file requested already exists")
-                display("The file {} does not need to be downloaded", url)
-        }
-    }
 }
 
 future_chain!{}
@@ -114,7 +108,7 @@ fn make_uri_fd_pair(config: &Config, PdscRef{url, vendor, name, version, ..}: Pd
                     name,
                     version))?;
     if filename.exists() {
-        info!("Skipping downloading pdsc {}.{} at version {}", vendor, name, version);
+        info!("Skipping download of pdsc {} from vendor {} at version {}", name, vendor, version);
         Ok(None)
     } else {
         Ok(Some((uri, url, filename)))
@@ -152,19 +146,6 @@ pub fn download_pdscs<'a, F, C>
                 })
         })
         .buffer_unordered(32)
-}
-
-pub fn flatten_to_downloaded_pdscs(config: &Config, vidx: Vidx) -> Option<()> {
-    let mut core = Core::new().unwrap();
-    let handle = core.handle();
-    let client = Client::configure()
-        .keep_alive(true)
-        .connector(HttpsConnector::new(4, &handle).unwrap())
-        .build(&handle);
-    let future = download_pdscs(config,
-                                flatten_to_pdsc_future(vidx, &client),
-                                &client).collect();
-    core.run(future).map(void).ok()
 }
 
 // This will "trick" the borrow checker into thinking that the lifetimes for
