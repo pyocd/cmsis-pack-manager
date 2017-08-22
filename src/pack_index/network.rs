@@ -41,7 +41,7 @@ struct Redirect<'a, C>
 impl<'a, C> Redirect<'a, C>
     where C: Connect
 {
-    fn new(uri: Uri, client: &'a Client<C, Body>) -> Self
+    fn new(client: &'a Client<C, Body>, uri: Uri) -> Self
     {
         let current = client.get(uri);
         Self{
@@ -104,9 +104,9 @@ fn stream_pdscs(body: Chunk) -> impl Iterator<Item = Result<PdscRef>> {
         .map(Ok::<_, Error>)
 }
 
-pub fn flatten_to_pdsc_future<C>
-    (Vidx{vendor_index, pdsc_index, ..}: Vidx, client: &Client<C, Body>)
-     -> impl Stream<Item = PdscRef, Error = Error>
+pub fn flatten_to_pdsc_future<'a, C>
+    (Vidx{vendor_index, pdsc_index, ..}: Vidx, client: &'a Client<C, Body>)
+     -> impl Stream<Item = PdscRef, Error = Error> + 'a
     where C: Connect
 {
     let mut job = FuturesUnordered::new();
@@ -114,7 +114,7 @@ pub fn flatten_to_pdsc_future<C>
         let urlname = format!("{}{}{}", url, vendor, PIDX_SUFFIX);
         match urlname.parse() {
             Ok(uri) => {
-                let work = client.get(uri)
+                let work = Redirect::new(client, uri)
                     .map(Response::body)
                     .flatten_stream()
                     .concat2()
@@ -160,7 +160,7 @@ pub fn download_pdscs<'a, F, C>
         .and_then( move |pdscref| make_uri_fd_pair(config, pdscref))
         .filter_map(|foo| foo)
         .map( move |(uri, url, filename)| {
-            client.get(uri)
+            Redirect::new(client, uri)
                 .map(Response::body)
                 .flatten_stream()
                 .concat2()
