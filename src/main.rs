@@ -3,7 +3,7 @@ extern crate log;
 
 use cmsis_pack_manager::config::Config;
 use cmsis_pack_manager::logging::log_to_stderr;
-use cmsis_pack_manager::pack_index::network::{flatten, Error};
+use cmsis_pack_manager::pack_index::network::{update, Error};
 use log::LogLevelFilter;
 
 fn main() {
