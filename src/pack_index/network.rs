@@ -112,7 +112,7 @@ pub fn download_vidx_list<'a, C>
             }
         }
     }
-    job
+    Box::new(job) as Box<Stream<Item = _, Error = _>>
 }
 
 fn parse_vidx(body: Chunk) -> Result<Vidx> {
@@ -151,8 +151,8 @@ pub fn flatmap_pdscs<'a, C>
             }
         }
     }
-    iter(pdsc_index.into_iter().map(Ok::<_, Error>))
-        .chain(job.map(iter).flatten())
+    Box::new(iter(pdsc_index.into_iter().map(Ok::<_, Error>))
+        .chain(job.map(iter).flatten())) as Box<Stream<Item = _, Error = _>>
 }
 
 fn make_uri_fd_pair(config: &Config, PdscRef{url, vendor, name, version, ..}: PdscRef)
@@ -184,31 +184,31 @@ pub fn download_pdscs<'a, F, C>
     where F: Stream<Item = PdscRef, Error = Error> + 'a,
           C: Connect
 {
-    stream
-        .and_then( move |pdscref| make_uri_fd_pair(config, pdscref))
-        .filter_map(id)
-        .map( move |(uri, url, filename)| {
-            Redirect::new(client, uri)
-                .map(Response::body)
-                .flatten_stream()
-                .concat2()
-                .map_err(Error::from)
-                .and_then(move |bytes|{
-                    let mut fd = OpenOptions::new()
-                        .write(true)
-                        .create(true)
-                        .open(&filename)
-                        .map_err(Error::from)?;
-                    fd.write_all(bytes.as_ref())
-                        .map_err(Error::from)
-                        .map(|_| Some(filename))
-                })
-                .or_else(move |e|{
-                    error!("HTTP request for {} failed with {}", url, e);
-                    Ok::<_, Error>(None)
-                })
-        })
-        .buffer_unordered(32)
+    Box::new(stream
+             .and_then( move |pdscref| make_uri_fd_pair(config, pdscref))
+             .filter_map(id)
+             .map( move |(uri, url, filename)| {
+                 Redirect::new(client, uri)
+                     .map(Response::body)
+                     .flatten_stream()
+                     .concat2()
+                     .map_err(Error::from)
+                     .and_then(move |bytes|{
+                         let mut fd = OpenOptions::new()
+                             .write(true)
+                             .create(true)
+                             .open(&filename)
+                             .map_err(Error::from)?;
+                         fd.write_all(bytes.as_ref())
+                             .map_err(Error::from)
+                             .map(|_| Some(filename))
+                     })
+                     .or_else(move |e|{
+                         error!("HTTP request for {} failed with {}", url, e);
+                         Ok::<_, Error>(None)
+                     })
+             })
+             .buffer_unordered(32)) as Box<Stream<Item = _, Error = _>>
 }
 
 // This will "trick" the borrow checker into thinking that the lifetimes for
