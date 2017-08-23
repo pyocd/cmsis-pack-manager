@@ -72,11 +72,16 @@ impl<'a, C> Future for Redirect<'a, C>
                         StatusCode::SeeOther |
                         StatusCode::TemporaryRedirect |
                         StatusCode::PermanentRedirect => {
-                            let uri: Uri = res.headers()
+                            let mut uri: Uri = res.headers()
                                 .get::<Location>()
                                 .unwrap_or(&Location::new(""))
                                 .parse()?;
                             if let Some(old_uri) = self.urls.last() {
+                                if uri.authority().is_none() {
+                                    if let Some(authority) = old_uri.authority() {
+                                        uri = format!("{}{}", authority, uri).parse()?
+                                    }
+                                }
                                 info!("Redirecting from {} to {}", old_uri, uri);
                             }
                             self.urls.push(uri.clone());
