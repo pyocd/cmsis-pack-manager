@@ -13,6 +13,6 @@ fn main() {
              .map_err(Error::from)
              .and_then(|config| {
                  let vidx_list = config.read_vidx_list();
-                 flatten(&config, vidx_list)
+                 update(&config, vidx_list)
              }));
 }

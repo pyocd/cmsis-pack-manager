@@ -128,7 +128,7 @@ fn stream_pdscs(body: Chunk) -> impl Iterator<Item = Result<PdscRef>> {
         .map(Ok::<_, Error>)
 }
 
-pub fn flatten_to_pdsc_future<'a, C>
+pub fn flatmap_pdscs<'a, C>
     (Vidx{vendor_index, pdsc_index, ..}: Vidx, client: &'a Client<C, Body>)
      -> impl Stream<Item = PdscRef, Error = Error> + 'a
     where C: Connect
@@ -213,26 +213,26 @@ pub fn download_pdscs<'a, F, C>
 
 // This will "trick" the borrow checker into thinking that the lifetimes for
 // client and core are at least as big as the lifetime for pdscs, which they actually are
-fn flatten_inner<C>
-    (config: &Config, vidx_list: Vec<String>, core: &mut Core, client: &Client<C, Body>)
+fn update_inner<C>
+    (config: &Config, vidx_list: Vec<String>, mut core: &mut Core, client: &Client<C, Body>)
      -> Result<Vec<PathBuf>>
     where C: Connect
 {
     let parsed_vidx = download_vidx_list(vidx_list, client);
     let pdsc_list = parsed_vidx.map(|vidx| {
-        flatten_to_pdsc_future(vidx, client)
+        flatmap_pdscs(vidx, client)
     }).flatten();
     let pdscs = download_pdscs(config, pdsc_list, client);
     core.run(pdscs.filter_map(id).collect())
 }
 
 /// Flatten a list of Vidx Urls into a list of updated CMSIS packs
-pub fn flatten(config: &Config, vidx_list: Vec<String>) -> Result<Vec<PathBuf>> {
+pub fn update(config: &Config, vidx_list: Vec<String>) -> Result<Vec<PathBuf>> {
     let mut core = Core::new().unwrap();
     let handle = core.handle();
     let client = Client::configure()
         .keep_alive(true)
         .connector(HttpsConnector::new(4, &handle).unwrap())
         .build(&handle);
-    flatten_inner(config, vidx_list, &mut core, &client)
+    update_inner(config, vidx_list, &mut core, &client)
 }
