@@ -151,14 +151,13 @@ pub fn flatten_to_pdsc_future<'a, C>
             }
         }
     }
-    let stream = iter(pdsc_index.into_iter().map(Ok::<_, Error>))
-        .chain(job.map(iter).flatten());
-    stream
+    iter(pdsc_index.into_iter().map(Ok::<_, Error>))
+        .chain(job.map(iter).flatten())
 }
 
 fn make_uri_fd_pair(config: &Config, PdscRef{url, vendor, name, version, ..}: PdscRef)
                     -> Result<Option<(Uri, String, PathBuf)>> {
-    let uri = if url.ends_with("/") {
+    let uri = if url.ends_with('/') {
         format!("{}{}.{}.pdsc", url, vendor, name)
     } else{
         format!("{}/{}.{}.pdsc", url, vendor, name)
@@ -177,6 +176,8 @@ fn make_uri_fd_pair(config: &Config, PdscRef{url, vendor, name, version, ..}: Pd
     }
 }
 
+fn id<T>(slf: T) -> T {slf}
+
 pub fn download_pdscs<'a, F, C>
     (config: &'a Config, stream: F, client: &'a Client<C, Body>)
      -> impl Stream<Item = Option<PathBuf>, Error = Error> + 'a
@@ -185,7 +186,7 @@ pub fn download_pdscs<'a, F, C>
 {
     stream
         .and_then( move |pdscref| make_uri_fd_pair(config, pdscref))
-        .filter_map(|foo| foo)
+        .filter_map(id)
         .map( move |(uri, url, filename)| {
             Redirect::new(client, uri)
                 .map(Response::body)
@@ -213,16 +214,16 @@ pub fn download_pdscs<'a, F, C>
 // This will "trick" the borrow checker into thinking that the lifetimes for
 // client and core are at least as big as the lifetime for pdscs, which they actually are
 fn flatten_inner<C>
-    (config: &Config, vidx_list: Vec<String>, core: &mut Core, client: Client<C, Body>)
+    (config: &Config, vidx_list: Vec<String>, core: &mut Core, client: &Client<C, Body>)
      -> Result<Vec<PathBuf>>
     where C: Connect
 {
-    let parsed_vidx = download_vidx_list(vidx_list, &client);
+    let parsed_vidx = download_vidx_list(vidx_list, client);
     let pdsc_list = parsed_vidx.map(|vidx| {
-        flatten_to_pdsc_future(vidx, &client)
+        flatten_to_pdsc_future(vidx, client)
     }).flatten();
-    let pdscs = download_pdscs(config, pdsc_list, &client);
-    core.run(pdscs.filter_map(|x| x).collect())
+    let pdscs = download_pdscs(config, pdsc_list, client);
+    core.run(pdscs.filter_map(id).collect())
 }
 
 /// Flatten a list of Vidx Urls into a list of updated CMSIS packs
@@ -233,5 +234,5 @@ pub fn flatten(config: &Config, vidx_list: Vec<String>) -> Result<Vec<PathBuf>> 
         .keep_alive(true)
         .connector(HttpsConnector::new(4, &handle).unwrap())
         .build(&handle);
-    flatten_inner(config, vidx_list, &mut core, client)
+    flatten_inner(config, vidx_list, &mut core, &client)
 }

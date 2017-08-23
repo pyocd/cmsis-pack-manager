@@ -113,11 +113,11 @@ impl FromElem for Vidx {
             vendor_index: root.get_child("vindex", DEFAULT_NS)
                 .map(Element::children)
                 .map(Pidx::vec_from_children)
-                .unwrap_or(Vec::new()),
+                .unwrap_or_default(),
             pdsc_index: root.get_child("pindex", DEFAULT_NS)
                 .map(Element::children)
                 .map(PdscRef::vec_from_children)
-                .unwrap_or(Vec::new()),
+                .unwrap_or_default(),
         })
     }
 }
