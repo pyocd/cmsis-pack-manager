@@ -13,6 +13,7 @@ extern crate minidom;
 extern crate quick_xml;
 extern crate smallstring;
 extern crate xdg;
+extern crate clap;
 
 pub mod pack_index;
 pub mod parse;

@@ -8,6 +8,7 @@ use tokio_core::reactor::{Core};
 use std::fs::{OpenOptions};
 use std::io::{self, Write};
 use std::path::PathBuf;
+use clap::{App, ArgMatches, SubCommand};
 
 use minidom;
 
@@ -235,4 +236,24 @@ pub fn update(config: &Config, vidx_list: Vec<String>) -> Result<Vec<PathBuf>> {
         .connector(HttpsConnector::new(4, &handle).unwrap())
         .build(&handle);
     update_inner(config, vidx_list, &mut core, &client)
+}
+
+pub fn update_args<'a, 'b>() -> App<'a, 'b> {
+    SubCommand::with_name("update")
+        .about("Update CMSIS PDSC files for indexing")
+        .version("0.1.0")
+}
+
+pub fn update_command<'a>(conf: &Config, _: &ArgMatches<'a>) -> Result<()> {
+    let vidx_list = conf.read_vidx_list();
+    let updated = update(conf, vidx_list)?;
+    if ! updated.is_empty() {
+        println!("Updated the following PDSCS:");
+        for filename in updated.into_iter() {
+            println!("  {:?}", filename);
+        }
+    } else {
+        println!("Already up to date");
+    }
+    Ok(())
 }
