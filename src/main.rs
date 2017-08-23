@@ -8,7 +8,7 @@ use log::LogLevelFilter;
 
 fn main() {
     log_to_stderr(LogLevelFilter::Info).unwrap();
-    println!("{:?}",
+    println!("{:#?}",
              Config::new()
              .map_err(Error::from)
              .and_then(|config| {

@@ -91,7 +91,7 @@ impl<'a, C> Future for Redirect<'a, C>
     }
 }
 
-pub fn download_vidx_list<'a, C>
+fn download_vidx_list<'a, C>
     (list: Vec<String>, client: &'a Client<C, Body>)
     -> impl Stream<Item = Vidx, Error = Error> + 'a
     where C: Connect
@@ -128,7 +128,7 @@ fn stream_pdscs(body: Chunk) -> impl Iterator<Item = Result<PdscRef>> {
         .map(Ok::<_, Error>)
 }
 
-pub fn flatmap_pdscs<'a, C>
+fn flatmap_pdscs<'a, C>
     (Vidx{vendor_index, pdsc_index, ..}: Vidx, client: &'a Client<C, Body>)
      -> impl Stream<Item = PdscRef, Error = Error> + 'a
     where C: Connect
@@ -152,7 +152,7 @@ pub fn flatmap_pdscs<'a, C>
         }
     }
     Box::new(iter(pdsc_index.into_iter().map(Ok::<_, Error>))
-        .chain(job.map(iter).flatten())) as Box<Stream<Item = _, Error = _>>
+             .chain(job.map(iter).flatten())) as Box<Stream<Item = _, Error = _>>
 }
 
 fn make_uri_fd_pair(config: &Config, PdscRef{url, vendor, name, version, ..}: PdscRef)
@@ -178,7 +178,7 @@ fn make_uri_fd_pair(config: &Config, PdscRef{url, vendor, name, version, ..}: Pd
 
 fn id<T>(slf: T) -> T {slf}
 
-pub fn download_pdscs<'a, F, C>
+fn download_pdscs<'a, F, C>
     (config: &'a Config, stream: F, client: &'a Client<C, Body>)
      -> impl Stream<Item = Option<PathBuf>, Error = Error> + 'a
     where F: Stream<Item = PdscRef, Error = Error> + 'a,

@@ -7,7 +7,6 @@ extern crate futures_error_chain;
 extern crate log;
 extern crate futures;
 extern crate tokio_core;
-extern crate tokio_io;
 extern crate hyper;
 extern crate hyper_tls;
 extern crate minidom;
