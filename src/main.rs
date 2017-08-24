@@ -5,6 +5,7 @@ extern crate clap;
 use cmsis::config::Config;
 use cmsis::logging::log_to_stderr;
 use cmsis::pack_index::network::{update_args, update_command, Error};
+use cmsis::pdsc::{check_args, check_command};
 use log::LogLevelFilter;
 use clap::{Arg, App};
 
@@ -18,6 +19,7 @@ fn main() {
              .short("v")
              .help("Sets the level of verbosity"))
         .subcommand(update_args())
+        .subcommand(check_args())
         .get_matches();
 
     if matches.is_present("verbose"){
@@ -33,6 +35,13 @@ fn main() {
                 .map_err(Error::from)
                 .and_then(|config|{
                     update_command(&config, sub_m)
+                }).unwrap();
+        }
+        ("check", Some(sub_m)) =>{
+            Config::new()
+                .map_err(Error::from)
+                .and_then(|config|{
+                    check_command(&config, sub_m)
                 }).unwrap();
         }
         (bad_command, Some(_)) => {
