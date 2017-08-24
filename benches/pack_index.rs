@@ -1,11 +1,11 @@
 #![feature(test, associated_consts)]
-extern crate cmsis_pack_manager;
+extern crate cmsis;
 extern crate minidom;
 extern crate quick_xml;
 extern crate test;
 
-use cmsis_pack_manager::pack_index::{Vidx, Pidx, PdscRef};
-use cmsis_pack_manager::parse::FromElem;
+use cmsis::pack_index::{Vidx, Pidx, PdscRef};
+use cmsis::parse::FromElem;
 use test::Bencher;
 
 trait BenchParse: FromElem {
