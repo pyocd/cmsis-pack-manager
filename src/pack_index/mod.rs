@@ -1,7 +1,7 @@
 use smallstring::SmallString;
 use minidom::{Element, Error, ErrorKind};
 
-use ::parse::FromElem;
+use ::parse::{attr_map, FromElem};
 
 pub mod network;
 
@@ -34,19 +34,6 @@ pub struct Vidx {
     pub vendor_index: Vec<Pidx>,
 }
 
-fn attr_map<'a, T>(from: &'a Element, name: &str, elemname: &'static str) -> Result<T, Error>
-    where T: From<&'a str>
-{
-    from.attr(name)
-        .map(T::from)
-        .ok_or_else(|| {
-            Error::from_kind(
-                ErrorKind::Msg(
-                    String::from(
-                        format!("{} not found in {} element", name, elemname))))
-        })
-}
-
 impl FromElem for PdscRef {
     fn from_elem(e: &Element) -> Result<Self, Error> {
         Ok(Self{
@@ -66,9 +53,9 @@ impl FromElem for PdscRef {
 impl FromElem for Pidx {
     fn from_elem(e: &Element) -> Result<Self, Error> {
         Ok(Self{
-            url:         attr_map(e, "url", "pidx")?,
-            vendor:      attr_map(e, "vendor", "pidx")?,
-            date:        attr_map(e, "date", "pidx").ok(),
+            url:    attr_map(e, "url", "pidx")?,
+            vendor: attr_map(e, "vendor", "pidx")?,
+            date:   attr_map(e, "date", "pidx").ok(),
         })
     }
 }

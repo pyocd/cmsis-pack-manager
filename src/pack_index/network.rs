@@ -220,7 +220,7 @@ fn download_pdscs<'a, F, C>
 // This will "trick" the borrow checker into thinking that the lifetimes for
 // client and core are at least as big as the lifetime for pdscs, which they actually are
 fn update_inner<C>
-    (config: &Config, vidx_list: Vec<String>, mut core: &mut Core, client: &Client<C, Body>)
+    (config: &Config, vidx_list: Vec<String>, core: &mut Core, client: &Client<C, Body>)
      -> Result<Vec<PathBuf>>
     where C: Connect
 {
@@ -254,7 +254,7 @@ pub fn update_command<'a>(conf: &Config, _: &ArgMatches<'a>) -> Result<()> {
     let updated = update(conf, vidx_list)?;
     if ! updated.is_empty() {
         println!("Updated the following PDSCS:");
-        for filename in updated.into_iter() {
+        for filename in updated {
             println!("  {:?}", filename);
         }
     } else {

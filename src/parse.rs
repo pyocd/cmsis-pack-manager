@@ -1,8 +1,47 @@
+use std::str::FromStr;
+use std::fmt::Display;
 use std::path::Path;
 use std::io::BufRead;
 
-use minidom::{Element, Children, Error};
+use minidom::{Element, Children, Error, ErrorKind};
 use quick_xml::reader::Reader;
+
+pub fn attr_map<'a, T>(from: &'a Element, name: &str, elemname: &'static str) -> Result<T, Error>
+    where T: From<&'a str>
+{
+    from.attr(name)
+        .map(T::from)
+        .ok_or_else(|| {
+            Error::from_kind(
+                ErrorKind::Msg(
+                    String::from(
+                        format!("{} not found in {} element", name, elemname))))
+        })
+}
+
+pub fn attr_parse<'a, T, E>(from: &'a Element, name: &str, elemname: &'static str)
+                         -> Result<T, Error>
+    where T: FromStr<Err = E>,
+          E: Display
+{
+    from.attr(name)
+        .ok_or_else(|| {
+            Error::from_kind(
+                ErrorKind::Msg(
+                    String::from(
+                        format!("{} not found in {} element", name, elemname))))
+        })
+        .and_then(|st| st.parse::<T>().map_err(|e| {
+            Error::from_kind(
+                ErrorKind::Msg(
+                    String::from(
+                        format!("{}", e)
+                    )
+                )
+            )
+        }))
+}
+
 
 pub trait FromElem: Sized {
     fn from_elem(e: &Element) -> Result<Self, Error>;

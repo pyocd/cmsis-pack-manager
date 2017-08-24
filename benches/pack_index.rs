@@ -1,4 +1,4 @@
-#![feature(test, associated_consts)]
+#![feature(test)]
 extern crate cmsis;
 extern crate minidom;
 extern crate quick_xml;

@@ -4,6 +4,8 @@ version = "0.1.0"
 authors = ["Jimmy Brisson <theotherjimmy@gmail.com>"]
 
 [dependencies]
+custom_derive = "0.1.1"
+enum_derive = "0.1.7"
 error-chain = "0.10.0"
 futures = "0.1.14"
 futures-error-chain = "0.1.0"
