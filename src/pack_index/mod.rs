@@ -34,31 +34,30 @@ pub struct Vidx {
     pub vendor_index: Vec<Pidx>,
 }
 
+fn attr_map<'a, T>(from: &'a Element, name: &str, elemname: &'static str) -> Result<T, Error>
+    where T: From<&'a str>
+{
+    from.attr(name)
+        .map(T::from)
+        .ok_or_else(|| {
+            Error::from_kind(
+                ErrorKind::Msg(
+                    String::from(
+                        format!("{} not found in {} element", name, elemname))))
+        })
+}
 
 impl FromElem for PdscRef {
     fn from_elem(e: &Element) -> Result<Self, Error> {
-        let url = (e.attr("url")
-                   .map(String::from)
-                   .ok_or(Error::from_kind(
-                       ErrorKind::Msg(String::from("url not found in pdsc element")))))?;
-        let vendor = (e.attr("vendor")
-                      .map(SmallString::from)
-                      .ok_or(Error::from_kind(
-                          ErrorKind::Msg(String::from("vendor not found in pdsc element")))))?;
-        let name = (e.attr("name")
-                    .map(SmallString::from)
-                    .ok_or(Error::from_kind(
-                        ErrorKind::Msg(String::from("name not found in pdsc element")))))?;
-        let version = (e.attr("version")
-                       .map(SmallString::from)
-                       .ok_or(Error::from_kind(
-                           ErrorKind::Msg(String::from("version not found in pdsc element")))))?;
         Ok(Self{
-            url, vendor, name, version,
-            date: e.attr("date").map(String::from),
-            deprecated: e.attr("deprecated").map(String::from),
-            replacement: e.attr("replacement").map(String::from),
-            size: e.attr("size").map(String::from),
+            url:         attr_map(e, "url", "pdsc")?,
+            vendor:      attr_map(e, "vendor", "pdsc")?,
+            name:        attr_map(e, "name", "pdsc")?,
+            version:     attr_map(e, "version", "pdsc")?,
+            date:        attr_map(e, "date", "pdsc").ok(),
+            deprecated:  attr_map(e, "deprecated", "pdsc").ok(),
+            replacement: attr_map(e, "replacement", "pdsc").ok(),
+            size:        attr_map(e, "size", "pdsc").ok(),
         })
     }
 }
@@ -66,15 +65,10 @@ impl FromElem for PdscRef {
 
 impl FromElem for Pidx {
     fn from_elem(e: &Element) -> Result<Self, Error> {
-        let url = (e.attr("url").map(String::from).ok_or(
-            Error::from_kind(
-                ErrorKind::Msg(String::from("url not found in pidx element")))))?;
-        let vendor = (e.attr("vendor").map(SmallString::from).ok_or(
-            Error::from_kind(
-                ErrorKind::Msg(String::from("vendor not found in pidx element")))))?;
         Ok(Self{
-            url, vendor,
-            date: e.attr("date").map(String::from),
+            url:         attr_map(e, "url", "pidx")?,
+            vendor:      attr_map(e, "vendor", "pidx")?,
+            date:        attr_map(e, "date", "pidx").ok(),
         })
     }
 }
@@ -93,11 +87,11 @@ impl FromElem for Vidx {
         }
         let vendor = root.get_child("vendor", DEFAULT_NS)
             .map(Element::text)
-            .ok_or(Error::from_kind(
+            .ok_or_else(|| Error::from_kind(
                 ErrorKind::Msg(String::from("vendor not found in vidx element"))))?;
         let url = root.get_child("url", DEFAULT_NS)
             .map(Element::text)
-            .ok_or(Error::from_kind(
+            .ok_or_else(|| Error::from_kind(
                 ErrorKind::Msg(String::from("url not found in vidx element"))))?;
         Ok(Vidx {
             vendor, url,
