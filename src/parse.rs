@@ -6,6 +6,8 @@ use std::io::BufRead;
 use minidom::{Element, Children, Error, ErrorKind};
 use quick_xml::reader::Reader;
 
+pub static DEFAULT_NS: &'static str = "http://www.w3.org/2001/XMLSchema-instance";
+
 pub fn attr_map<'a, T>(from: &'a Element, name: &str, elemname: &'static str) -> Result<T, Error>
     where T: From<&'a str>
 {
@@ -40,6 +42,19 @@ pub fn attr_parse<'a, T, E>(from: &'a Element, name: &str, elemname: &'static st
                 )
             )
         }))
+}
+
+pub fn child_text<'a>(from: &'a Element, name: &str, elemname: &'static str)
+                      -> Result<String, Error>
+{
+    from.get_child(name, DEFAULT_NS)
+        .map(Element::text)
+        .ok_or_else(|| {
+            Error::from_kind(
+                ErrorKind::Msg(
+                    String::from(
+                        format!("child element \"{}\" not found in \"{}\" element", name, elemname))))
+        })
 }
 
 

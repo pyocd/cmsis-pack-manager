@@ -1,7 +1,7 @@
 use smallstring::SmallString;
 use minidom::{Element, Error, ErrorKind};
 
-use ::parse::{attr_map, FromElem};
+use ::parse::{attr_map, DEFAULT_NS, FromElem};
 
 pub mod network;
 
@@ -59,8 +59,6 @@ impl FromElem for Pidx {
         })
     }
 }
-
-static DEFAULT_NS: &'static str = "http://www.w3.org/2001/XMLSchema-instance";
 
 impl FromElem for Vidx {
     fn from_elem(root: &Element) -> Result<Self, Error> {
