@@ -58,7 +58,7 @@ impl FromElem for FileRef {
 }
 
 #[derive(Debug)]
-struct Component{
+pub struct Component{
     vendor:        Option<String>,
     class:         Option<String>,
     group:         Option<String>,
@@ -102,6 +102,59 @@ impl FromElem for Component{
     }
 }
 
+#[derive(Debug)]
+pub struct Bundle {
+    name: String,
+    class: String,
+    version: String,
+    vendor: Option<String>,
+    description: String,
+    doc: String,
+    components: Vec<Component>,
+}
+
+impl Bundle{
+    pub fn as_components(self) -> Vec<Component> {
+        let class = self.class;
+        let version = self.version;
+        let vendor = self.vendor;
+        self.components.into_iter()
+            .map(|comp| {
+                Component{
+                    class: comp.class.or_else(|| Some(class.clone())),
+                    version: comp.version.or_else(|| Some(version.clone())),
+                    vendor: comp.vendor.or_else(|| vendor.clone()),
+                    ..comp
+                }
+            })
+            .collect()
+    }
+}
+
+impl FromElem for Bundle{
+    fn from_elem(e: &Element) -> Result<Self, Error>{
+        let components = e.children()
+            .filter_map(|chld| {
+                if chld.name() == "component" {
+                    Component::from_elem(chld).ok()
+                } else {
+                    None
+                }
+            })
+            .collect();
+        Ok(Self{
+            name: attr_map(e, "Cbundle", "bundle")?,
+            class: attr_map(e, "Cclass", "bundle")?,
+            version: attr_map(e, "Cversion", "bundle")?,
+            vendor: attr_map(e, "Cvendor", "bundle").ok(),
+            description: child_text(e, "description", "bundle")?,
+            doc: child_text(e, "doc", "bundle")?,
+            components,
+        })
+    }
+}
+
+
 pub fn check_args<'a, 'b>() -> App<'a, 'b> {
     SubCommand::with_name("check")
         .about("Check a project or pack for correct usage of the CMSIS standard")
@@ -114,6 +167,6 @@ pub fn check_args<'a, 'b>() -> App<'a, 'b> {
 
 pub fn check_command<'a> (_: &Config, args: &ArgMatches<'a>) -> Result<(), NetError> {
     let filename = args.value_of("INPUT").unwrap();
-    println!("{:#?}", Component::from_path(Path::new(filename)));
+    println!("{:#?}", Bundle::from_path(Path::new(filename)).map(|s| s.as_components()));
     Ok(())
 }
