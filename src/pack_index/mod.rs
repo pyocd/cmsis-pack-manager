@@ -1,7 +1,7 @@
 use smallstring::SmallString;
 use minidom::{Element, Error, ErrorKind};
 
-use ::parse::{attr_map, DEFAULT_NS, FromElem};
+use ::parse::{attr_map, child_text, DEFAULT_NS, FromElem};
 
 pub mod network;
 
@@ -70,14 +70,8 @@ impl FromElem for Vidx {
                         format!("root XML element is named incorrectly. Expected index; found {}.",
                                 name)))));
         }
-        let vendor = root.get_child("vendor", DEFAULT_NS)
-            .map(Element::text)
-            .ok_or_else(|| Error::from_kind(
-                ErrorKind::Msg(String::from("vendor not found in vidx element"))))?;
-        let url = root.get_child("url", DEFAULT_NS)
-            .map(Element::text)
-            .ok_or_else(|| Error::from_kind(
-                ErrorKind::Msg(String::from("url not found in vidx element"))))?;
+        let vendor = child_text(root, "vendor", "index")?;
+        let url = child_text(root, "url", "index")?;
         Ok(Vidx {
             vendor, url,
             timestamp:  root.get_child("timestamp", DEFAULT_NS)
