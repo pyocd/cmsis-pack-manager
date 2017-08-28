@@ -114,7 +114,7 @@ pub struct Bundle {
 }
 
 impl Bundle{
-    pub fn as_components(self) -> Vec<Component> {
+    pub fn into_components(self) -> Vec<Component> {
         let class = self.class;
         let version = self.version;
         let vendor = self.vendor;
@@ -167,6 +167,6 @@ pub fn check_args<'a, 'b>() -> App<'a, 'b> {
 
 pub fn check_command<'a> (_: &Config, args: &ArgMatches<'a>) -> Result<(), NetError> {
     let filename = args.value_of("INPUT").unwrap();
-    println!("{:#?}", Bundle::from_path(Path::new(filename)).map(|s| s.as_components()));
+    println!("{:#?}", Bundle::from_path(Path::new(filename)).map(Bundle::into_components));
     Ok(())
 }
