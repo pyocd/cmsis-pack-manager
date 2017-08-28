@@ -11,7 +11,7 @@ error_chain!{
     }
 }
 
-pub struct Config{
+pub struct Config {
     pub pack_store: BaseDirectories,
     pub vidx_list: PathBuf,
 }
@@ -20,37 +20,40 @@ impl Config {
     pub fn new() -> Result<Config> {
         let pack_store = BaseDirectories::with_prefix("cmsis")?;
         let vidx_list = pack_store.place_config_file("vendors.list")?;
-        Ok(Config{pack_store, vidx_list})
+        Ok(Config {
+            pack_store,
+            vidx_list,
+        })
     }
 
     pub fn read_vidx_list(&self) -> Vec<String> {
-        let fd = OpenOptions::new()
-            .read(true)
-            .open(&self.vidx_list);
+        let fd = OpenOptions::new().read(true).open(&self.vidx_list);
         match fd.map_err(Error::from) {
             Ok(r) => {
                 BufReader::new(r)
                     .lines()
                     .enumerate()
                     .flat_map(|(linenum, line)| {
-                        line.map_err(|e|{
+                        line.map_err(|e| {
                             error!(target: "Configuration",
                                    "Could not parse line #{}: {}", linenum, e)
-                        })
-                            .into_iter()
+                        }).into_iter()
                     })
                     .collect()
             }
             Err(_) => {
                 warn!(target: "Configuration",
                       "Failed to open vendor index list read only. Recreating.");
-                let new_content = vec![String::from("http://www.keil.com/pack/keil.vidx"),
-                                       String::from("http://www.keil.com/pack/keil.pidx")];
+                let new_content = vec![
+                    String::from("http://www.keil.com/pack/keil.vidx"),
+                    String::from("http://www.keil.com/pack/keil.pidx"),
+                ];
                 match self.vidx_list.parent() {
                     Some(par) => {
                         create_dir_all(par).unwrap_or_else(|e| {
                             error!(target: "Configuration",
-                                   "Could not create parent directory for vendor index list. Error: {}",
+                                   "Could not create parent directory for vendor index list.\
+                                    Error: {}",
                                    e);
                         });
                     }
@@ -59,8 +62,10 @@ impl Config {
                                "Could not get parent directory for vendors.list");
                     }
                 }
-                match OpenOptions::new().create(true).write(true).open(&self.vidx_list) {
-                    Ok(mut fd) =>{
+                match OpenOptions::new().create(true).write(true).open(
+                    &self.vidx_list,
+                ) {
+                    Ok(mut fd) => {
                         let lines = new_content.join("\n");
                         fd.write_all(lines.as_bytes()).unwrap_or_else(|e| {
                             error!(target: "Configuration",

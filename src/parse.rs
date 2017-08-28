@@ -9,51 +9,51 @@ use quick_xml::reader::Reader;
 pub static DEFAULT_NS: &'static str = "http://www.w3.org/2001/XMLSchema-instance";
 
 pub fn attr_map<'a, T>(from: &'a Element, name: &str, elemname: &'static str) -> Result<T, Error>
-    where T: From<&'a str>
+where
+    T: From<&'a str>,
+{
+    from.attr(name).map(T::from).ok_or_else(|| {
+        Error::from_kind(ErrorKind::Msg(String::from(
+            format!("{} not found in {} element", name, elemname),
+        )))
+    })
+}
+
+pub fn attr_parse<'a, T, E>(
+    from: &'a Element,
+    name: &str,
+    elemname: &'static str,
+) -> Result<T, Error>
+where
+    T: FromStr<Err = E>,
+    E: Display,
 {
     from.attr(name)
-        .map(T::from)
         .ok_or_else(|| {
-            Error::from_kind(
-                ErrorKind::Msg(
-                    String::from(
-                        format!("{} not found in {} element", name, elemname))))
+            Error::from_kind(ErrorKind::Msg(String::from(
+                format!("{} not found in {} element", name, elemname),
+            )))
+        })
+        .and_then(|st| {
+            st.parse::<T>().map_err(|e| {
+                Error::from_kind(ErrorKind::Msg(String::from(format!("{}", e))))
+            })
         })
 }
 
-pub fn attr_parse<'a, T, E>(from: &'a Element, name: &str, elemname: &'static str)
-                         -> Result<T, Error>
-    where T: FromStr<Err = E>,
-          E: Display
-{
-    from.attr(name)
-        .ok_or_else(|| {
-            Error::from_kind(
-                ErrorKind::Msg(
-                    String::from(
-                        format!("{} not found in {} element", name, elemname))))
-        })
-        .and_then(|st| st.parse::<T>().map_err(|e| {
-            Error::from_kind(
-                ErrorKind::Msg(
-                    String::from(
-                        format!("{}", e)
-                    )
-                )
-            )
-        }))
-}
-
-pub fn child_text<'a>(from: &'a Element, name: &str, elemname: &'static str)
-                      -> Result<String, Error>
-{
+pub fn child_text<'a>(
+    from: &'a Element,
+    name: &str,
+    elemname: &'static str,
+) -> Result<String, Error> {
     from.get_child(name, DEFAULT_NS)
         .map(Element::text)
         .ok_or_else(|| {
-            Error::from_kind(
-                ErrorKind::Msg(
-                    String::from(
-                        format!("child element \"{}\" not found in \"{}\" element", name, elemname))))
+            Error::from_kind(ErrorKind::Msg(String::from(format!(
+                "child element \"{}\" not found in \"{}\" element",
+                name,
+                elemname
+            ))))
         })
 }
 
@@ -74,8 +74,7 @@ pub trait FromElem: Sized {
         Self::from_reader(&mut r)
     }
     fn vec_from_children(clds: Children) -> Vec<Self> {
-        clds.flat_map(|cld|{
-            Self::from_elem(cld).into_iter()
-        }).collect()
+        clds.flat_map(|cld| Self::from_elem(cld).into_iter())
+            .collect()
     }
 }
