@@ -285,9 +285,12 @@ pub fn update_command<'a>(conf: &Config, _: &ArgMatches<'a>) -> Result<()> {
     let vidx_list = conf.read_vidx_list();
     let updated = update(conf, vidx_list)?;
     if !updated.is_empty() {
-        println!("Updated the following PDSCS:");
-        for filename in updated {
-            println!("  {:?}", filename);
+        println!("Updated the following PDSCs:");
+        for pdsc_name in updated.iter().filter_map(|pb| {
+            pb.file_name().and_then(|osstr| osstr.to_str())
+        })
+        {
+            println!("  {}", pdsc_name);
         }
     } else {
         println!("Already up to date");
