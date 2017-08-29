@@ -1,5 +1,5 @@
 use std::path::{Path, PathBuf};
-use minidom::{Element, Error};
+use minidom::{Element, Error, ErrorKind};
 use clap::{App, Arg, ArgMatches, SubCommand};
 
 use parse::{attr_map, attr_parse, child_text, FromElem, DEFAULT_NS};
@@ -152,6 +152,47 @@ impl FromElem for Bundle {
     }
 }
 
+fn child_to_component_iter(e: &Element) -> Result<Box<Iterator<Item = Component>>, Error> {
+    match e.name() {
+        "bundle" => {
+            let bundle = Bundle::from_elem(e)?;
+            Ok(Box::new(bundle
+                        .into_components()
+                        .into_iter()))
+        }
+        "component" => {
+            let component = Component::from_elem(e)?;
+            Ok(Box::new(Some(component).into_iter()))
+        }
+        _ => {
+            Err(Error::from_kind(ErrorKind::Msg(String::from(
+                format!("element of name {} is not allowed as a descendant of components",
+                        e.name()),
+            ))))
+        }
+    }
+}
+
+type Components = Vec<Component>;
+
+impl FromElem for Components {
+
+    fn from_elem(e: &Element) -> Result<Self, Error> {
+        Ok(e.children()
+            .flat_map(|c|{
+                match child_to_component_iter(c) {
+                    Ok(iter) => {
+                        iter
+                    }
+                    Err(e) => {
+                        error!("when trying to parse component: {}", e);
+                        Box::new(None.into_iter())
+                    }
+                }
+            })
+            .collect())
+    }
+}
 
 pub fn check_args<'a, 'b>() -> App<'a, 'b> {
     SubCommand::with_name("check")
@@ -171,7 +212,7 @@ pub fn check_command<'a>(_: &Config, args: &ArgMatches<'a>) -> Result<(), NetErr
     let filename = args.value_of("INPUT").unwrap();
     println!(
         "{:#?}",
-        Bundle::from_path(Path::new(filename)).map(Bundle::into_components)
+        Components::from_path(Path::new(filename))
     );
     Ok(())
 }
