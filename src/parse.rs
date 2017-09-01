@@ -57,6 +57,17 @@ pub fn child_text<'a>(
         })
 }
 
+pub fn assert_root_name(from: &Element, name: &str) -> Result<(), Error> {
+    if from.name() != name {
+        Err(Error::from_kind(ErrorKind::Msg(String::from(format!(
+            "tried to parse element \"{}\" from element \"{}\"",
+            name, from.name()
+        )))))
+    } else {
+        Ok(())
+    }
+}
+
 
 pub trait FromElem: Sized {
     fn from_elem(e: &Element) -> Result<Self, Error>;

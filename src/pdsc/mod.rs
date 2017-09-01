@@ -2,7 +2,8 @@ use std::path::{Path, PathBuf};
 use minidom::{Element, Error, ErrorKind};
 use clap::{App, Arg, ArgMatches, SubCommand};
 
-use parse::{attr_map, attr_parse, child_text, FromElem, DEFAULT_NS};
+use parse::{attr_map, attr_parse, child_text, assert_root_name, FromElem,
+            DEFAULT_NS};
 use config::Config;
 use pack_index::network::Error as NetError;
 
@@ -45,6 +46,7 @@ pub struct FileRef {
 
 impl FromElem for FileRef {
     fn from_elem(e: &Element) -> Result<Self, Error> {
+        assert_root_name(e, "file")?;
         Ok(Self {
             path: attr_map(e, "name", "file")?,
             category: attr_parse(e, "category", "file")?,
@@ -77,6 +79,7 @@ pub struct Component {
 
 impl FromElem for Component {
     fn from_elem(e: &Element) -> Result<Self, Error> {
+        assert_root_name(e, "component")?;
         let files = e.get_child("files", DEFAULT_NS)
             .map(|child| FileRef::vec_from_children(child.children()))
             .unwrap_or_default();
@@ -133,6 +136,7 @@ impl Bundle {
 
 impl FromElem for Bundle {
     fn from_elem(e: &Element) -> Result<Self, Error> {
+        assert_root_name(e, "bundle")?;
         let components = e.children()
             .filter_map(|chld| if chld.name() == "component" {
                 Component::from_elem(chld).ok()
@@ -178,6 +182,7 @@ type Components = Vec<Component>;
 impl FromElem for Components {
 
     fn from_elem(e: &Element) -> Result<Self, Error> {
+        assert_root_name(e, "components")?;
         Ok(e.children()
             .flat_map(|c|{
                 match child_to_component_iter(c) {

@@ -1,7 +1,7 @@
 use smallstring::SmallString;
 use minidom::{Element, Error, ErrorKind};
 
-use parse::{attr_map, child_text, DEFAULT_NS, FromElem};
+use parse::{attr_map, child_text, assert_root_name, DEFAULT_NS, FromElem};
 
 pub mod network;
 
@@ -36,6 +36,7 @@ pub struct Vidx {
 
 impl FromElem for PdscRef {
     fn from_elem(e: &Element) -> Result<Self, Error> {
+        assert_root_name(e, "pdsc")?;
         Ok(Self {
             url: attr_map(e, "url", "pdsc")?,
             vendor: attr_map(e, "vendor", "pdsc")?,
@@ -52,6 +53,7 @@ impl FromElem for PdscRef {
 
 impl FromElem for Pidx {
     fn from_elem(e: &Element) -> Result<Self, Error> {
+        assert_root_name(e, "vidx")?;
         Ok(Self {
             url: attr_map(e, "url", "pidx")?,
             vendor: attr_map(e, "vendor", "pidx")?,
@@ -62,13 +64,7 @@ impl FromElem for Pidx {
 
 impl FromElem for Vidx {
     fn from_elem(root: &Element) -> Result<Self, Error> {
-        let name = root.name();
-        if name != "index" {
-            return Err(Error::from_kind(ErrorKind::Msg(String::from(format!(
-                "root XML element is named incorrectly. Expected index; found {}.",
-                name
-            )))));
-        }
+        assert_root_name(root, "index")?;
         let vendor = child_text(root, "vendor", "index")?;
         let url = child_text(root, "url", "index")?;
         Ok(Vidx {
