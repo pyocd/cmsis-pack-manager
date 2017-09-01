@@ -18,6 +18,7 @@ tokio-core = "0.1.6"
 xdg = "2.1.0"
 log = "0.3.8"
 clap = "2.19.0"
+fern = "0.4.2"
 
 [dev-dependencies]
 time = "*"

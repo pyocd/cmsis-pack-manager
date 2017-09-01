@@ -84,7 +84,7 @@ where
                                         uri = format!("{}{}", authority, uri).parse()?
                                     }
                                 }
-                                info!("Redirecting from {} to {}", old_uri, uri);
+                                debug!("Redirecting from {} to {}", old_uri, uri);
                             }
                             self.urls.push(uri.clone());
                             self.current = self.client.get(uri);
@@ -191,7 +191,7 @@ fn make_uri_fd_pair(
         version
     ))?;
     if filename.exists() {
-        info!(
+        debug!(
             "Skipping download of pdsc {} from vendor {} at version {}",
             name,
             vendor,
@@ -285,15 +285,15 @@ pub fn update_command<'a>(conf: &Config, _: &ArgMatches<'a>) -> Result<()> {
     let vidx_list = conf.read_vidx_list();
     let updated = update(conf, vidx_list)?;
     if !updated.is_empty() {
-        println!("Updated the following PDSCs:");
+        info!("Updated the following PDSCs:");
         for pdsc_name in updated.iter().filter_map(|pb| {
             pb.file_name().and_then(|osstr| osstr.to_str())
         })
         {
-            println!("  {}", pdsc_name);
+            info!("  {}", pdsc_name);
         }
     } else {
-        println!("Already up to date");
+        info!("Already up to date");
     }
     Ok(())
 }

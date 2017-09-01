@@ -1,9 +1,9 @@
 extern crate cmsis;
 extern crate log;
 extern crate clap;
+extern crate fern;
 
 use cmsis::config::Config;
-use cmsis::logging::log_to_stderr;
 use cmsis::pack_index::network::{update_args, update_command, Error};
 use cmsis::pdsc::{check_args, check_command};
 use log::LogLevelFilter;
@@ -21,12 +21,33 @@ fn main() {
         .subcommand(check_args())
         .get_matches();
 
+    let myfern = fern::Dispatch::new()
+        .chain(std::io::stderr());
     if matches.is_present("verbose") {
-        log_to_stderr(LogLevelFilter::Info)
+        myfern.level(LogLevelFilter::Debug)
+            .level_for("hyper", LogLevelFilter::Info)
+            .level_for("tokio_core", LogLevelFilter::Info)
+            .level_for("tokio_proto", LogLevelFilter::Info)
+            .format(|out, message, record| {
+                out.finish(format_args!(
+                    "{:6} {} {}",
+                    record.level(),
+                    record.target(),
+                    message
+                ))
+            })
     } else {
-        log_to_stderr(LogLevelFilter::Warn)
-    }.unwrap();
-    // ^ This unwrap is necessary, what else would we do on failure of logging?
+        myfern.level(LogLevelFilter::Info)
+            .level_for("hyper", LogLevelFilter::Warn)
+            .format(|out, message, record| {
+                out.finish(format_args!(
+                    "{:6} {}",
+                    record.level(),
+                    message
+                ))
+            })
+    }.apply().unwrap();
+    // This   ^ unwrap is necessary, what else would we do on failure of logging?
 
     match matches.subcommand() {
         ("update", Some(sub_m)) => {
