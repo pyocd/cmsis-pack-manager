@@ -61,7 +61,8 @@ pub fn assert_root_name(from: &Element, name: &str) -> Result<(), Error> {
     if from.name() != name {
         Err(Error::from_kind(ErrorKind::Msg(String::from(format!(
             "tried to parse element \"{}\" from element \"{}\"",
-            name, from.name()
+            name,
+            from.name()
         )))))
     } else {
         Ok(())

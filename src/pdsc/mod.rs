@@ -2,8 +2,7 @@ use std::path::{Path, PathBuf};
 use minidom::{Element, Error, ErrorKind};
 use clap::{App, Arg, ArgMatches, SubCommand};
 
-use parse::{attr_map, attr_parse, child_text, assert_root_name, FromElem,
-            DEFAULT_NS};
+use parse::{attr_map, attr_parse, child_text, assert_root_name, FromElem, DEFAULT_NS};
 use config::Config;
 use pack_index::network::Error as NetError;
 
@@ -160,19 +159,17 @@ fn child_to_component_iter(e: &Element) -> Result<Box<Iterator<Item = Component>
     match e.name() {
         "bundle" => {
             let bundle = Bundle::from_elem(e)?;
-            Ok(Box::new(bundle
-                        .into_components()
-                        .into_iter()))
+            Ok(Box::new(bundle.into_components().into_iter()))
         }
         "component" => {
             let component = Component::from_elem(e)?;
             Ok(Box::new(Some(component).into_iter()))
         }
         _ => {
-            Err(Error::from_kind(ErrorKind::Msg(String::from(
-                format!("element of name {} is not allowed as a descendant of components",
-                        e.name()),
-            ))))
+            Err(Error::from_kind(ErrorKind::Msg(String::from(format!(
+                "element of name {} is not allowed as a descendant of components",
+                e.name()
+            )))))
         }
     }
 }
@@ -180,22 +177,19 @@ fn child_to_component_iter(e: &Element) -> Result<Box<Iterator<Item = Component>
 type Components = Vec<Component>;
 
 impl FromElem for Components {
-
     fn from_elem(e: &Element) -> Result<Self, Error> {
         assert_root_name(e, "components")?;
-        Ok(e.children()
-            .flat_map(|c|{
-                match child_to_component_iter(c) {
-                    Ok(iter) => {
-                        iter
-                    }
+        Ok(
+            e.children()
+                .flat_map(|c| match child_to_component_iter(c) {
+                    Ok(iter) => iter,
                     Err(e) => {
                         error!("when trying to parse component: {}", e);
                         Box::new(None.into_iter())
                     }
-                }
-            })
-            .collect())
+                })
+                .collect(),
+        )
     }
 }
 
@@ -215,9 +209,6 @@ pub fn check_args<'a, 'b>() -> App<'a, 'b> {
 
 pub fn check_command<'a>(_: &Config, args: &ArgMatches<'a>) -> Result<(), NetError> {
     let filename = args.value_of("INPUT").unwrap();
-    println!(
-        "{:#?}",
-        Components::from_path(Path::new(filename))
-    );
+    println!("{:#?}", Components::from_path(Path::new(filename)));
     Ok(())
 }
