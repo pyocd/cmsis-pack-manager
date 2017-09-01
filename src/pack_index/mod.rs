@@ -164,9 +164,14 @@ mod test {
     #[test]
     fn vidx_misssing_attr() {
         let erroring_strings = vec![
-            "<index/>",
-            "<index vendor=\"Vendor\"/>",
-            "<index url=\"Url\"/>",
+            "<index xmlns:xs=\"http://www.w3.org/2001/XMLSchema-instance\">
+             </index>",
+            "<index xmlns:xs=\"http://www.w3.org/2001/XMLSchema-instance\">
+               <vendor>Vendor</vendor>
+             </index>",
+            "<index xmlns:xs=\"http://www.w3.org/2001/XMLSchema-instance\">
+               <url>Url</url>
+             </index>",
         ];
         for bad_string in erroring_strings {
             assert!(Vidx::from_string(bad_string).is_err());
@@ -175,18 +180,31 @@ mod test {
 
     #[test]
     fn vidx_wrong_elem() {
-        let bad_string = "<notvidx url=\"Url\" vendor=\"Vendor\"/>";
+        let bad_string =
+            "<notindex xmlns:xs=\"http://www.w3.org/2001/XMLSchema-instance\">
+               <vendor>Vendor</vendor>
+               <url>Url</url>
+             </notindex>";
         assert!(Vidx::from_string(bad_string).is_err())
     }
 
     #[test]
     fn vidx_optionals() {
-        let good_string = "<index vendor=\"Vendor\" url=\"Url\"/>";
+        let good_string =
+            "<index xmlns:xs=\"http://www.w3.org/2001/XMLSchema-instance\">
+               <vendor>Vendor</vendor>
+               <url>Url</url>
+             </index>";
         let response = Vidx::from_string(good_string).unwrap();
         assert_eq!(response.vendor, String::from("Vendor"));
         assert_eq!(response.url, "Url");
 
-        let good_string = "<index vendor=\"Vendor\" url=\"Url\" timestamp=\"Fri Sep  1 13:14:35 CDT 2017\"/>";
+        let good_string =
+            "<index xmlns:xs=\"http://www.w3.org/2001/XMLSchema-instance\">
+               <vendor>Vendor</vendor>
+               <url>Url</url>
+               <timestamp>Fri Sep  1 13:26:41 CDT 2017</timestamp>
+             </index>";
         let response = Vidx::from_string(good_string).unwrap();
         assert_eq!(response.vendor, String::from("Vendor"));
         assert_eq!(response.url, "Url");
