@@ -305,3 +305,8 @@ pub fn update_command<'a>(conf: &Config,
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+}
