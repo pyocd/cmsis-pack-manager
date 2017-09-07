@@ -5,6 +5,9 @@ use std::io::BufRead;
 
 use minidom::{Element, Children, Error, ErrorKind};
 use quick_xml::reader::Reader;
+use slog::Logger;
+
+use ::ResultLog;
 
 pub static DEFAULT_NS: &'static str = "http://www.w3.org/2001/XMLSchema-instance";
 
@@ -71,22 +74,26 @@ pub fn assert_root_name(from: &Element, name: &str) -> Result<(), Error> {
 
 
 pub trait FromElem: Sized {
-    fn from_elem(e: &Element) -> Result<Self, Error>;
+    fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error>;
 
-    fn from_reader<T: BufRead>(r: &mut Reader<T>) -> Result<Self, Error> {
+    fn from_reader<T: BufRead>(r: &mut Reader<T>, l: &Logger) -> Result<Self, Error> {
         let root = Element::from_reader(r)?;
-        Self::from_elem(&root)
+        Self::from_elem(&root, l)
     }
-    fn from_string(s: &str) -> Result<Self, Error> {
+    fn from_string(s: &str, l: &Logger) -> Result<Self, Error> {
         let mut r = Reader::from_str(s);
-        Self::from_reader(&mut r)
+        Self::from_reader(&mut r, l)
     }
-    fn from_path(p: &Path) -> Result<Self, Error> {
+    fn from_path(p: &Path, l: &Logger) -> Result<Self, Error> {
         let mut r = Reader::from_file(p)?;
-        Self::from_reader(&mut r)
+        Self::from_reader(&mut r, l)
     }
-    fn vec_from_children(clds: Children) -> Vec<Self> {
-        clds.flat_map(|cld| Self::from_elem(cld).into_iter())
+    fn vec_from_children(clds: Children, l: &Logger) -> Vec<Self> {
+        let logger = l.clone();
+        clds.flat_map(move |cld|
+                      Self::from_elem(cld, &logger)
+                      .ok_warn(logger.clone())
+                      .into_iter())
             .collect()
     }
 }

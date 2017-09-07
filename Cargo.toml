@@ -16,9 +16,11 @@ quick-xml = "0.7.3"
 smallstring = "*"
 tokio-core = "0.1.6"
 xdg = "2.1.0"
-log = "0.3.8"
+slog = "^2"
+slog-term = "^2"
+slog-async = "^2"
 clap = "2.19.0"
-fern = "0.4.2"
 
 [dev-dependencies]
 time = "*"
+slog-stdlog = "^2"

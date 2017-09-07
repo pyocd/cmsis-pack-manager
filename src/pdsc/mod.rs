@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 use minidom::{Element, Error, ErrorKind};
 use clap::{App, Arg, ArgMatches, SubCommand};
+use slog::Logger;
 
 use parse::{attr_map, attr_parse, child_text, assert_root_name, FromElem, DEFAULT_NS};
 use config::Config;
@@ -44,7 +45,7 @@ pub struct FileRef {
 }
 
 impl FromElem for FileRef {
-    fn from_elem(e: &Element) -> Result<Self, Error> {
+    fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
         assert_root_name(e, "file")?;
         Ok(Self {
             path: attr_map(e, "name", "file")?,
@@ -77,16 +78,30 @@ pub struct Component {
 }
 
 impl FromElem for Component {
-    fn from_elem(e: &Element) -> Result<Self, Error> {
+    fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
         assert_root_name(e, "component")?;
+        let mut l = l.new(o!("in" => "Component"));
+        let vendor: Option<String> = attr_map(e, "Cvendor", "component").ok();
+        if let Some(v) = vendor.clone() {
+            l = l.new(o!("Vendor" => v));
+        }
+        let class: Option<String> = attr_map(e, "Cclass", "component").ok();
+        if let Some(c) = class.clone() {
+            l = l.new(o!("Class" => c));
+        }
+        let group: Option<String> = attr_map(e, "Cgroup", "component").ok();
+        if let Some(g) = group.clone() {
+            l = l.new(o!("Group" => g));
+        }
+        let sub_group: Option<String> = attr_map(e, "Csub", "component").ok();
+        if let Some(s) = vendor.clone() {
+            l = l.new(o!("SubGroup" => s));
+        }
         let files = e.get_child("files", DEFAULT_NS)
-            .map(|child| FileRef::vec_from_children(child.children()))
+            .map(move |child| FileRef::vec_from_children(child.children(), &l))
             .unwrap_or_default();
         Ok(Self {
-            vendor: attr_map(e, "Cvendor", "component").ok(),
-            class: attr_map(e, "Cclass", "component").ok(),
-            group: attr_map(e, "Cgroup", "component").ok(),
-            sub_group: attr_map(e, "Csub", "component").ok(),
+            vendor, class, group, sub_group,
             version: attr_map(e, "Cversion", "component").ok(),
             variant: attr_map(e, "Cvariant", "component").ok(),
             api_version: attr_map(e, "Capiversion", "component").ok(),
@@ -134,19 +149,23 @@ impl Bundle {
 }
 
 impl FromElem for Bundle {
-    fn from_elem(e: &Element) -> Result<Self, Error> {
+    fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
         assert_root_name(e, "bundle")?;
+        let name: String = attr_map(e, "Cbundle", "bundle")?;
+        let class: String =  attr_map(e, "Cclass", "bundle")?;
+        let version: String =  attr_map(e, "Cversion", "bundle")?;
+        let l = l.new(o!("Bundle" => name.clone(),
+                         "Class" => class.clone(),
+                         "Version" => version.clone()));
         let components = e.children()
-            .filter_map(|chld| if chld.name() == "component" {
-                Component::from_elem(chld).ok()
+            .filter_map(move |chld| if chld.name() == "component" {
+                Component::from_elem(chld, &l).ok()
             } else {
                 None
             })
             .collect();
         Ok(Self {
-            name: attr_map(e, "Cbundle", "bundle")?,
-            class: attr_map(e, "Cclass", "bundle")?,
-            version: attr_map(e, "Cversion", "bundle")?,
+            name, class, version,
             vendor: attr_map(e, "Cvendor", "bundle").ok(),
             description: child_text(e, "description", "bundle")?,
             doc: child_text(e, "doc", "bundle")?,
@@ -155,14 +174,14 @@ impl FromElem for Bundle {
     }
 }
 
-fn child_to_component_iter(e: &Element) -> Result<Box<Iterator<Item = Component>>, Error> {
+fn child_to_component_iter(e: &Element, l: &Logger) -> Result<Box<Iterator<Item = Component>>, Error> {
     match e.name() {
         "bundle" => {
-            let bundle = Bundle::from_elem(e)?;
+            let bundle = Bundle::from_elem(e, l)?;
             Ok(Box::new(bundle.into_components().into_iter()))
         }
         "component" => {
-            let component = Component::from_elem(e)?;
+            let component = Component::from_elem(e, l)?;
             Ok(Box::new(Some(component).into_iter()))
         }
         _ => {
@@ -177,14 +196,14 @@ fn child_to_component_iter(e: &Element) -> Result<Box<Iterator<Item = Component>
 type Components = Vec<Component>;
 
 impl FromElem for Components {
-    fn from_elem(e: &Element) -> Result<Self, Error> {
+    fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
         assert_root_name(e, "components")?;
         Ok(
             e.children()
-                .flat_map(|c| match child_to_component_iter(c) {
+                .flat_map(move |c| match child_to_component_iter(c, l) {
                     Ok(iter) => iter,
                     Err(e) => {
-                        error!("when trying to parse component: {}", e);
+                        error!(l, "when trying to parse component: {}", e);
                         Box::new(None.into_iter())
                     }
                 })
@@ -207,8 +226,10 @@ pub fn check_args<'a, 'b>() -> App<'a, 'b> {
         )
 }
 
-pub fn check_command<'a>(_: &Config, args: &ArgMatches<'a>) -> Result<(), NetError> {
+pub fn check_command<'a>(_: &Config,
+                         args: &ArgMatches<'a>,
+                         l: &Logger) -> Result<(), NetError> {
     let filename = args.value_of("INPUT").unwrap();
-    println!("{:#?}", Components::from_path(Path::new(filename)));
+    println!("{:#?}", Components::from_path(Path::new(filename), l));
     Ok(())
 }

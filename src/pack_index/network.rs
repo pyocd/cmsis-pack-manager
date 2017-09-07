@@ -9,6 +9,7 @@ use std::fs::OpenOptions;
 use std::io::{self, Write};
 use std::path::PathBuf;
 use clap::{App, ArgMatches, SubCommand};
+use slog::Logger;
 
 use minidom;
 
@@ -24,6 +25,7 @@ error_chain!{
         ConfigErr(config::Error, config::ErrorKind);
     }
     foreign_links{
+
         HttpErr(hyper::Error);
         UriErr(hyper::error::UriError);
         IOErr(io::Error);
@@ -39,18 +41,20 @@ where
     urls: Vec<Uri>,
     current: FutureResponse,
     client: &'a Client<C, Body>,
+    logger: Logger,
 }
 
 impl<'a, C> Redirect<'a, C>
 where
     C: Connect,
 {
-    fn new(client: &'a Client<C, Body>, uri: Uri) -> Self {
+    fn new(client: &'a Client<C, Body>, uri: Uri, logger: Logger) -> Self {
         let current = client.get(uri.clone());
         Self {
             urls: vec![uri],
             current,
             client,
+            logger,
         }
     }
 }
@@ -84,7 +88,7 @@ where
                                         uri = format!("{}{}", authority, uri).parse()?
                                     }
                                 }
-                                debug!("Redirecting from {} to {}", old_uri, uri);
+                                debug!(self.logger, "Redirecting from {} to {}", old_uri, uri);
                             }
                             self.urls.push(uri.clone());
                             self.current = self.client.get(uri);
@@ -102,6 +106,7 @@ where
 fn download_vidx_list<'a, C>(
     list: Vec<String>,
     client: &'a Client<C, Body>,
+    logger: &'a Logger
 ) -> impl Stream<Item = Vidx, Error = Error> + 'a
 where
     C: Connect,
@@ -110,28 +115,31 @@ where
     for vidx_ref in list {
         match vidx_ref.parse() {
             Ok(uri) => {
+                let child_log = logger.new(o!());
                 job.push(
-                    Redirect::new(client, uri)
+                    Redirect::new(client, uri, logger.new(o!()))
                         .map(Response::body)
                         .flatten_stream()
                         .concat2()
                         .map_err(Error::from)
-                        .and_then(parse_vidx),
+                        .and_then(move |body| {
+                            parse_vidx(body, &child_log)
+                        }),
                 );
             }
-            Err(e) => error!("Url {} did not parse {}", vidx_ref, e),
+            Err(e) => error!(logger, "Url {} did not parse {}", vidx_ref, e),
         }
     }
     Box::new(job) as Box<Stream<Item = _, Error = _>>
 }
 
-fn parse_vidx(body: Chunk) -> Result<Vidx> {
+fn parse_vidx(body: Chunk, logger: &Logger) -> Result<Vidx> {
     let string = String::from_utf8_lossy(body.as_ref()).into_owned();
-    Vidx::from_string(string.as_str()).map_err(Error::from)
+    Vidx::from_string(string.as_str(), logger).map_err(Error::from)
 }
 
-fn stream_pdscs(body: Chunk) -> impl Iterator<Item = Result<PdscRef>> {
-    parse_vidx(body)
+fn stream_pdscs(body: Chunk, logger: &Logger) -> impl Iterator<Item = Result<PdscRef>> {
+    parse_vidx(body, logger)
         .into_iter()
         .flat_map(|vidx| vidx.pdsc_index.into_iter())
         .map(Ok::<_, Error>)
@@ -144,6 +152,7 @@ fn flatmap_pdscs<'a, C>(
         ..
     }: Vidx,
     client: &'a Client<C, Body>,
+    logger: &'a Logger,
 ) -> impl Stream<Item = PdscRef, Error = Error> + 'a
 where
     C: Connect,
@@ -153,15 +162,18 @@ where
         let urlname = format!("{}{}{}", url, vendor, PIDX_SUFFIX);
         match urlname.parse() {
             Ok(uri) => {
-                let work = Redirect::new(client, uri)
+                let l = logger.new(o!());
+                let work = Redirect::new(client, uri, logger.new(o!()))
                     .map(Response::body)
                     .flatten_stream()
                     .concat2()
-                    .map(stream_pdscs)
+                    .map(move |body| {
+                        stream_pdscs(body, &l)
+                    })
                     .from_err::<Error>();
                 job.push(work)
             }
-            Err(e) => error!("Url {} did not parse {}", urlname, e),
+            Err(e) => error!(logger, "Url {} did not parse {}", urlname, e),
         }
     }
     Box::new(iter(pdsc_index.into_iter().map(Ok::<_, Error>)).chain(
@@ -171,34 +183,24 @@ where
 
 fn make_uri_fd_pair(
     config: &Config,
-    PdscRef {
-        url,
-        vendor,
-        name,
-        version,
-        ..
-    }: PdscRef,
+    PdscRef {url, vendor, name, version, ..}: PdscRef,
+    logger: &Logger,
 ) -> Result<Option<(Uri, String, PathBuf)>> {
+
     let uri = if url.ends_with('/') {
         format!("{}{}.{}.pdsc", url, vendor, name)
     } else {
         format!("{}/{}.{}.pdsc", url, vendor, name)
     }.parse()?;
-    let filename = config.pack_store.place_data_file(format!(
-        "{}.{}.{}.pdsc",
-        vendor,
-        name,
-        version
-    ))?;
+    let pdscname = format!("{}.{}.{}.pdsc",
+                           vendor,
+                           name,
+                           version);
+    let filename = config.pack_store.place_data_file(&pdscname)?;
     if filename.exists() {
-        debug!(
-            "Skipping download of pdsc {} from vendor {} at version {}",
-            name,
-            vendor,
-            version
-        );
         Ok(None)
     } else {
+        info!(logger, "Updating pdsc `{}`", pdscname);
         Ok(Some((uri, url, filename)))
     }
 }
@@ -211,6 +213,7 @@ fn download_pdscs<'a, F, C>(
     config: &'a Config,
     stream: F,
     client: &'a Client<C, Body>,
+    logger: &'a Logger,
 ) -> impl Stream<Item = Option<PathBuf>, Error = Error> + 'a
 where
     F: Stream<Item = PdscRef, Error = Error> + 'a,
@@ -218,10 +221,10 @@ where
 {
     Box::new(
         stream
-            .and_then(move |pdscref| make_uri_fd_pair(config, pdscref))
+            .and_then(move |pdscref| make_uri_fd_pair(config, pdscref, logger))
             .filter_map(id)
             .map(move |(uri, url, filename)| {
-                Redirect::new(client, uri)
+                Redirect::new(client, uri, logger.new(o!()))
                     .map(Response::body)
                     .flatten_stream()
                     .concat2()
@@ -237,7 +240,7 @@ where
                         })
                     })
                     .or_else(move |e| {
-                        error!("HTTP request for {} failed with {}", url, e);
+                        error!(logger, "HTTP request for {} failed with {}", url, e);
                         Ok::<_, Error>(None)
                     })
             })
@@ -252,27 +255,30 @@ fn update_inner<C>(
     vidx_list: Vec<String>,
     core: &mut Core,
     client: &Client<C, Body>,
+    logger: &Logger
 ) -> Result<Vec<PathBuf>>
 where
     C: Connect,
 {
-    let parsed_vidx = download_vidx_list(vidx_list, client);
+    let parsed_vidx = download_vidx_list(vidx_list, client, logger);
     let pdsc_list = parsed_vidx
-        .map(|vidx| flatmap_pdscs(vidx, client))
+        .map(|vidx| flatmap_pdscs(vidx, client, logger))
         .flatten();
-    let pdscs = download_pdscs(config, pdsc_list, client);
+    let pdscs = download_pdscs(config, pdsc_list, client, logger);
     core.run(pdscs.filter_map(id).collect())
 }
 
 /// Flatten a list of Vidx Urls into a list of updated CMSIS packs
-pub fn update(config: &Config, vidx_list: Vec<String>) -> Result<Vec<PathBuf>> {
+pub fn update(config: &Config,
+              vidx_list: Vec<String>,
+              logger: &Logger) -> Result<Vec<PathBuf>> {
     let mut core = Core::new().unwrap();
     let handle = core.handle();
     let client = Client::configure()
         .keep_alive(true)
         .connector(HttpsConnector::new(4, &handle).unwrap())
         .build(&handle);
-    update_inner(config, vidx_list, &mut core, &client)
+    update_inner(config, vidx_list, &mut core, &client, logger)
 }
 
 pub fn update_args<'a, 'b>() -> App<'a, 'b> {
@@ -281,19 +287,21 @@ pub fn update_args<'a, 'b>() -> App<'a, 'b> {
         .version("0.1.0")
 }
 
-pub fn update_command<'a>(conf: &Config, _: &ArgMatches<'a>) -> Result<()> {
-    let vidx_list = conf.read_vidx_list();
-    let updated = update(conf, vidx_list)?;
+pub fn update_command<'a>(conf: &Config,
+                          _: &ArgMatches<'a>,
+                          logger: &Logger) -> Result<()> {
+    let vidx_list = conf.read_vidx_list(logger.clone());
+    for url in vidx_list.iter() {
+        info!(logger, "Updating registry from `{}`", url);
+    }
+    let updated = update(conf, vidx_list, logger)?;
     if !updated.is_empty() {
-        info!("Updated the following PDSCs:");
         for pdsc_name in updated.iter().filter_map(|pb| {
             pb.file_name().and_then(|osstr| osstr.to_str())
         })
         {
-            info!("  {}", pdsc_name);
+            info!(logger, "Updated {}", pdsc_name);
         }
-    } else {
-        info!("Already up to date");
     }
     Ok(())
 }
