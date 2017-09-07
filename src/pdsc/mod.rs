@@ -130,10 +130,18 @@ pub struct Bundle {
 }
 
 impl Bundle {
-    pub fn into_components(self) -> Vec<Component> {
+    pub fn into_components(self, l: &Logger) -> Vec<Component> {
         let class = self.class;
         let version = self.version;
         let vendor = self.vendor;
+        if self.components.is_empty() {
+            let mut l = l.new(o!("in" => "Bundle",
+                                 "Class" => class.clone()));
+            if let Some(v) = vendor.clone() {
+                l = l.new(o!("Vendor" => v));
+            }
+            warn!(l, "Bundle should not be empty")
+        }
         self.components
             .into_iter()
             .map(|comp| {
@@ -178,7 +186,7 @@ fn child_to_component_iter(e: &Element, l: &Logger) -> Result<Box<Iterator<Item 
     match e.name() {
         "bundle" => {
             let bundle = Bundle::from_elem(e, l)?;
-            Ok(Box::new(bundle.into_components().into_iter()))
+            Ok(Box::new(bundle.into_components(l).into_iter()))
         }
         "component" => {
             let component = Component::from_elem(e, l)?;
@@ -230,6 +238,8 @@ pub fn check_command<'a>(_: &Config,
                          args: &ArgMatches<'a>,
                          l: &Logger) -> Result<(), NetError> {
     let filename = args.value_of("INPUT").unwrap();
-    println!("{:#?}", Components::from_path(Path::new(filename), l));
+    if let Err(e) = Components::from_path(Path::new(filename.clone()), &l) {
+        error!(l, "Error parsing {}", filename)
+    }
     Ok(())
 }
