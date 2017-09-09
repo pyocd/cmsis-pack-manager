@@ -3,7 +3,7 @@ use minidom::{Element, Error, ErrorKind};
 use slog::Logger;
 
 use parse::{attr_map, child_text, assert_root_name, DEFAULT_NS, FromElem};
-use ::ResultLog;
+use ResultLog;
 
 pub mod network;
 
@@ -190,8 +190,7 @@ mod test {
     #[test]
     fn vidx_wrong_elem() {
         let log = Logger::root(Discard, o!());
-        let bad_string =
-            "<notindex xmlns:xs=\"http://www.w3.org/2001/XMLSchema-instance\">
+        let bad_string = "<notindex xmlns:xs=\"http://www.w3.org/2001/XMLSchema-instance\">
                <vendor>Vendor</vendor>
                <url>Url</url>
              </notindex>";
@@ -201,8 +200,7 @@ mod test {
     #[test]
     fn vidx_optionals() {
         let log = Logger::root(Discard, o!());
-        let good_string =
-            "<index xmlns:xs=\"http://www.w3.org/2001/XMLSchema-instance\">
+        let good_string = "<index xmlns:xs=\"http://www.w3.org/2001/XMLSchema-instance\">
                <vendor>Vendor</vendor>
                <url>Url</url>
              </index>";
@@ -210,8 +208,7 @@ mod test {
         assert_eq!(response.vendor, String::from("Vendor"));
         assert_eq!(response.url, "Url");
 
-        let good_string =
-            "<index xmlns:xs=\"http://www.w3.org/2001/XMLSchema-instance\">
+        let good_string = "<index xmlns:xs=\"http://www.w3.org/2001/XMLSchema-instance\">
                <vendor>Vendor</vendor>
                <url>Url</url>
                <timestamp>Fri Sep  1 13:26:41 CDT 2017</timestamp>

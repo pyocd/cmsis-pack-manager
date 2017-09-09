@@ -7,7 +7,7 @@ use minidom::{Element, Children, Error, ErrorKind};
 use quick_xml::reader::Reader;
 use slog::Logger;
 
-use ::ResultLog;
+use ResultLog;
 
 pub static DEFAULT_NS: &'static str = "http://www.w3.org/2001/XMLSchema-instance";
 
@@ -90,10 +90,10 @@ pub trait FromElem: Sized {
     }
     fn vec_from_children(clds: Children, l: &Logger) -> Vec<Self> {
         let logger = l.clone();
-        clds.flat_map(move |cld|
-                      Self::from_elem(cld, &logger)
-                      .ok_warn(logger.clone())
-                      .into_iter())
-            .collect()
+        clds.flat_map(move |cld| {
+            Self::from_elem(cld, &logger)
+                .ok_warn(logger.clone())
+                .into_iter()
+        }).collect()
     }
 }

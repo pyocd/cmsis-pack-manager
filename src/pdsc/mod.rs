@@ -98,10 +98,15 @@ impl FromElem for Component {
             l = l.new(o!("SubGroup" => s));
         }
         let files = e.get_child("files", DEFAULT_NS)
-            .map(move |child| FileRef::vec_from_children(child.children(), &l))
+            .map(move |child| {
+                FileRef::vec_from_children(child.children(), &l)
+            })
             .unwrap_or_default();
         Ok(Self {
-            vendor, class, group, sub_group,
+            vendor,
+            class,
+            group,
+            sub_group,
             version: attr_map(e, "Cversion", "component").ok(),
             variant: attr_map(e, "Cvariant", "component").ok(),
             api_version: attr_map(e, "Capiversion", "component").ok(),
@@ -160,8 +165,8 @@ impl FromElem for Bundle {
     fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
         assert_root_name(e, "bundle")?;
         let name: String = attr_map(e, "Cbundle", "bundle")?;
-        let class: String =  attr_map(e, "Cclass", "bundle")?;
-        let version: String =  attr_map(e, "Cversion", "bundle")?;
+        let class: String = attr_map(e, "Cclass", "bundle")?;
+        let version: String = attr_map(e, "Cversion", "bundle")?;
         let l = l.new(o!("Bundle" => name.clone(),
                          "Class" => class.clone(),
                          "Version" => version.clone()));
@@ -173,7 +178,9 @@ impl FromElem for Bundle {
             })
             .collect();
         Ok(Self {
-            name, class, version,
+            name,
+            class,
+            version,
             vendor: attr_map(e, "Cvendor", "bundle").ok(),
             description: child_text(e, "description", "bundle")?,
             doc: child_text(e, "doc", "bundle")?,
@@ -182,7 +189,10 @@ impl FromElem for Bundle {
     }
 }
 
-fn child_to_component_iter(e: &Element, l: &Logger) -> Result<Box<Iterator<Item = Component>>, Error> {
+fn child_to_component_iter(
+    e: &Element,
+    l: &Logger,
+) -> Result<Box<Iterator<Item = Component>>, Error> {
     match e.name() {
         "bundle" => {
             let bundle = Bundle::from_elem(e, l)?;
@@ -220,6 +230,39 @@ impl FromElem for Components {
     }
 }
 
+struct Package {
+    name: String,
+    description: String,
+    vendor: String,
+    url: String,
+    license: Option<String>,
+    pub components: Components,
+}
+
+impl FromElem for Package {
+    fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
+        assert_root_name(e, "package")?;
+        let name: String = child_text(e, "name", "package")?;
+        let description: String = child_text(e, "description", "package")?;
+        let vendor: String = child_text(e, "vendor", "package")?;
+        let url: String = child_text(e, "url", "package")?;
+        let l = l.new(o!("Vendor" => vendor.clone(),
+                         "Package" => name.clone()
+        ));
+        let components = e.get_child("components", DEFAULT_NS)
+            .and_then(|c| Components::from_elem(c, &l).ok())
+            .unwrap_or_default();
+        Ok(Self {
+            name,
+            description,
+            vendor,
+            url,
+            components,
+            license: child_text(e, "license", "package").ok(),
+        })
+    }
+}
+
 pub fn check_args<'a, 'b>() -> App<'a, 'b> {
     SubCommand::with_name("check")
         .about(
@@ -234,12 +277,26 @@ pub fn check_args<'a, 'b>() -> App<'a, 'b> {
         )
 }
 
-pub fn check_command<'a>(_: &Config,
-                         args: &ArgMatches<'a>,
-                         l: &Logger) -> Result<(), NetError> {
+pub fn check_command<'a>(_: &Config, args: &ArgMatches<'a>, l: &Logger) -> Result<(), NetError> {
     let filename = args.value_of("INPUT").unwrap();
-    if let Err(e) = Components::from_path(Path::new(filename.clone()), &l) {
-        error!(l, "Error parsing {}", filename)
+    match Package::from_path(Path::new(filename.clone()), &l) {
+        Ok(c) => {
+            info!(l, "Parsing succedded");
+            match c.components.iter().map(|_| 1).sum::<u32>() {
+                0 => {
+                    warn!(l, "Components found, but is empty");
+                }
+                1 => {
+                    info!(l, "Component found");
+                }
+                n => {
+                    info!(l, "{} Components found", n);
+                }
+            }
+        }
+        Err(e) => {
+            error!(l, "parsing {}: {}", filename, e);
+        }
     }
     Ok(())
 }

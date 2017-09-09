@@ -27,7 +27,8 @@ trait ResultLog<T, E> {
 use std::fmt::Display;
 use slog::Logger;
 impl<T, E> ResultLog<T, E> for Result<T, E>
-    where E: Display
+where
+    E: Display,
 {
     fn ok_warn(self, log: Logger) -> Option<T> {
         match self {

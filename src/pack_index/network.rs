@@ -103,17 +103,20 @@ where
     }
 }
 
-fn download_vidx_list<'a, C>(
-    list: Vec<String>,
+fn download_vidx_list<'a, C, I>(
+    list: I,
     client: &'a Client<C, Body>,
-    logger: &'a Logger
+    logger: &'a Logger,
 ) -> impl Stream<Item = Vidx, Error = Error> + 'a
 where
     C: Connect,
+    I: IntoIterator,
+    <I as IntoIterator>::Item: Into<String>,
 {
     let mut job = FuturesUnordered::new();
     for vidx_ref in list {
-        match vidx_ref.parse() {
+        let vidx_text = vidx_ref.into();
+        match vidx_text.parse() {
             Ok(uri) => {
                 let child_log = logger.new(o!());
                 job.push(
@@ -122,12 +125,10 @@ where
                         .flatten_stream()
                         .concat2()
                         .map_err(Error::from)
-                        .and_then(move |body| {
-                            parse_vidx(body, &child_log)
-                        }),
+                        .and_then(move |body| parse_vidx(body, &child_log)),
                 );
             }
-            Err(e) => error!(logger, "Url {} did not parse {}", vidx_ref, e),
+            Err(e) => error!(logger, "Url {} did not parse {}", vidx_text, e),
         }
     }
     Box::new(job) as Box<Stream<Item = _, Error = _>>
@@ -167,9 +168,7 @@ where
                     .map(Response::body)
                     .flatten_stream()
                     .concat2()
-                    .map(move |body| {
-                        stream_pdscs(body, &l)
-                    })
+                    .map(move |body| stream_pdscs(body, &l))
                     .from_err::<Error>();
                 job.push(work)
             }
@@ -183,7 +182,13 @@ where
 
 fn make_uri_fd_pair(
     config: &Config,
-    PdscRef {url, vendor, name, version, ..}: PdscRef,
+    PdscRef {
+        url,
+        vendor,
+        name,
+        version,
+        ..
+    }: PdscRef,
     logger: &Logger,
 ) -> Result<Option<(Uri, String, PathBuf)>> {
 
@@ -192,15 +197,18 @@ fn make_uri_fd_pair(
     } else {
         format!("{}/{}.{}.pdsc", url, vendor, name)
     }.parse()?;
-    let pdscname = format!("{}.{}.{}.pdsc",
-                           vendor,
-                           name,
-                           version);
+    let pdscname = format!("{}.{}.{}.pdsc", vendor, name, version);
     let filename = config.pack_store.place_data_file(&pdscname)?;
     if filename.exists() {
         Ok(None)
     } else {
-        info!(logger, "Updating pdsc `{}`", pdscname);
+        info!(
+            logger,
+            "Updating package {}::{} to version {}",
+            vendor,
+            name,
+            version
+        );
         Ok(Some((uri, url, filename)))
     }
 }
@@ -250,15 +258,16 @@ where
 
 // This will "trick" the borrow checker into thinking that the lifetimes for
 // client and core are at least as big as the lifetime for pdscs, which they actually are
-fn update_inner<C>(
+fn update_inner<C, I>(
     config: &Config,
-    vidx_list: Vec<String>,
+    vidx_list: I,
     core: &mut Core,
     client: &Client<C, Body>,
-    logger: &Logger
+    logger: &Logger,
 ) -> Result<Vec<PathBuf>>
 where
     C: Connect,
+    I: IntoIterator<Item = String>,
 {
     let parsed_vidx = download_vidx_list(vidx_list, client, logger);
     let pdsc_list = parsed_vidx
@@ -269,9 +278,10 @@ where
 }
 
 /// Flatten a list of Vidx Urls into a list of updated CMSIS packs
-pub fn update(config: &Config,
-              vidx_list: Vec<String>,
-              logger: &Logger) -> Result<Vec<PathBuf>> {
+pub fn update<I>(config: &Config, vidx_list: I, logger: &Logger) -> Result<Vec<PathBuf>>
+where
+    I: IntoIterator<Item = String>,
+{
     let mut core = Core::new().unwrap();
     let handle = core.handle();
     let client = Client::configure()
@@ -287,20 +297,22 @@ pub fn update_args<'a, 'b>() -> App<'a, 'b> {
         .version("0.1.0")
 }
 
-pub fn update_command<'a>(conf: &Config,
-                          _: &ArgMatches<'a>,
-                          logger: &Logger) -> Result<()> {
+pub fn update_command<'a>(conf: &Config, _: &ArgMatches<'a>, logger: &Logger) -> Result<()> {
     let vidx_list = conf.read_vidx_list(logger.clone());
     for url in vidx_list.iter() {
         info!(logger, "Updating registry from `{}`", url);
     }
     let updated = update(conf, vidx_list, logger)?;
-    if !updated.is_empty() {
-        for pdsc_name in updated.iter().filter_map(|pb| {
-            pb.file_name().and_then(|osstr| osstr.to_str())
-        })
-        {
-            info!(logger, "Updated {}", pdsc_name);
+    let num_updated = updated.iter().map(|_| 1).sum::<u32>();
+    match num_updated {
+        0 => {
+            info!(logger, "Already up to date");
+        }
+        1 => {
+            info!(logger, "Updated 1 package");
+        }
+        _ => {
+            info!(logger, "Updated {} package", num_updated);
         }
     }
     Ok(())

@@ -35,9 +35,8 @@ impl Config {
                     .lines()
                     .enumerate()
                     .flat_map(|(linenum, line)| {
-                        line.map_err(|e| {
-                            error!(l, "Could not parse line #{}: {}", linenum, e)
-                        }).into_iter()
+                        line.map_err(|e| error!(l, "Could not parse line #{}: {}", linenum, e))
+                            .into_iter()
                     })
                     .collect()
             }
@@ -50,9 +49,12 @@ impl Config {
                 match self.vidx_list.parent() {
                     Some(par) => {
                         create_dir_all(par).unwrap_or_else(|e| {
-                            error!(l, "Could not create parent directory for vendor index list.\
+                            error!(
+                                l,
+                                "Could not create parent directory for vendor index list.\
                                     Error: {}",
-                                   e);
+                                e
+                            );
                         });
                     }
                     None => {
@@ -69,7 +71,11 @@ impl Config {
                         });
                     }
                     Err(e) => {
-                        error!(l, "Could not open vendors index list file for writing {}", e)
+                        error!(
+                            l,
+                            "Could not open vendors index list file for writing {}",
+                            e
+                        )
                     }
                 }
                 new_content
