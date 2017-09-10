@@ -291,7 +291,7 @@ impl FromElem for Package {
             vendor,
             url,
             components,
-            license: child_text(e, "license", "package").ok(),
+            license: child_text(e, "license", "package").ok_warn(&l),
             releases,
         })
     }
@@ -316,16 +316,9 @@ pub fn check_command<'a>(_: &Config, args: &ArgMatches<'a>, l: &Logger) -> Resul
     match Package::from_path(Path::new(filename.clone()), &l) {
         Ok(c) => {
             info!(l, "Parsing succedded");
-            match c.components.iter().map(|_| 1).sum::<u32>() {
-                0 => {
-                    warn!(l, "Components found, but is empty");
-                }
-                1 => {
-                    info!(l, "Component found");
-                }
-                n => {
-                    info!(l, "{} Components found", n);
-                }
+            println!("Revisions of package {}::{}", &c.vendor, &c.name);
+            for &Release{ref version, ref text} in c.releases.iter() {
+                println!("  {}: {} ", version, text.clone().trim());
             }
         }
         Err(e) => {
