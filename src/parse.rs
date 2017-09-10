@@ -89,10 +89,9 @@ pub trait FromElem: Sized {
         Self::from_reader(&mut r, l)
     }
     fn vec_from_children(clds: Children, l: &Logger) -> Vec<Self> {
-        let logger = l.clone();
         clds.flat_map(move |cld| {
-            Self::from_elem(cld, &logger)
-                .ok_warn(logger.clone())
+            Self::from_elem(cld, l)
+                .ok_warn(l)
                 .into_iter()
         }).collect()
     }

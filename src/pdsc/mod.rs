@@ -6,6 +6,7 @@ use slog::Logger;
 use parse::{attr_map, attr_parse, child_text, assert_root_name, FromElem, DEFAULT_NS};
 use config::Config;
 use pack_index::network::Error as NetError;
+use ResultLogExt;
 
 custom_derive!{
     #[derive(Debug, PartialEq, Eq, EnumFromStr)]
@@ -230,6 +231,34 @@ impl FromElem for Components {
     }
 }
 
+struct Release {
+    version: String,
+    text: String,
+}
+
+impl FromElem for Release {
+    fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
+        assert_root_name(e, "release")?;
+        Ok(Self{
+            version: attr_map(e, "version", "release")?,
+            text: e.text(),
+        })
+    }
+}
+
+type Releases = Vec<Release>;
+
+impl FromElem for Releases {
+    fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
+        assert_root_name(e, "releases")?;
+        Ok(
+            e.children()
+                .flat_map(|c| Release::from_elem(c, l).ok_warn(l))
+                .collect()
+        )
+    }
+}
+
 struct Package {
     name: String,
     description: String,
@@ -237,6 +266,7 @@ struct Package {
     url: String,
     license: Option<String>,
     pub components: Components,
+    pub releases: Releases,
 }
 
 impl FromElem for Package {
@@ -250,7 +280,10 @@ impl FromElem for Package {
                          "Package" => name.clone()
         ));
         let components = e.get_child("components", DEFAULT_NS)
-            .and_then(|c| Components::from_elem(c, &l).ok())
+            .and_then(|c| Components::from_elem(c, &l).ok_warn(&l))
+            .unwrap_or_default();
+        let releases = e.get_child("releases", DEFAULT_NS)
+            .and_then(|c| Releases::from_elem(c, &l).ok_warn(&l))
             .unwrap_or_default();
         Ok(Self {
             name,
@@ -259,6 +292,7 @@ impl FromElem for Package {
             url,
             components,
             license: child_text(e, "license", "package").ok(),
+            releases,
         })
     }
 }

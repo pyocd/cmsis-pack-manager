@@ -20,8 +20,8 @@ extern crate xdg;
 extern crate clap;
 
 trait ResultLogExt<T, E> {
-    fn ok_warn(self, log: Logger) -> Option<T>;
-    fn ok_error(self, log: Logger) -> Option<T>;
+    fn ok_warn(self, log: &Logger) -> Option<T>;
+    fn ok_error(self, log: &Logger) -> Option<T>;
 }
 
 use std::fmt::Display;
@@ -30,7 +30,7 @@ impl<T, E> ResultLogExt<T, E> for Result<T, E>
 where
     E: Display,
 {
-    fn ok_warn(self, log: Logger) -> Option<T> {
+    fn ok_warn(self, log: &Logger) -> Option<T> {
         match self {
             Ok(x) => Some(x),
             Err(e) => {
@@ -39,7 +39,7 @@ where
             }
         }
     }
-    fn ok_error(self, log: Logger) -> Option<T> {
+    fn ok_error(self, log: &Logger) -> Option<T> {
         match self {
             Ok(x) => Some(x),
             Err(e) => {
