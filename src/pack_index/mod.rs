@@ -3,7 +3,7 @@ use minidom::{Element, Error, ErrorKind};
 use slog::Logger;
 
 use parse::{attr_map, child_text, assert_root_name, DEFAULT_NS, FromElem};
-use ResultLog;
+use ResultLogExt;
 
 pub mod network;
 

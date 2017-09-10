@@ -7,7 +7,7 @@ use minidom::{Element, Children, Error, ErrorKind};
 use quick_xml::reader::Reader;
 use slog::Logger;
 
-use ResultLog;
+use ResultLogExt;
 
 pub static DEFAULT_NS: &'static str = "http://www.w3.org/2001/XMLSchema-instance";
 

@@ -19,14 +19,14 @@ extern crate smallstring;
 extern crate xdg;
 extern crate clap;
 
-trait ResultLog<T, E> {
+trait ResultLogExt<T, E> {
     fn ok_warn(self, log: Logger) -> Option<T>;
     fn ok_error(self, log: Logger) -> Option<T>;
 }
 
 use std::fmt::Display;
 use slog::Logger;
-impl<T, E> ResultLog<T, E> for Result<T, E>
+impl<T, E> ResultLogExt<T, E> for Result<T, E>
 where
     E: Display,
 {
