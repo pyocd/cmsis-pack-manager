@@ -18,8 +18,7 @@ setup(
     name = "cmsis-pack-manager",
     version = "0.0",
     packages = find_packages(),
-    install_requires = ['pycurl>=7.43.0',
-                        'pyxdg>=0.25',
+    install_requires = ['appdirs>=1.4',
                         'beautifulsoup4>=4.4.1',
                         'fuzzywuzzy>=0.10.0'],
     entry_points = {

@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from xdg.BaseDirectory import save_data_path
 from urllib2 import urlopen, URLError
 from bs4 import BeautifulSoup
 from os.path import join, dirname, basename, exists
@@ -30,6 +29,7 @@ from zipfile import ZipFile
 import warnings
 from distutils.version import LooseVersion
 from shutil import copyfile
+from appdirs import user_data_dir
 
 warnings.filterwarnings("ignore")
 
@@ -79,7 +79,7 @@ class Cache () :
     :type no_timeouts: bool
     """
     def __init__ (self, silent, no_timeouts, json_path=None, data_path=None) :
-        default_path = save_data_path('arm-pack-manager')
+        default_path = user_data_dir('cmsis-pack-manager')
         json_path = default_path if not json_path else json_path
         self.silent = silent
         self.counter = 0
