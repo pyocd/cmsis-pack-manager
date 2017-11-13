@@ -146,11 +146,12 @@ def test_cache_pdsc_and_pack(pack_url, pdsc_url):
     inner_test()
 
 IDX_TEMPLATE = (
-    "{% for name, url in pdscs %}"
-    "<pdsc name=\"{{name}}\" url=\"{{url}}\"/>"
+    "{% for name, vendor, url in pdscs %}"
+    "<pdsc name=\"{{name}}\" vendor=\"{{vendor}}\" url=\"{{url}}\"/>"
     "{% endfor %}")
 
 @given(lists(tuples(text(alphabet=ascii_lowercase, min_size=1),
+                    text(alphabet=ascii_lowercase, min_size=1),
                     text(alphabet=ascii_lowercase + ":/_.", min_size=1)),
              min_size=1))
 def test_get_urls(pdscs):
@@ -160,7 +161,6 @@ def test_get_urls(pdscs):
         pdsc_from_cache.return_value = BeautifulSoup(xml, "html.parser")
         c = cmsis_pack_manager.Cache(True, True)
         urls = c.get_urls()
-        for url in urls:
-            assert any((url.startswith(pdsc[1].rstrip("/")) and
-                        url.endswith(pdsc[0].strip("/"))) for pdsc in pdscs)
+        for uri in urls:
+            assert any((name in uri and vendor in uri and url in uri for name, vendor, url in pdscs))
     inner_test()
