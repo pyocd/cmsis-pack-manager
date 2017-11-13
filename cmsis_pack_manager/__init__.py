@@ -19,7 +19,7 @@ from os.path import join, dirname, basename, exists
 from os import makedirs
 from errno import EEXIST
 from threading import Thread
-from Queue import Queue
+from Queue import Queue, Empty
 from re import compile, sub
 from sys import stderr, stdout
 from itertools import takewhile
@@ -48,12 +48,14 @@ def largest_version(versions) :
 def do_queue(Class, function, interable) :
     q = Queue()
     threads = [Class(q, function) for each in range(20)]
+    for thing in interable :
+        q.put(thing)
     for each in threads :
         each.setDaemon(True)
         each.start()
-    for thing in interable :
-        q.put(thing)
     q.join()
+    for t in threads:
+        t.join()
 
 class Reader (Thread) :
     def __init__(self, queue, func) :
@@ -62,8 +64,14 @@ class Reader (Thread) :
         self.func = func
     def run(self) :
         while True :
-            url = self.queue.get()
-            self.func(url)
+            try:
+                url = self.queue.get(block=False, timeout=0.1)
+                self.func(url)
+            except Empty:
+                break
+            except Exception as exc:
+                print("EXCEPTION")
+                print(exc)
             self.queue.task_done()
 
 
