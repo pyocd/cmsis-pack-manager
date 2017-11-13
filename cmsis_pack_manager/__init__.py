@@ -44,7 +44,7 @@ RootPackUrls = [
 
 protocol_matcher = compile("\w*://")
 def strip_protocol(url) :
-    return protocol_matcher.sub("", str(url), count=1).strip("/")
+    return protocol_matcher.sub("", str(url), count=1)
 
 def largest_version(versions) :
     return sorted(versions, reverse=True, key=lambda v: LooseVersion(v))[0]
@@ -117,7 +117,7 @@ class Cache () :
         :type url: str
         :rtype: FileString
         """
-        return join(self.data_path, strip_protocol(url))
+        return join(self.data_path, strip_protocol(url).strip("/"))
 
     def cache_file (self, url) :
         """Low level interface to caching a single file.
