@@ -209,7 +209,6 @@ class Cache () :
                     root_data = self.pdsc_from_cache(url)
                 except IOError:
                     root_data = self.cache_and_parse(url)
-                print root_data.find_all("pidx")
                 pidxs.extend("/".join([pidx.get('url').rstrip("/"),
                                        pidx.get('vendor').strip("/") + ".pidx"])
                              for pidx in root_data.find_all("pidx"))
@@ -311,7 +310,7 @@ class Cache () :
     def _generate_index_helper(self, pdsc_url) :
         try :
             pack_url = self.pdsc_to_pack(pdsc_url)
-            pdsc_contens = self.pdsc_from_cache(pdsc_url)
+            pdsc_contents = self.pdsc_from_cache(pdsc_url)
             self._merge_targets(pdsc_url, pack_url, pdsc_contents)
         except AttributeError as e :
             stderr.write("[ ERROR ] file {}\n".format(pdsc_url))
@@ -557,7 +556,7 @@ class Cache () :
         if not pdsc_filename:
             raise Exception("PDSC file not found in PACK %s" % filename)
         with zipfile.open(pdsc_filename) as pdsc:
-            pdsc_content = BeautifulSoup(pdsc, "html.parser")
+            pdsc_contents = BeautifulSoup(pdsc, "html.parser")
         pdsc_url = self.get_pdsc_url(pdsc_contents, pdsc_filename)
         pack_url = self.get_pack_url(pdsc_contents)
         self._merge_target(pdsc_url, pack_url, pdsc_content)
