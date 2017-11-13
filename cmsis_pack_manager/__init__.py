@@ -35,12 +35,16 @@ warnings.filterwarnings("ignore")
 
 from fuzzywuzzy import process
 
-RootPackURL = "http://www.keil.com/pack/index.idx"
+RootPackUrls = [
+    "http://www.keil.com/pack/index.pidx",
+    "http://www.keil.com/pack/Keil.pidx",
+    "http://www.keil.com/pack/Keil.vidx"
+]
 
 
 protocol_matcher = compile("\w*://")
 def strip_protocol(url) :
-    return protocol_matcher.sub("", str(url), count=1)
+    return protocol_matcher.sub("", str(url), count=1).strip("/")
 
 def largest_version(versions) :
     return sorted(versions, reverse=True, key=lambda v: LooseVersion(v))[0]
@@ -198,11 +202,25 @@ class Cache () :
         :rtype: [str]
         """
         if not self.urls :
-            try : root_data = self.pdsc_from_cache(RootPackURL)
-            except IOError : root_data = self.cache_and_parse(RootPackURL)
-            self.urls = ["/".join([pdsc.get('url').rstrip("/"),
-                                   pdsc.get('name').strip("/")])
-                         for pdsc in root_data.find_all("pdsc")]
+            self.urls = []
+            pidxs = []
+            for url in RootPackUrls:
+                try:
+                    root_data = self.pdsc_from_cache(url)
+                except IOError:
+                    root_data = self.cache_and_parse(url)
+                print root_data.find_all("pidx")
+                pidxs.extend("/".join([pidx.get('url').rstrip("/"),
+                                       pidx.get('vendor').strip("/") + ".pidx"])
+                             for pidx in root_data.find_all("pidx"))
+            for url in RootPackUrls + pidxs:
+                try:
+                    root_data = self.pdsc_from_cache(url)
+                except IOError:
+                    root_data = self.cache_and_parse(url)
+                self.urls.extend("/".join([pdsc.get('url').rstrip("/"),
+                                           pdsc.get('name').strip("/")])
+                                 for pdsc in root_data.find_all("pdsc"))
         return self.urls
 
     def _extract_dict(self, device, filename, pack) :
