@@ -219,7 +219,8 @@ class Cache () :
                 except IOError:
                     root_data = self.cache_and_parse(url)
                 self.urls.extend("/".join([pdsc.get('url').rstrip("/"),
-                                           pdsc.get('name').strip("/")])
+                                           pdsc.get('vendor').strip("/") + "." +
+                                           pdsc.get('name').strip("/") + ".pdsc"])
                                  for pdsc in root_data.find_all("pdsc"))
         return self.urls
 
