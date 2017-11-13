@@ -10,15 +10,6 @@ from bs4 import BeautifulSoup
 
 import cmsis_pack_manager
 
-@given(booleans(), booleans(), text(), text())
-@example(True, True, '', '')
-@example(True, True, '/', '/')
-def test_init(silent, no_timeouts, json_path, data_path):
-    obj = cmsis_pack_manager.Cache(silent, no_timeouts, json_path=json_path, data_path=data_path)
-    assert(obj.index_path)
-    assert(obj.aliases_path)
-    assert(obj.data_path)
-
 @given(lists(text(min_size=1), min_size=1), just(None))
 @example(["1.0.0", "0.1.0", "0.0.1"], "1.0.0")
 @example(["1.0.0", "19.0.0", "2.0.0"], "19.0.0")
@@ -38,8 +29,16 @@ def test_do_queue(queue):
 @example("http", "google.com")
 @example("http", "google.com://foo")
 def test_strip_protocol(protocol, url):
-    uri = protocol + "://" + url
+    uri = protocol + u'://' + url
     assert(cmsis_pack_manager.strip_protocol(uri) == url)
+
+@given(text(alphabet=ascii_lowercase), text(alphabet=ascii_lowercase + ":/_."))
+@example("http", "google.com")
+@example("http", "google.com://foo")
+def test_cache_lookup(protocol, url):
+    obj = cmsis_pack_manager.Cache(True, True)
+    uri = protocol + u'://' + url
+    assert(obj.data_path in obj._cache_lookup(uri))
 
 @given(text(alphabet=ascii_lowercase + ":/_."), text())
 def test_cache_file(url, contents):

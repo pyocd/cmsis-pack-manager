@@ -42,9 +42,9 @@ RootPackUrls = [
 ]
 
 
-protocol_matcher = compile("\w*://")
+protocol_matcher = compile(r'^[a-zA-Z0-9_]*://')
 def strip_protocol(url) :
-    return protocol_matcher.sub("", str(url), count=1)
+    return protocol_matcher.sub(u'', url.decode('ascii'), count=1)
 
 def largest_version(versions) :
     return sorted(versions, reverse=True, key=lambda v: LooseVersion(v))[0]
