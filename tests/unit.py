@@ -163,7 +163,8 @@ def test_get_urls(pdscs):
         c = cmsis_pack_manager.Cache(True, True)
         urls = c.get_urls()
         for uri in urls:
-            assert any((name in uri and vendor in uri and url in uri for name, vendor, url in pdscs))
+            assert any((name in uri and vendor in uri and url.rstrip("/") in uri
+                        for name, vendor, url in pdscs))
     inner_test()
 
 
