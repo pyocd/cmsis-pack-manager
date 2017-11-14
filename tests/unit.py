@@ -1,23 +1,15 @@
 """Unit tests for the cmsis_pack_manager module"""
 
 from os.path import join
-from string import ascii_lowercase
+from string import ascii_lowercase, ascii_letters, hexdigits
 from mock import patch, MagicMock, call
 from hypothesis import given, settings, example
 from hypothesis.strategies import booleans, text, lists, just, integers, tuples
+from hypothesis.strategies import dictionaries, fixed_dictionaries
 from jinja2 import Template
 from bs4 import BeautifulSoup
 
 import cmsis_pack_manager
-
-@given(booleans(), booleans(), text(), text())
-@example(True, True, '', '')
-@example(True, True, '/', '/')
-def test_init(silent, no_timeouts, json_path, data_path):
-    obj = cmsis_pack_manager.Cache(silent, no_timeouts, json_path=json_path, data_path=data_path)
-    assert(obj.index_path)
-    assert(obj.aliases_path)
-    assert(obj.data_path)
 
 @given(lists(text(min_size=1), min_size=1), just(None))
 @example(["1.0.0", "0.1.0", "0.0.1"], "1.0.0")
@@ -38,8 +30,16 @@ def test_do_queue(queue):
 @example("http", "google.com")
 @example("http", "google.com://foo")
 def test_strip_protocol(protocol, url):
-    uri = protocol + "://" + url
+    uri = protocol + u'://' + url
     assert(cmsis_pack_manager.strip_protocol(uri) == url)
+
+@given(text(alphabet=ascii_lowercase), text(alphabet=ascii_lowercase + ":/_."))
+@example("http", "google.com")
+@example("http", "google.com://foo")
+def test_cache_lookup(protocol, url):
+    obj = cmsis_pack_manager.Cache(True, True)
+    uri = protocol + u'://' + url
+    assert(obj.data_path in obj._cache_lookup(uri))
 
 @given(text(alphabet=ascii_lowercase + ":/_."), text())
 def test_cache_file(url, contents):
@@ -147,11 +147,12 @@ def test_cache_pdsc_and_pack(pack_url, pdsc_url):
     inner_test()
 
 IDX_TEMPLATE = (
-    "{% for name, url in pdscs %}"
-    "<pdsc name=\"{{name}}\" url=\"{{url}}\"/>"
+    "{% for name, vendor, url in pdscs %}"
+    "<pdsc name=\"{{name}}\" vendor=\"{{vendor}}\" url=\"{{url}}\"/>"
     "{% endfor %}")
 
 @given(lists(tuples(text(alphabet=ascii_lowercase, min_size=1),
+                    text(alphabet=ascii_lowercase, min_size=1),
                     text(alphabet=ascii_lowercase + ":/_.", min_size=1)),
              min_size=1))
 def test_get_urls(pdscs):
@@ -161,7 +162,79 @@ def test_get_urls(pdscs):
         pdsc_from_cache.return_value = BeautifulSoup(xml, "html.parser")
         c = cmsis_pack_manager.Cache(True, True)
         urls = c.get_urls()
-        for url in urls:
-            assert any((url.startswith(pdsc[1].rstrip("/")) and
-                        url.endswith(pdsc[0].strip("/"))) for pdsc in pdscs)
+        for uri in urls:
+            assert any((name in uri and vendor in uri and url.rstrip("/") in uri
+                        for name, vendor, url in pdscs))
     inner_test()
+
+
+SIMPLE_PDSC = (
+    "<package schemaVersion=\"1.3\" xmlns:xs=\"http://www.w3.org/2001/XMLSchema-instance\" xs:noNamespaceSchemaLocation=\"PACK.xsd\">"
+    " <devices>"
+    "  <family Dfamily="" Dvendor="">"
+    "   <device Dname=\"{{name}}\">"
+    "{% for memid, attrs in memory.items() %}"
+    "    <memory id=\"{{memid}}\" {% for attrname, value in attrs.items() %} {{attrname}}=\"{{value}}\" {% endfor %} \>"
+    "{% endfor %}"
+    "    <processor Dcore=\"{{core}}\"/>"
+    "   </device>"
+    "  </family>"
+    " </devices>"
+    "</package>"
+)
+
+SUBFAMILY_PDSC = (
+    "<package schemaVersion=\"1.3\" xmlns:xs=\"http://www.w3.org/2001/XMLSchema-instance\" xs:noNamespaceSchemaLocation=\"PACK.xsd\">"
+    " <devices>"
+    "  <family Dfamily="" Dvendor="">"
+    "   <subfamily Dsubfamily="">"
+    "     <processor Dcore=\"{{core}}\"/>"
+    "    <device Dname=\"{{name}}\">"
+    "{% for memid, attrs in memory.items() %}"
+    "     <memory id=\"{{memid}}\" {% for attrname, value in attrs.items() %} {{attrname}}=\"{{value}}\" {% endfor %} \>"
+    "{% endfor %}"
+    "    </device>"
+    "   </subfamily"
+    "  </family>"
+    " </devices>"
+    "</package>"
+)
+FAMILY_PDSC = (
+    "<package schemaVersion=\"1.3\" xmlns:xs=\"http://www.w3.org/2001/XMLSchema-instance\" xs:noNamespaceSchemaLocation=\"PACK.xsd\">"
+    " <devices>"
+    "  <family Dfamily="" Dvendor="">"
+    "   <processor Dcore=\"{{core}}\"/>"
+    "   <subfamily Dsubfamily="">"
+    "    <device Dname=\"{{name}}\">"
+    "{% for memid, attrs in memory.items() %}"
+    "     <memory id=\"{{memid}}\" {% for attrname, value in attrs.items() %} {{attrname}}=\"{{value}}\" {% endfor %} \>"
+    "{% endfor %}"
+    "    </device>"
+    "   </subfamily"
+    "  </family>"
+    " </devices>"
+    "</package>"
+)
+
+@given(text(alphabet=ascii_letters, min_size=1),
+       fixed_dictionaries({"core": text(alphabet=ascii_letters + "-", min_size=1),
+                           "memory": dictionaries(text(alphabet=ascii_letters, min_size=1),
+                                                  fixed_dictionaries(
+                                                      {"size": text(alphabet=hexdigits),
+                                                       "start": text(alphabet=hexdigits)}))}),
+       text(),
+       text())
+def test_simple_pdsc(name, expected_result, pdsc_url, pack_url):
+    for tmpl in [SIMPLE_PDSC, SUBFAMILY_PDSC, FAMILY_PDSC]:
+        xml = Template(tmpl).render(expected_result, name=name)
+        input = BeautifulSoup(xml, "html.parser")
+        c = cmsis_pack_manager.Cache(True, True)
+        c._index = {}
+        c._merge_targets(pdsc_url, pack_url, input)
+        assert(name in c._index)
+        device = c._index[name]
+        assert(device["pdsc_file"] == pdsc_url)
+        assert(device["pack_file"] == pack_url)
+        for key, value in expected_result.items():
+            assert(device[key] == value)
+

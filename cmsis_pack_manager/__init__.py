@@ -13,14 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from xdg.BaseDirectory import save_data_path
 from urllib2 import urlopen, URLError
 from bs4 import BeautifulSoup
 from os.path import join, dirname, basename, exists
 from os import makedirs
 from errno import EEXIST
 from threading import Thread
-from Queue import Queue
+from Queue import Queue, Empty
 from re import compile, sub
 from sys import stderr, stdout
 from itertools import takewhile
@@ -30,17 +29,22 @@ from zipfile import ZipFile
 import warnings
 from distutils.version import LooseVersion
 from shutil import copyfile
+from appdirs import user_data_dir
 
 warnings.filterwarnings("ignore")
 
 from fuzzywuzzy import process
 
-RootPackURL = "http://www.keil.com/pack/index.idx"
+RootPackUrls = [
+    "http://www.keil.com/pack/index.pidx",
+    "http://www.keil.com/pack/Keil.pidx",
+    "http://www.keil.com/pack/Keil.vidx"
+]
 
 
-protocol_matcher = compile("\w*://")
+protocol_matcher = compile(r'^[a-zA-Z0-9_]*://')
 def strip_protocol(url) :
-    return protocol_matcher.sub("", str(url), count=1)
+    return protocol_matcher.sub(u'', url.decode('ascii'), count=1)
 
 def largest_version(versions) :
     return sorted(versions, reverse=True, key=lambda v: LooseVersion(v))[0]
@@ -48,12 +52,14 @@ def largest_version(versions) :
 def do_queue(Class, function, interable) :
     q = Queue()
     threads = [Class(q, function) for each in range(20)]
+    for thing in interable :
+        q.put(thing)
     for each in threads :
         each.setDaemon(True)
         each.start()
-    for thing in interable :
-        q.put(thing)
     q.join()
+    for t in threads:
+        t.join()
 
 class Reader (Thread) :
     def __init__(self, queue, func) :
@@ -62,8 +68,14 @@ class Reader (Thread) :
         self.func = func
     def run(self) :
         while True :
-            url = self.queue.get()
-            self.func(url)
+            try:
+                url = self.queue.get(block=False, timeout=0.1)
+                self.func(url)
+            except Empty:
+                break
+            except Exception as exc:
+                print("EXCEPTION")
+                print(exc)
             self.queue.task_done()
 
 
@@ -79,7 +91,7 @@ class Cache () :
     :type no_timeouts: bool
     """
     def __init__ (self, silent, no_timeouts, json_path=None, data_path=None) :
-        default_path = save_data_path('arm-pack-manager')
+        default_path = user_data_dir('cmsis-pack-manager')
         json_path = default_path if not json_path else json_path
         self.silent = silent
         self.counter = 0
@@ -105,7 +117,7 @@ class Cache () :
         :type url: str
         :rtype: FileString
         """
-        return join(self.data_path, strip_protocol(url))
+        return join(self.data_path, strip_protocol(url).strip("/"))
 
     def cache_file (self, url) :
         """Low level interface to caching a single file.
@@ -190,11 +202,25 @@ class Cache () :
         :rtype: [str]
         """
         if not self.urls :
-            try : root_data = self.pdsc_from_cache(RootPackURL)
-            except IOError : root_data = self.cache_and_parse(RootPackURL)
-            self.urls = ["/".join([pdsc.get('url').rstrip("/"),
-                                   pdsc.get('name').strip("/")])
-                         for pdsc in root_data.find_all("pdsc")]
+            self.urls = []
+            pidxs = []
+            for url in RootPackUrls:
+                try:
+                    root_data = self.pdsc_from_cache(url)
+                except IOError:
+                    root_data = self.cache_and_parse(url)
+                pidxs.extend("/".join([pidx.get('url').rstrip("/"),
+                                       pidx.get('vendor').strip("/") + ".pidx"])
+                             for pidx in root_data.find_all("pidx"))
+            for url in RootPackUrls + pidxs:
+                try:
+                    root_data = self.pdsc_from_cache(url)
+                except IOError:
+                    root_data = self.cache_and_parse(url)
+                self.urls.extend("/".join([pdsc.get('url').rstrip("/"),
+                                           pdsc.get('vendor').strip("/") + "." +
+                                           pdsc.get('name').strip("/") + ".pdsc"])
+                                 for pdsc in root_data.find_all("pdsc"))
         return self.urls
 
     def _extract_dict(self, device, filename, pack) :
@@ -284,7 +310,7 @@ class Cache () :
     def _generate_index_helper(self, pdsc_url) :
         try :
             pack_url = self.pdsc_to_pack(pdsc_url)
-            pdsc_contens = self.pdsc_from_cache(pdsc_url)
+            pdsc_contents = self.pdsc_from_cache(pdsc_url)
             self._merge_targets(pdsc_url, pack_url, pdsc_contents)
         except AttributeError as e :
             stderr.write("[ ERROR ] file {}\n".format(pdsc_url))
@@ -530,7 +556,7 @@ class Cache () :
         if not pdsc_filename:
             raise Exception("PDSC file not found in PACK %s" % filename)
         with zipfile.open(pdsc_filename) as pdsc:
-            pdsc_content = BeautifulSoup(pdsc, "html.parser")
+            pdsc_contents = BeautifulSoup(pdsc, "html.parser")
         pdsc_url = self.get_pdsc_url(pdsc_contents, pdsc_filename)
         pack_url = self.get_pack_url(pdsc_contents)
         self._merge_target(pdsc_url, pack_url, pdsc_content)
