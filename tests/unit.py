@@ -1,10 +1,11 @@
 """Unit tests for the cmsis_pack_manager module"""
 
 from os.path import join
-from string import ascii_lowercase
+from string import ascii_lowercase, ascii_letters, hexdigits
 from mock import patch, MagicMock, call
 from hypothesis import given, settings, example
 from hypothesis.strategies import booleans, text, lists, just, integers, tuples
+from hypothesis.strategies import dictionaries, fixed_dictionaries
 from jinja2 import Template
 from bs4 import BeautifulSoup
 
@@ -164,3 +165,75 @@ def test_get_urls(pdscs):
         for uri in urls:
             assert any((name in uri and vendor in uri and url in uri for name, vendor, url in pdscs))
     inner_test()
+
+
+SIMPLE_PDSC = (
+    "<package schemaVersion=\"1.3\" xmlns:xs=\"http://www.w3.org/2001/XMLSchema-instance\" xs:noNamespaceSchemaLocation=\"PACK.xsd\">"
+    " <devices>"
+    "  <family Dfamily="" Dvendor="">"
+    "   <device Dname=\"{{name}}\">"
+    "{% for memid, attrs in memory.items() %}"
+    "    <memory id=\"{{memid}}\" {% for attrname, value in attrs.items() %} {{attrname}}=\"{{value}}\" {% endfor %} \>"
+    "{% endfor %}"
+    "    <processor Dcore=\"{{core}}\"/>"
+    "   </device>"
+    "  </family>"
+    " </devices>"
+    "</package>"
+)
+
+SUBFAMILY_PDSC = (
+    "<package schemaVersion=\"1.3\" xmlns:xs=\"http://www.w3.org/2001/XMLSchema-instance\" xs:noNamespaceSchemaLocation=\"PACK.xsd\">"
+    " <devices>"
+    "  <family Dfamily="" Dvendor="">"
+    "   <subfamily Dsubfamily="">"
+    "     <processor Dcore=\"{{core}}\"/>"
+    "    <device Dname=\"{{name}}\">"
+    "{% for memid, attrs in memory.items() %}"
+    "     <memory id=\"{{memid}}\" {% for attrname, value in attrs.items() %} {{attrname}}=\"{{value}}\" {% endfor %} \>"
+    "{% endfor %}"
+    "    </device>"
+    "   </subfamily"
+    "  </family>"
+    " </devices>"
+    "</package>"
+)
+FAMILY_PDSC = (
+    "<package schemaVersion=\"1.3\" xmlns:xs=\"http://www.w3.org/2001/XMLSchema-instance\" xs:noNamespaceSchemaLocation=\"PACK.xsd\">"
+    " <devices>"
+    "  <family Dfamily="" Dvendor="">"
+    "   <processor Dcore=\"{{core}}\"/>"
+    "   <subfamily Dsubfamily="">"
+    "    <device Dname=\"{{name}}\">"
+    "{% for memid, attrs in memory.items() %}"
+    "     <memory id=\"{{memid}}\" {% for attrname, value in attrs.items() %} {{attrname}}=\"{{value}}\" {% endfor %} \>"
+    "{% endfor %}"
+    "    </device>"
+    "   </subfamily"
+    "  </family>"
+    " </devices>"
+    "</package>"
+)
+
+@given(text(alphabet=ascii_letters, min_size=1),
+       fixed_dictionaries({"core": text(alphabet=ascii_letters + "-", min_size=1),
+                           "memory": dictionaries(text(alphabet=ascii_letters, min_size=1),
+                                                  fixed_dictionaries(
+                                                      {"size": text(alphabet=hexdigits),
+                                                       "start": text(alphabet=hexdigits)}))}),
+       text(),
+       text())
+def test_simple_pdsc(name, expected_result, pdsc_url, pack_url):
+    for tmpl in [SIMPLE_PDSC, SUBFAMILY_PDSC, FAMILY_PDSC]:
+        xml = Template(tmpl).render(expected_result, name=name)
+        input = BeautifulSoup(xml, "html.parser")
+        c = cmsis_pack_manager.Cache(True, True)
+        c._index = {}
+        c._merge_targets(pdsc_url, pack_url, input)
+        assert(name in c._index)
+        device = c._index[name]
+        assert(device["pdsc_file"] == pdsc_url)
+        assert(device["pack_file"] == pack_url)
+        for key, value in expected_result.items():
+            assert(device[key] == value)
+
