@@ -37,8 +37,6 @@ from fuzzywuzzy import process
 
 RootPackUrls = [
     "http://www.keil.com/pack/index.pidx",
-    "http://www.keil.com/pack/Keil.pidx",
-    "http://www.keil.com/pack/Keil.vidx"
 ]
 
 
@@ -203,16 +201,7 @@ class Cache () :
         """
         if not self.urls :
             self.urls = []
-            pidxs = []
             for url in RootPackUrls:
-                try:
-                    root_data = self.pdsc_from_cache(url)
-                except IOError:
-                    root_data = self.cache_and_parse(url)
-                pidxs.extend("/".join([pidx.get('url').rstrip("/"),
-                                       pidx.get('vendor').strip("/") + ".pidx"])
-                             for pidx in root_data.find_all("pidx"))
-            for url in RootPackUrls + pidxs:
                 try:
                     root_data = self.pdsc_from_cache(url)
                 except IOError:
