@@ -9,7 +9,7 @@ use pack_index::network::Error as NetError;
 use ResultLogExt;
 
 custom_derive!{
-    #[derive(Debug, PartialEq, Eq, EnumFromStr)]
+    #[derive(Debug, PartialEq, Eq, EnumFromStr, Clone)]
     pub enum FileCategory{
         doc,
         header,
@@ -28,13 +28,13 @@ custom_derive!{
 }
 
 custom_derive!{
-    #[derive(Debug, PartialEq, Eq, EnumFromStr)]
+    #[derive(Debug, PartialEq, Eq, EnumFromStr, Clone)]
     pub enum FileAttribute{
         config, template
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FileRef {
     path: PathBuf,
     category: FileCategory,
@@ -60,8 +60,8 @@ impl FromElem for FileRef {
     }
 }
 
-#[derive(Debug)]
-pub struct Component {
+#[derive(Debug, Clone)]
+pub struct ComponentBuilder{
     vendor: Option<String>,
     class: Option<String>,
     group: Option<String>,
@@ -78,7 +78,7 @@ pub struct Component {
     files: Vec<FileRef>,
 }
 
-impl FromElem for Component {
+impl FromElem for ComponentBuilder{
     fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
         assert_root_name(e, "component")?;
         let mut l = l.new(o!("in" => "Component"));
@@ -132,11 +132,11 @@ pub struct Bundle {
     vendor: Option<String>,
     description: String,
     doc: String,
-    components: Vec<Component>,
+    components: Vec<ComponentBuilder>,
 }
 
 impl Bundle {
-    pub fn into_components(self, l: &Logger) -> Vec<Component> {
+    pub fn into_components(self, l: &Logger) -> Vec<ComponentBuilder> {
         let class = self.class;
         let version = self.version;
         let vendor = self.vendor;
@@ -151,7 +151,7 @@ impl Bundle {
         self.components
             .into_iter()
             .map(|comp| {
-                Component {
+                ComponentBuilder {
                     class: comp.class.or_else(|| Some(class.clone())),
                     version: comp.version.or_else(|| Some(version.clone())),
                     vendor: comp.vendor.or_else(|| vendor.clone()),
@@ -173,7 +173,7 @@ impl FromElem for Bundle {
                          "Version" => version.clone()));
         let components = e.children()
             .filter_map(move |chld| if chld.name() == "component" {
-                Component::from_elem(chld, &l).ok()
+                ComponentBuilder::from_elem(chld, &l).ok()
             } else {
                 None
             })
@@ -193,14 +193,14 @@ impl FromElem for Bundle {
 fn child_to_component_iter(
     e: &Element,
     l: &Logger,
-) -> Result<Box<Iterator<Item = Component>>, Error> {
+) -> Result<Box<Iterator<Item = ComponentBuilder>>, Error> {
     match e.name() {
         "bundle" => {
             let bundle = Bundle::from_elem(e, l)?;
             Ok(Box::new(bundle.into_components(l).into_iter()))
         }
         "component" => {
-            let component = Component::from_elem(e, l)?;
+            let component = ComponentBuilder::from_elem(e, l)?;
             Ok(Box::new(Some(component).into_iter()))
         }
         _ => {
@@ -212,9 +212,9 @@ fn child_to_component_iter(
     }
 }
 
-type Components = Vec<Component>;
+type ComponentBuilders = Vec<ComponentBuilder>;
 
-impl FromElem for Components {
+impl FromElem for ComponentBuilders {
     fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
         assert_root_name(e, "components")?;
         Ok(
@@ -265,7 +265,7 @@ struct Package {
     vendor: String,
     url: String,
     license: Option<String>,
-    pub components: Components,
+    pub components: ComponentBuilders,
     pub releases: Releases,
 }
 
@@ -280,7 +280,7 @@ impl FromElem for Package {
                          "Package" => name.clone()
         ));
         let components = e.get_child("components", DEFAULT_NS)
-            .and_then(|c| Components::from_elem(c, &l).ok_warn(&l))
+            .and_then(|c| ComponentBuilders::from_elem(c, &l).ok_warn(&l))
             .unwrap_or_default();
         let releases = e.get_child("releases", DEFAULT_NS)
             .and_then(|c| Releases::from_elem(c, &l).ok_warn(&l))
@@ -294,6 +294,50 @@ impl FromElem for Package {
             license: child_text(e, "license", "package").ok_warn(&l),
             releases,
         })
+    }
+}
+
+
+#[derive(Debug)]
+pub struct Component{
+    vendor: String,
+    class: String,
+    group: String,
+    sub_group: Option<String>,
+    variant: Option<String>,
+    version: String,
+    api_version: Option<String>,
+    condition: Option<String>,
+    max_instances: Option<u8>,
+    is_default: bool,
+    deprecated: bool,
+    description: String,
+    rte_addition: String,
+    files: Vec<FileRef>,
+}
+
+type Components = Vec<Component>;
+
+impl Package {
+    fn make_components(&self) -> Components {
+        self.components.clone().into_iter().map(|comp| {
+            Component{
+                vendor: comp.vendor.unwrap_or_else(|| self.vendor.clone()),
+                class: comp.class.unwrap(),
+                group: comp.group.unwrap(),
+                sub_group: comp.sub_group,
+                variant: comp.variant,
+                version: comp.version.unwrap_or_else(|| self.releases[0].version.clone()),
+                api_version: comp.api_version,
+                condition: comp.condition,
+                max_instances: comp.max_instances,
+                is_default: comp.is_default,
+                deprecated: comp.deprecated,
+                description: comp.description,
+                rte_addition: comp.rte_addition,
+                files: comp.files,
+            }
+        }).collect()
     }
 }
 
@@ -316,14 +360,18 @@ pub fn check_command<'a>(_: &Config, args: &ArgMatches<'a>, l: &Logger) -> Resul
     match Package::from_path(Path::new(filename.clone()), &l) {
         Ok(c) => {
             info!(l, "Parsing succedded");
-            println!("Revisions of package {}::{}", &c.vendor, &c.name);
-            for &Release{ref version, ref text} in c.releases.iter() {
-                println!("  {}: {} ", version, text.clone().trim());
+            println!("Software Components:");
+            for &Component{ref vendor, ref class, ref group, ref sub_group, ref condition, ref files, ..} in c.make_components().iter() {
+                println!("  {}::{}::{}::{:?} condition {:?}", vendor, class, group, sub_group, condition);
+                for &FileRef{ref path, ref category, ref condition, ..} in files.iter() {
+                    println!("    {:?}  {:?} condition {:?}", category, path, condition);
+                }
             }
         }
         Err(e) => {
             error!(l, "parsing {}: {}", filename, e);
         }
     }
+    debug!(l, "exiting");
     Ok(())
 }
