@@ -1,5 +1,5 @@
 use futures::{Stream, Poll, Async};
-use futures::stream::{iter, FuturesUnordered};
+use futures::stream::{iter_ok, iter_result, FuturesUnordered};
 use hyper::{self, Client, Response, Body, Chunk, Uri, StatusCode};
 use hyper::client::{FutureResponse, Connect};
 use hyper::header::Location;
@@ -175,8 +175,7 @@ where
             Err(e) => error!(logger, "Url {} did not parse {}", urlname, e),
         }
     }
-    Box::new(iter(pdsc_index.into_iter().map(Ok::<_, Error>)).chain(
-        job.map(iter).flatten(),
+    Box::new(iter_ok(pdsc_index.into_iter()).chain(job.map(iter_result).flatten(),
     )) as Box<Stream<Item = _, Error = _>>
 }
 

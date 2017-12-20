@@ -1,4 +1,5 @@
 use std::path::{Path, PathBuf};
+use std::collections::HashMap;
 use minidom::{Element, Error, ErrorKind};
 use clap::{App, Arg, ArgMatches, SubCommand};
 use slog::Logger;
@@ -9,6 +10,7 @@ use pack_index::network::Error as NetError;
 use ResultLogExt;
 
 custom_derive!{
+    #[allow(non_camel_case_types)]
     #[derive(Debug, PartialEq, Eq, EnumFromStr, Clone)]
     pub enum FileCategory{
         doc,
@@ -28,6 +30,7 @@ custom_derive!{
 }
 
 custom_derive!{
+    #[allow(non_camel_case_types)]
     #[derive(Debug, PartialEq, Eq, EnumFromStr, Clone)]
     pub enum FileAttribute{
         config, template
@@ -46,7 +49,7 @@ pub struct FileRef {
 }
 
 impl FromElem for FileRef {
-    fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
+    fn from_elem(e: &Element, _: &Logger) -> Result<Self, Error> {
         assert_root_name(e, "file")?;
         Ok(Self {
             path: attr_map(e, "name", "file")?,
@@ -231,19 +234,31 @@ impl FromElem for ComponentBuilders {
     }
 }
 
-struct ConditionComponent {}
+struct ConditionComponent {
+    pub device_family: Option<String>,
+    pub device_sub_family: Option<String>,
+    pub device_variant: Option<String>,
+    pub device_vendor: Option<String>,
+    pub device_name: Option<String>,
+}
 
 impl FromElem for ConditionComponent {
-    fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
-        Ok(ConditionComponent{})
+    fn from_elem(e: &Element, _: &Logger) -> Result<Self, Error> {
+        Ok(ConditionComponent{
+            device_family: attr_map(e, "Dfamily", "condition").ok(),
+            device_sub_family: attr_map(e, "Dsubfamily", "condition").ok(),
+            device_variant: attr_map(e, "Dvariant", "condition").ok(),
+            device_vendor: attr_map(e, "Dvendor", "condition").ok(),
+            device_name: attr_map(e, "Dname", "condition").ok(),
+        })
     }
 }
 
 struct Condition {
-    id: String,
-    accept: Vec<ConditionComponent>,
-    deny: Vec<ConditionComponent>,
-    require: Vec<ConditionComponent>,
+    pub id: String,
+    pub accept: Vec<ConditionComponent>,
+    pub deny: Vec<ConditionComponent>,
+    pub require: Vec<ConditionComponent>,
 }
 
 impl FromElem for Condition {
@@ -294,11 +309,12 @@ impl FromElem for Conditions {
 
 struct Release {
     version: String,
-    text: String,
+    pub text: String,
+
 }
 
 impl FromElem for Release {
-    fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
+    fn from_elem(e: &Element, _: &Logger) -> Result<Self, Error> {
         assert_root_name(e, "release")?;
         Ok(Self{
             version: attr_map(e, "version", "release")?,
@@ -321,11 +337,11 @@ impl FromElem for Releases {
 }
 
 struct Package {
-    name: String,
-    description: String,
-    vendor: String,
-    url: String,
-    license: Option<String>,
+    pub name: String,
+    pub description: String,
+    pub vendor: String,
+    pub url: String,
+    pub license: Option<String>,
     pub components: ComponentBuilders,
     pub releases: Releases,
     pub conditions: Conditions,
@@ -405,6 +421,16 @@ impl Package {
             }
         }).collect()
     }
+
+    fn make_condition_lookup<'a>(&'a self, l: &Logger) -> HashMap<&'a str, &'a Condition> {
+        let mut map = HashMap::with_capacity(self.conditions.iter().count());
+        for cond in self.conditions.iter() {
+            if let Some(dup) = map.insert(cond.id.as_str(), cond) {
+                warn!(l, "Duplicate Condition found {}", dup.id);
+            }
+        }
+        map
+    }
 }
 
 pub fn check_args<'a, 'b>() -> App<'a, 'b> {
@@ -427,11 +453,24 @@ pub fn check_command<'a>(_: &Config, args: &ArgMatches<'a>, l: &Logger) -> Resul
         Ok(c) => {
             info!(l, "Parsing succedded");
             info!(l, "{} Valid Conditions", c.conditions.iter().count());
+            let cond_lookup = c.make_condition_lookup(l);
             let mut num_components = 0;
             let mut num_files = 0;
-            for &Component{ref vendor, ref class, ref group, ref sub_group, ref condition, ref files, ..} in c.make_components().iter() {
+            for &Component{ref class, ref group, ref condition, ref files, ..} in c.make_components().iter() {
                 num_components += 1;
                 num_files += files.iter().count();
+                if let &Some(ref cond_name) = condition {
+                    if cond_lookup.get(cond_name.as_str()).is_none() {
+                        warn!(l, "Component {}::{} references an unknown condition '{}'", class, group, cond_name);
+                    }
+                }
+                for &FileRef{ref path, ref condition, ..} in files.iter() {
+                    if let &Some(ref cond_name) = condition {
+                        if cond_lookup.get(cond_name.as_str()).is_none() {
+                            warn!(l, "File {:?} Component {}::{} references an unknown condition '{}'", path, class, group, cond_name);
+                        }
+                    }
+                }
             }
             info!(l, "{} Valid Software Components", num_components);
             info!(l, "{} Valid Files References", num_files);

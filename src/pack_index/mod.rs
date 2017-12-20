@@ -1,5 +1,5 @@
 use smallstring::SmallString;
-use minidom::{Element, Error, ErrorKind};
+use minidom::{Element, Error};
 use slog::Logger;
 
 use parse::{attr_map, child_text, assert_root_name, DEFAULT_NS, FromElem};
@@ -37,7 +37,7 @@ pub struct Vidx {
 }
 
 impl FromElem for PdscRef {
-    fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
+    fn from_elem(e: &Element, _: &Logger) -> Result<Self, Error> {
         assert_root_name(e, "pdsc")?;
         Ok(Self {
             url: attr_map(e, "url", "pdsc")?,
@@ -54,7 +54,7 @@ impl FromElem for PdscRef {
 
 
 impl FromElem for Pidx {
-    fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
+    fn from_elem(e: &Element, _: &Logger) -> Result<Self, Error> {
         assert_root_name(e, "pidx")?;
         Ok(Self {
             url: attr_map(e, "url", "pidx")?,
