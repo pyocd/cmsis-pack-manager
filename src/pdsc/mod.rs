@@ -231,6 +231,67 @@ impl FromElem for ComponentBuilders {
     }
 }
 
+struct ConditionComponent {}
+
+impl FromElem for ConditionComponent {
+    fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
+        Ok(ConditionComponent{})
+    }
+}
+
+struct Condition {
+    id: String,
+    accept: Vec<ConditionComponent>,
+    deny: Vec<ConditionComponent>,
+    require: Vec<ConditionComponent>,
+}
+
+impl FromElem for Condition {
+    fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
+        assert_root_name(e, "condition")?;
+        let mut accept = Vec::new();
+        let mut deny = Vec::new();
+        let mut require = Vec::new();
+        for elem in e.children() {
+            match elem.name() {
+                "accept" => {
+                    accept.push(ConditionComponent::from_elem(e, l)?);
+                }
+                "deny" => {
+                    deny.push(ConditionComponent::from_elem(e, l)?);
+                }
+                "require" => {
+                    require.push(ConditionComponent::from_elem(e, l)?);
+                }
+                "description" => {
+                }
+                _ => {
+                    warn!(l, "Found unkonwn element {} in components", elem.name());
+                }
+            }
+        }
+        Ok(Condition {
+            id: attr_map(e, "id", "condition")?,
+            accept,
+            deny,
+            require,
+        })
+    }
+}
+
+type Conditions = Vec<Condition>;
+
+impl FromElem for Conditions {
+    fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
+        assert_root_name(e, "conditions")?;
+        Ok(
+            e.children()
+                .flat_map(|c| Condition::from_elem(c, l).ok_warn(l))
+                .collect()
+        )
+    }
+}
+
 struct Release {
     version: String,
     text: String,
@@ -267,6 +328,7 @@ struct Package {
     license: Option<String>,
     pub components: ComponentBuilders,
     pub releases: Releases,
+    pub conditions: Conditions,
 }
 
 impl FromElem for Package {
@@ -285,6 +347,9 @@ impl FromElem for Package {
         let releases = e.get_child("releases", DEFAULT_NS)
             .and_then(|c| Releases::from_elem(c, &l).ok_warn(&l))
             .unwrap_or_default();
+        let conditions = e.get_child("conditions", DEFAULT_NS)
+            .and_then(|c| Conditions::from_elem(c, &l).ok_warn(&l))
+            .unwrap_or_default();
         Ok(Self {
             name,
             description,
@@ -293,6 +358,7 @@ impl FromElem for Package {
             components,
             license: child_text(e, "license", "package").ok_warn(&l),
             releases,
+            conditions,
         })
     }
 }
@@ -360,13 +426,15 @@ pub fn check_command<'a>(_: &Config, args: &ArgMatches<'a>, l: &Logger) -> Resul
     match Package::from_path(Path::new(filename.clone()), &l) {
         Ok(c) => {
             info!(l, "Parsing succedded");
-            println!("Software Components:");
+            info!(l, "{} Valid Conditions", c.conditions.iter().count());
+            let mut num_components = 0;
+            let mut num_files = 0;
             for &Component{ref vendor, ref class, ref group, ref sub_group, ref condition, ref files, ..} in c.make_components().iter() {
-                println!("  {}::{}::{}::{:?} condition {:?}", vendor, class, group, sub_group, condition);
-                for &FileRef{ref path, ref category, ref condition, ..} in files.iter() {
-                    println!("    {:?}  {:?} condition {:?}", category, path, condition);
-                }
+                num_components += 1;
+                num_files += files.iter().count();
             }
+            info!(l, "{} Valid Software Components", num_components);
+            info!(l, "{} Valid Files References", num_files);
         }
         Err(e) => {
             error!(l, "parsing {}: {}", filename, e);
