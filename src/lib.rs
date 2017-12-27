@@ -1,4 +1,5 @@
-#![feature(conservative_impl_trait)]
+#![feature(proc_macro, conservative_impl_trait, generators)]
+
 #[macro_use]
 extern crate custom_derive;
 #[macro_use]
@@ -9,7 +10,8 @@ extern crate error_chain;
 extern crate futures_error_chain;
 #[macro_use]
 extern crate slog;
-extern crate futures;
+#[macro_use]
+extern crate futures_await as futures;
 extern crate tokio_core;
 extern crate hyper;
 extern crate hyper_tls;

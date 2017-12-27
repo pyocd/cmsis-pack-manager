@@ -1,5 +1,6 @@
+use futures::prelude::*;
 use futures::{Stream, Poll, Async};
-use futures::stream::{iter_ok, iter_result, FuturesUnordered};
+use futures::stream::{iter_ok, iter_result, futures_unordered, FuturesUnordered};
 use hyper::{self, Client, Response, Body, Chunk, Uri, StatusCode};
 use hyper::client::{FutureResponse, Connect};
 use hyper::header::Location;
@@ -7,6 +8,7 @@ use hyper_tls::HttpsConnector;
 use tokio_core::reactor::Core;
 use std::fs::OpenOptions;
 use std::io::{self, Write};
+use std::iter::Iterator;
 use std::path::PathBuf;
 use clap::{App, ArgMatches, SubCommand};
 use slog::Logger;
@@ -41,22 +43,7 @@ where
     urls: Vec<Uri>,
     current: FutureResponse,
     client: &'a Client<C, Body>,
-    logger: Logger,
-}
-
-impl<'a, C> Redirect<'a, C>
-where
-    C: Connect,
-{
-    fn new(client: &'a Client<C, Body>, uri: Uri, logger: Logger) -> Self {
-        let current = client.get(uri.clone());
-        Self {
-            urls: vec![uri],
-            current,
-            client,
-            logger,
-        }
-    }
+    logger: &'a Logger,
 }
 
 impl<'a, C> Future for Redirect<'a, C>
@@ -103,6 +90,41 @@ where
     }
 }
 
+trait ClientRedirExt<C> where C: Connect {
+    fn redirectable<'a>(
+        &'a self, uri: Uri, logger: &'a Logger
+    ) -> Redirect<'a, C>;
+}
+
+impl<C: Connect> ClientRedirExt<C> for Client<C, Body> {
+    fn redirectable<'a>(
+        &'a self, uri: Uri, logger: &'a Logger
+    ) -> Redirect<'a, C> {
+        let current = self.get(uri.clone());
+        Redirect {
+            urls: vec![uri],
+            current,
+            client: self,
+            logger,
+        }
+    }
+}
+
+fn download_vidx<'a, C: Connect, I: Into<String>>(
+    client: &'a Client<C, Body>, vidx_ref: I, logger:&'a Logger,
+) -> impl Future<Item=Vidx, Error=Error> + 'a {
+    let vidx = vidx_ref.into();
+    async_block!{
+        let uri = vidx.parse()?;
+        let body = await!(
+            client.redirectable(uri, logger)
+                .map(Response::body)
+                .flatten_stream()
+                .concat2())?;
+        parse_vidx(body, logger)
+    }
+}
+
 fn download_vidx_list<'a, C, I>(
     list: I,
     client: &'a Client<C, Body>,
@@ -110,28 +132,12 @@ fn download_vidx_list<'a, C, I>(
 ) -> impl Stream<Item = Vidx, Error = Error> + 'a
 where
     C: Connect,
-    I: IntoIterator,
+    I: IntoIterator + 'a,
     <I as IntoIterator>::Item: Into<String>,
 {
-    let mut job = FuturesUnordered::new();
-    for vidx_ref in list {
-        let vidx_text = vidx_ref.into();
-        match vidx_text.parse() {
-            Ok(uri) => {
-                let child_log = logger.new(o!());
-                job.push(
-                    Redirect::new(client, uri, logger.new(o!()))
-                        .map(Response::body)
-                        .flatten_stream()
-                        .concat2()
-                        .map_err(Error::from)
-                        .and_then(move |body| parse_vidx(body, &child_log)),
-                );
-            }
-            Err(e) => error!(logger, "Url {} did not parse {}", vidx_text, e),
-        }
-    }
-    Box::new(job) as Box<Stream<Item = _, Error = _>>
+    futures_unordered(list.into_iter().map(
+        |vidx_ref| download_vidx(client, vidx_ref, logger)
+    ))
 }
 
 fn parse_vidx(body: Chunk, logger: &Logger) -> Result<Vidx> {
@@ -139,11 +145,8 @@ fn parse_vidx(body: Chunk, logger: &Logger) -> Result<Vidx> {
     Vidx::from_string(string.as_str(), logger).map_err(Error::from)
 }
 
-fn stream_pdscs(body: Chunk, logger: &Logger) -> impl Iterator<Item = Result<PdscRef>> {
-    parse_vidx(body, logger)
-        .into_iter()
-        .flat_map(|vidx| vidx.pdsc_index.into_iter())
-        .map(Ok::<_, Error>)
+fn into_uri(Pidx {url, vendor, ..}: Pidx) -> String {
+    format!("{}{}{}", url, vendor, PIDX_SUFFIX)
 }
 
 fn flatmap_pdscs<'a, C>(
@@ -158,39 +161,23 @@ fn flatmap_pdscs<'a, C>(
 where
     C: Connect,
 {
-    let mut job = FuturesUnordered::new();
-    for Pidx { url, vendor, .. } in vendor_index {
-        let urlname = format!("{}{}{}", url, vendor, PIDX_SUFFIX);
-        match urlname.parse() {
-            Ok(uri) => {
-                let l = logger.new(o!());
-                let work = Redirect::new(client, uri, logger.new(o!()))
-                    .map(Response::body)
-                    .flatten_stream()
-                    .concat2()
-                    .map(move |body| stream_pdscs(body, &l))
-                    .from_err::<Error>();
-                job.push(work)
-            }
-            Err(e) => error!(logger, "Url {} did not parse {}", urlname, e),
-        }
-    }
-    Box::new(iter_ok(pdsc_index.into_iter()).chain(job.map(iter_result).flatten(),
-    )) as Box<Stream<Item = _, Error = _>>
+    let pidx_urls = vendor_index.into_iter().map(into_uri);
+    let job = download_vidx_list(pidx_urls, client, logger)
+        .map(|vidx| iter_ok(vidx.pdsc_index.into_iter()))
+        .flatten();
+    iter_ok(pdsc_index.into_iter()).chain(job)
 }
 
 fn make_uri_fd_pair(
     config: &Config,
-    PdscRef {
-        url,
-        vendor,
-        name,
-        version,
+    &PdscRef {
+        ref url,
+        ref vendor,
+        ref name,
+        ref version,
         ..
-    }: PdscRef,
-    logger: &Logger,
-) -> Result<Option<(Uri, String, PathBuf)>> {
-
+    }: &PdscRef,
+) -> Result<(Uri, PathBuf)> {
     let uri = if url.ends_with('/') {
         format!("{}{}.{}.pdsc", url, vendor, name)
     } else {
@@ -198,25 +185,36 @@ fn make_uri_fd_pair(
     }.parse()?;
     let pdscname = format!("{}.{}.{}.pdsc", vendor, name, version);
     let filename = config.pack_store.place_data_file(&pdscname)?;
-    if filename.exists() {
-        Ok(None)
-    } else {
-        info!(
-            logger,
-            "Updating package {}::{} to version {}",
-            vendor,
-            name,
-            version
-        );
-        Ok(Some((uri, url, filename)))
+    Ok((uri, filename))
+}
+
+fn download_pdsc<'a, C: Connect>(
+    config: &'a Config,
+    pdsc_ref: PdscRef,
+    client: &'a Client<C, Body>,
+    logger: &'a Logger,
+) -> impl Future<Item = Option<PathBuf>, Error = Error> + 'a {
+    async_block!{
+        let (uri, filename) = make_uri_fd_pair(config, &pdsc_ref)?;
+        if filename.exists() {
+            return Ok(None);
+        }
+        let PdscRef{vendor, name, version, ..} = pdsc_ref;
+        info!(logger, "Updating package {}::{} to version {}", vendor, name, version);
+        let mut fd = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .open(&filename)?;
+        let response = await!(client.redirectable(uri, logger))?;
+        #[async]
+        for bytes in response.body() {
+            fd.write_all(bytes.as_ref())?;
+        }
+        Ok(Some(filename))
     }
 }
 
-fn id<T>(slf: T) -> T {
-    slf
-}
-
-fn download_pdscs<'a, F, C>(
+fn download_pdsc_stream<'a, F, C>(
     config: &'a Config,
     stream: F,
     client: &'a Client<C, Body>,
@@ -226,33 +224,13 @@ where
     F: Stream<Item = PdscRef, Error = Error> + 'a,
     C: Connect,
 {
-    Box::new(
-        stream
-            .and_then(move |pdscref| make_uri_fd_pair(config, pdscref, logger))
-            .filter_map(id)
-            .map(move |(uri, url, filename)| {
-                Redirect::new(client, uri, logger.new(o!()))
-                    .map(Response::body)
-                    .flatten_stream()
-                    .concat2()
-                    .map_err(Error::from)
-                    .and_then(move |bytes| {
-                        let mut fd = OpenOptions::new()
-                            .write(true)
-                            .create(true)
-                            .open(&filename)
-                            .map_err(Error::from)?;
-                        fd.write_all(bytes.as_ref()).map_err(Error::from).map(|_| {
-                            Some(filename)
-                        })
-                    })
-                    .or_else(move |e| {
-                        error!(logger, "HTTP request for {} failed with {}", url, e);
-                        Ok::<_, Error>(None)
-                    })
-            })
-            .buffer_unordered(32),
-    ) as Box<Stream<Item = _, Error = _>>
+    stream
+        .map(move |pdsc_ref| download_pdsc(config, pdsc_ref, client, logger))
+        .buffer_unordered(32)
+}
+
+fn id<T>(slf: T) -> T {
+    slf
 }
 
 // This will "trick" the borrow checker into thinking that the lifetimes for
@@ -272,7 +250,7 @@ where
     let pdsc_list = parsed_vidx
         .map(|vidx| flatmap_pdscs(vidx, client, logger))
         .flatten();
-    let pdscs = download_pdscs(config, pdsc_list, client, logger);
+    let pdscs = download_pdsc_stream(config, pdsc_list, client, logger);
     core.run(pdscs.filter_map(id).collect())
 }
 
