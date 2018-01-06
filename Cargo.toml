@@ -3,6 +3,10 @@ name = "cmsis"
 version = "0.1.0"
 authors = ["Jimmy Brisson <theotherjimmy@gmail.com>"]
 
+[lib]
+name = "cmsis"
+crate-type = ["dylib", "rlib"]
+
 [dependencies]
 custom_derive = "0.1.1"
 enum_derive = "0.1.7"
@@ -24,3 +28,6 @@ clap = "2.19.0"
 [dev-dependencies]
 time = "*"
 slog-stdlog = "^2"
+
+[profile.release]
+debug = true

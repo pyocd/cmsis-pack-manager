@@ -68,7 +68,6 @@ impl FromElem for Vidx {
     fn from_elem(root: &Element, l: &Logger) -> Result<Self, Error> {
         assert_root_name(root, "index")?;
         let vendor = child_text(root, "vendor", "index")?;
-        let l = l.new(o!("Vendor" => vendor.clone()));
         let url = child_text(root, "url", "index")?;
         Ok(Vidx {
             vendor,

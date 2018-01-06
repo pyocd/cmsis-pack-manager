@@ -27,7 +27,7 @@ impl Config {
         })
     }
 
-    pub fn read_vidx_list(&self, l: Logger) -> Vec<String> {
+    pub fn read_vidx_list(&self, l: &Logger) -> Vec<String> {
         let fd = OpenOptions::new().read(true).open(&self.vidx_list);
         match fd.map_err(Error::from) {
             Ok(r) => {

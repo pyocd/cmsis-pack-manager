@@ -6,6 +6,7 @@ use hyper::client::{FutureResponse, Connect};
 use hyper::header::Location;
 use hyper_tls::HttpsConnector;
 use tokio_core::reactor::Core;
+use std::borrow::Borrow;
 use std::fs::OpenOptions;
 use std::io::{self, Write};
 use std::iter::Iterator;
@@ -36,77 +37,48 @@ error_chain!{
 
 future_chain!{}
 
-struct Redirect<'a, C>
-where
-    C: Connect,
-{
-    urls: Vec<Uri>,
-    current: FutureResponse,
-    client: &'a Client<C, Body>,
-    logger: &'a Logger,
+trait ClientRedirExt<C> where C: Connect {
+    fn redirectable<'a>(
+        &'a self, uri: Uri, logger: &'a Logger
+    ) -> Box<Future<Item=Response, Error=hyper::Error> + 'a>;
 }
 
-impl<'a, C> Future for Redirect<'a, C>
-where
-    C: Connect,
-{
-    type Item = Response;
-    type Error = hyper::Error;
-    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        loop {
-            match self.current.poll()? {
-                Async::NotReady => {
-                    return Ok(Async::NotReady);
-                }
-                Async::Ready(res) => {
+impl<C: Connect> ClientRedirExt<C> for Client<C, Body> {
+    fn redirectable<'a>(
+        &'a self, mut uri: Uri, logger: &'a Logger
+    ) -> Box<Future<Item=Response, Error=hyper::Error> + 'a> {
+        Box::new(
+            async_block!{
+                let mut urls = Vec::new();
+                loop {
+                    urls.push(uri.clone());
+                    let res = await!(self.get(uri))?;
                     match res.status() {
                         StatusCode::MovedPermanently |
                         StatusCode::Found |
                         StatusCode::SeeOther |
                         StatusCode::TemporaryRedirect |
                         StatusCode::PermanentRedirect => {
-                            let mut uri: Uri = res.headers()
+                            let mut new_uri: Uri = res.headers()
                                 .get::<Location>()
                                 .unwrap_or(&Location::new(""))
                                 .parse()?;
-                            if let Some(old_uri) = self.urls.last() {
-                                if uri.authority().is_none() {
+                            if let Some(ref old_uri) = urls.last() {
+                                if new_uri.authority().is_none() {
                                     if let Some(authority) = old_uri.authority() {
-                                        uri = format!("{}{}", authority, uri).parse()?
+                                        new_uri = format!("{}{}", authority, old_uri).parse()?
                                     }
                                 }
-                                debug!(self.logger, "Redirecting from {} to {}", old_uri, uri);
+                                debug!(logger, "Redirecting from {} to {}", old_uri, new_uri);
                             }
-                            self.urls.push(uri.clone());
-                            self.current = self.client.get(uri);
+                            uri = new_uri;
                         }
                         _ => {
-                            return Ok(Async::Ready(res));
+                            return Ok(res);
                         }
                     }
                 }
-            }
-        }
-    }
-}
-
-trait ClientRedirExt<C> where C: Connect {
-    fn redirectable<'a>(
-        &'a self, uri: Uri, logger: &'a Logger
-    ) -> Redirect<'a, C>;
-}
-
-impl<C: Connect> ClientRedirExt<C> for Client<C, Body> {
-    fn redirectable<'a>(
-        &'a self, uri: Uri, logger: &'a Logger
-    ) -> Redirect<'a, C> {
-        let current = self.get(uri.clone());
-        Redirect {
-            urls: vec![uri],
-            current,
-            client: self,
-            logger,
-        }
+            })
     }
 }
 
@@ -141,8 +113,8 @@ where
 }
 
 fn parse_vidx(body: Chunk, logger: &Logger) -> Result<Vidx> {
-    let string = String::from_utf8_lossy(body.as_ref()).into_owned();
-    Vidx::from_string(string.as_str(), logger).map_err(Error::from)
+    let string = String::from_utf8_lossy(body.as_ref());
+    Vidx::from_string(string.borrow(), logger).map_err(Error::from)
 }
 
 fn into_uri(Pidx {url, vendor, ..}: Pidx) -> String {
@@ -168,24 +140,34 @@ where
     iter_ok(pdsc_index.into_iter()).chain(job)
 }
 
-fn make_uri_fd_pair(
-    config: &Config,
+fn make_uri(
     &PdscRef {
         ref url,
         ref vendor,
         ref name,
-        ref version,
         ..
     }: &PdscRef,
-) -> Result<(Uri, PathBuf)> {
+) -> Result<Uri> {
     let uri = if url.ends_with('/') {
         format!("{}{}.{}.pdsc", url, vendor, name)
     } else {
         format!("{}/{}.{}.pdsc", url, vendor, name)
     }.parse()?;
+    Ok(uri)
+}
+
+fn make_fd(
+    config: &Config,
+    &PdscRef {
+        ref vendor,
+        ref name,
+        ref version,
+        ..
+    }: &PdscRef,
+) -> Result<PathBuf> {
     let pdscname = format!("{}.{}.{}.pdsc", vendor, name, version);
     let filename = config.pack_store.place_data_file(&pdscname)?;
-    Ok((uri, filename))
+    Ok(filename)
 }
 
 fn download_pdsc<'a, C: Connect>(
@@ -195,10 +177,11 @@ fn download_pdsc<'a, C: Connect>(
     logger: &'a Logger,
 ) -> impl Future<Item = Option<PathBuf>, Error = Error> + 'a {
     async_block!{
-        let (uri, filename) = make_uri_fd_pair(config, &pdsc_ref)?;
+        let filename = make_fd(config, &pdsc_ref)?;
         if filename.exists() {
             return Ok(None);
         }
+        let uri = make_uri(&pdsc_ref)?;
         let PdscRef{vendor, name, version, ..} = pdsc_ref;
         info!(logger, "Updating package {}::{} to version {}", vendor, name, version);
         let mut fd = OpenOptions::new()
@@ -274,8 +257,22 @@ pub fn update_args<'a, 'b>() -> App<'a, 'b> {
         .version("0.1.0")
 }
 
+#[no_mangle]
+pub extern fn update_pdsc_index()  {
+    extern crate slog_term;
+    extern crate slog_async;
+    use slog::Drain;
+    let decorator = slog_term::TermDecorator::new().build();
+    let drain = slog_term::FullFormat::new(decorator).build().fuse();
+    let drain = slog_async::Async::new(drain).build().fuse();
+    let log = Logger::root(drain, o!());
+    let conf = Config::new().unwrap();
+    let vidx_list = conf.read_vidx_list(&log);
+    let updated = update(&conf, vidx_list, &log).unwrap();
+}
+
 pub fn update_command<'a>(conf: &Config, _: &ArgMatches<'a>, logger: &Logger) -> Result<()> {
-    let vidx_list = conf.read_vidx_list(logger.clone());
+    let vidx_list = conf.read_vidx_list(&logger);
     for url in vidx_list.iter() {
         info!(logger, "Updating registry from `{}`", url);
     }
