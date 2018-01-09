@@ -2,7 +2,7 @@ use smallstring::SmallString;
 use minidom::{Element, Error};
 use slog::Logger;
 
-use parse::{attr_map, child_text, assert_root_name, DEFAULT_NS, FromElem};
+use parse::{attr_map, child_text, assert_root_name, FromElem};
 use ResultLogExt;
 
 pub mod network;
@@ -72,11 +72,11 @@ impl FromElem for Vidx {
         Ok(Vidx {
             vendor,
             url,
-            timestamp: root.get_child("timestamp", DEFAULT_NS).map(Element::text),
-            vendor_index: root.get_child("vindex", DEFAULT_NS)
+            timestamp: root.get_child("timestamp", "").map(Element::text),
+            vendor_index: root.get_child("vindex", "")
                 .map(|e| Pidx::vec_from_children(e.children(), &l))
                 .unwrap_or_default(),
-            pdsc_index: root.get_child("pindex", DEFAULT_NS)
+            pdsc_index: root.get_child("pindex", "")
                 .map(|e| PdscRef::vec_from_children(e.children(), &l))
                 .unwrap_or_default(),
         })

@@ -30,6 +30,7 @@ import warnings
 from distutils.version import LooseVersion
 from shutil import copyfile
 from appdirs import user_data_dir
+from ._native import ffi, lib
 
 warnings.filterwarnings("ignore")
 
@@ -453,6 +454,7 @@ class Cache () :
 
         .. note:: This process may use 11MB of drive space and take upwards of 1 minute.
         """
+        lib.update_pdsc_index()
         self.cache_descriptor_list(self.get_urls())
         self.generate_index()
         self.generate_aliases()

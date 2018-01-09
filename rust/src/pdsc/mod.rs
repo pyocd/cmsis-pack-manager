@@ -4,7 +4,7 @@ use minidom::{Element, Error, ErrorKind};
 use clap::{App, Arg, ArgMatches, SubCommand};
 use slog::Logger;
 
-use parse::{attr_map, attr_parse, child_text, assert_root_name, FromElem, DEFAULT_NS};
+use parse::{attr_map, attr_parse, child_text, assert_root_name, FromElem};
 use config::Config;
 use pack_index::network::Error as NetError;
 use ResultLogExt;
@@ -101,7 +101,7 @@ impl FromElem for ComponentBuilder{
         if let Some(s) = vendor.clone() {
             l = l.new(o!("SubGroup" => s));
         }
-        let files = e.get_child("files", DEFAULT_NS)
+        let files = e.get_child("files", "")
             .map(move |child| {
                 FileRef::vec_from_children(child.children(), &l)
             })
@@ -357,13 +357,13 @@ impl FromElem for Package {
         let l = l.new(o!("Vendor" => vendor.clone(),
                          "Package" => name.clone()
         ));
-        let components = e.get_child("components", DEFAULT_NS)
+        let components = e.get_child("components", "")
             .and_then(|c| ComponentBuilders::from_elem(c, &l).ok_warn(&l))
             .unwrap_or_default();
-        let releases = e.get_child("releases", DEFAULT_NS)
+        let releases = e.get_child("releases", "")
             .and_then(|c| Releases::from_elem(c, &l).ok_warn(&l))
             .unwrap_or_default();
-        let conditions = e.get_child("conditions", DEFAULT_NS)
+        let conditions = e.get_child("conditions", "")
             .and_then(|c| Conditions::from_elem(c, &l).ok_warn(&l))
             .unwrap_or_default();
         Ok(Self {

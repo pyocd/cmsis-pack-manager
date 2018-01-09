@@ -14,16 +14,35 @@
 # limitations under the License.
 
 from setuptools import setup, find_packages
+
+def build_native(spec):
+    build = spec.add_external_build(
+        cmd=['cargo', 'build', '--release', '--lib'],
+        path='./rust'
+    )
+
+    spec.add_cffi_module(
+        module_path='cmsis_pack_manager._native',
+        dylib=lambda: build.find_dylib('cmsis', in_path='target/release'),
+        header_filename=lambda: build.find_header('cmsis.h', in_path='target')
+    )
+
 setup(
     name = "cmsis-pack-manager",
     version = "0.1.0",
-    packages = find_packages(),
-    install_requires = ['appdirs>=1.4',
-                        'beautifulsoup4>=4.4.1',
-                        'fuzzywuzzy>=0.10.0'],
+    packages = ["cmsis_pack_manager"],
+    zip_safe = False,
+    platforms = 'any',
+    setup_requires = ['milksnake==0.1.1'],
+    install_requires = [
+        'appdirs>=1.4',
+        'beautifulsoup4>=4.4.1',
+        'fuzzywuzzy>=0.10.0',
+        'milksnake==0.1.1'],
     entry_points = {
         'console_scripts' : [
             'pack-manager = cmsis_pack_manager.pack_manager:main'
         ]
-    }
+    },
+    milksnake_tasks = [build_native]
 )

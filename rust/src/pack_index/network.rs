@@ -20,7 +20,6 @@ use super::{PdscRef, Vidx, Pidx};
 use parse::FromElem;
 use config::{self, Config};
 
-static PIDX_SUFFIX: &'static str = ".pidx";
 
 error_chain!{
     links{
@@ -118,7 +117,7 @@ fn parse_vidx(body: Chunk, logger: &Logger) -> Result<Vidx> {
 }
 
 fn into_uri(Pidx {url, vendor, ..}: Pidx) -> String {
-    format!("{}{}{}", url, vendor, PIDX_SUFFIX)
+    format!("{}{}.pidx", url, vendor)
 }
 
 fn flatmap_pdscs<'a, C>(

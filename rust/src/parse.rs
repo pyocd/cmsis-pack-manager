@@ -9,7 +9,6 @@ use slog::Logger;
 
 use ResultLogExt;
 
-pub static DEFAULT_NS: &'static str = "http://www.w3.org/2001/XMLSchema-instance";
 
 pub fn attr_map<'a, T>(from: &'a Element, name: &str, elemname: &'static str) -> Result<T, Error>
 where
@@ -49,7 +48,7 @@ pub fn child_text<'a>(
     name: &str,
     elemname: &'static str,
 ) -> Result<String, Error> {
-    from.get_child(name, DEFAULT_NS)
+    from.get_child(name, "")
         .map(Element::text)
         .ok_or_else(|| {
             Error::from_kind(ErrorKind::Msg(String::from(format!(
@@ -77,7 +76,8 @@ pub trait FromElem: Sized {
     fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error>;
 
     fn from_reader<T: BufRead>(r: &mut Reader<T>, l: &Logger) -> Result<Self, Error> {
-        let root = Element::from_reader(r)?;
+        let mut root = Element::from_reader(r)?;
+        root.set_attr::<&str, Option<String>>("xmlns", None);
         Self::from_elem(&root, l)
     }
     fn from_string(s: &str, l: &Logger) -> Result<Self, Error> {
