@@ -1,11 +1,13 @@
 use smallstring::SmallString;
 use minidom::{Element, Error};
 use slog::Logger;
+use std::path::PathBuf;
 
-use parse::{attr_map, child_text, assert_root_name, FromElem};
+use parse::{attr_map, child_text, assert_root_name, get_child_no_ns, FromElem};
 use ResultLogExt;
 
 pub mod network;
+pub mod cffi;
 
 #[derive(Debug, Clone)]
 pub struct PdscRef {
@@ -72,11 +74,11 @@ impl FromElem for Vidx {
         Ok(Vidx {
             vendor,
             url,
-            timestamp: root.get_child("timestamp", "").map(Element::text),
-            vendor_index: root.get_child("vindex", "")
+            timestamp: get_child_no_ns(root, "timestamp").map(Element::text),
+            vendor_index: get_child_no_ns(root, "vindex")
                 .map(|e| Pidx::vec_from_children(e.children(), &l))
                 .unwrap_or_default(),
-            pdsc_index: root.get_child("pindex", "")
+            pdsc_index: get_child_no_ns(root, "pindex")
                 .map(|e| PdscRef::vec_from_children(e.children(), &l))
                 .unwrap_or_default(),
         })

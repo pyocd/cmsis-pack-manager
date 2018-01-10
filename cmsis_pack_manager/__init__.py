@@ -447,6 +447,14 @@ class Cache () :
         self.generate_index()
         self.generate_aliases()
 
+    def _call_rust_update(self):
+        to_free = lib.update_pdsc_index()
+        to_free = ffi.gc(to_free, lib.update_pdsc_index_free)
+        maxlen = lib.update_pdsc_index_maxlen(to_free)
+        buff = ffi.new("char[]", maxlen + 1)
+        while lib.update_pdsc_index_next(to_free, buff, maxlen):
+            yield ffi.string(buff)[:]
+
     def cache_descriptors(self) :
         """Cache every PDSC file known.
 
@@ -454,10 +462,10 @@ class Cache () :
 
         .. note:: This process may use 11MB of drive space and take upwards of 1 minute.
         """
-        lib.update_pdsc_index()
-        self.cache_descriptor_list(self.get_urls())
-        self.generate_index()
-        self.generate_aliases()
+        for pdsc_filename in self._call_rust_update():
+            with open(pdsc_filename) as pdsc:
+                self._merge_pdsc_from_contents(BeautifulSoup(pdsc, "html.parser"),
+                                               pdsc_filename)
 
     def cache_descriptor_list(self, list) :
         """Cache a list of PDSC files.
@@ -536,6 +544,11 @@ class Cache () :
                 return zipinfo.filename
         return None
 
+    def _merge_pdsc_from_contents(self, pdsc_contents, pdsc_filename):
+        pdsc_url = self.get_pdsc_url(pdsc_contents, pdsc_filename)
+        pack_url = self.get_pack_url(pdsc_contents)
+        self._merge_targets(pdsc_url, pack_url, pdsc_contents)
+
     def add_local_pack_file(self, filename):
         """Add a single pack file to the index
 
@@ -547,10 +560,8 @@ class Cache () :
         if not pdsc_filename:
             raise Exception("PDSC file not found in PACK %s" % filename)
         with zipfile.open(pdsc_filename) as pdsc:
-            pdsc_contents = BeautifulSoup(pdsc, "html.parser")
-        pdsc_url = self.get_pdsc_url(pdsc_contents, pdsc_filename)
-        pack_url = self.get_pack_url(pdsc_contents)
-        self._merge_target(pdsc_url, pack_url, pdsc_content)
+            self._merge_pdsc_from_contents(BeautifulSoup(pdsc, "html.parser"),
+                                           pdsc_filename)
         pack_loc = self._cache_lookup(pack_url)
         if not exists(dirname(pack_loc)):
             makedirs(dirname(pack_loc))

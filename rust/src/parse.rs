@@ -9,16 +9,18 @@ use slog::Logger;
 
 use ResultLogExt;
 
+macro_rules! err_msg {
+    ($($arg:tt)*) => {
+        Error::from_kind(ErrorKind::Msg(format!($($arg)*)))
+    };
+}
 
 pub fn attr_map<'a, T>(from: &'a Element, name: &str, elemname: &'static str) -> Result<T, Error>
 where
     T: From<&'a str>,
 {
-    from.attr(name).map(T::from).ok_or_else(|| {
-        Error::from_kind(ErrorKind::Msg(String::from(
-            format!("{} not found in {} element", name, elemname),
-        )))
-    })
+    from.attr(name).map(T::from).ok_or_else(||
+        err_msg!("{} not found in {} element", name, elemname))
 }
 
 pub fn attr_parse<'a, T, E>(
@@ -31,15 +33,9 @@ where
     E: Display,
 {
     from.attr(name)
-        .ok_or_else(|| {
-            Error::from_kind(ErrorKind::Msg(String::from(
-                format!("{} not found in {} element", name, elemname),
-            )))
-        })
+        .ok_or_else(|| err_msg!("{} not found in {} element", name, elemname))
         .and_then(|st| {
-            st.parse::<T>().map_err(|e| {
-                Error::from_kind(ErrorKind::Msg(String::from(format!("{}", e))))
-            })
+            st.parse::<T>().map_err(|e| err_msg!("{}", e))
         })
 }
 
@@ -48,24 +44,32 @@ pub fn child_text<'a>(
     name: &str,
     elemname: &'static str,
 ) -> Result<String, Error> {
-    from.get_child(name, "")
-        .map(Element::text)
-        .ok_or_else(|| {
-            Error::from_kind(ErrorKind::Msg(String::from(format!(
-                "child element \"{}\" not found in \"{}\" element",
-                name,
-                elemname
-            ))))
-        })
+    match get_child_no_ns(from, name) {
+        Some(child) => {Ok(child.text())}
+        None => {Err(err_msg!(
+            "child element \"{}\" not found in \"{}\" element",
+            name,
+            elemname))}
+
+    }
+}
+
+pub fn get_child_no_ns<'a>(from: &'a Element, name: &str) -> Option<&'a Element> {
+    for child in from.children() {
+        if child.name() == name {
+            return Some(child);
+        }
+    }
+    None
 }
 
 pub fn assert_root_name(from: &Element, name: &str) -> Result<(), Error> {
     if from.name() != name {
-        Err(Error::from_kind(ErrorKind::Msg(String::from(format!(
+        Err(err_msg!(
             "tried to parse element \"{}\" from element \"{}\"",
             name,
             from.name()
-        )))))
+        ))
     } else {
         Ok(())
     }
@@ -77,7 +81,7 @@ pub trait FromElem: Sized {
 
     fn from_reader<T: BufRead>(r: &mut Reader<T>, l: &Logger) -> Result<Self, Error> {
         let mut root = Element::from_reader(r)?;
-        root.set_attr::<&str, Option<String>>("xmlns", None);
+        root.set_attr::<&str, Option<String>>("xmlns:xs", None);
         Self::from_elem(&root, l)
     }
     fn from_string(s: &str, l: &Logger) -> Result<Self, Error> {

@@ -10,7 +10,7 @@ use std::borrow::Borrow;
 use std::fs::OpenOptions;
 use std::io::{self, Write};
 use std::iter::Iterator;
-use std::path::PathBuf;
+use std::path::{PathBuf, Path};
 use clap::{App, ArgMatches, SubCommand};
 use slog::Logger;
 
@@ -19,6 +19,7 @@ use minidom;
 use super::{PdscRef, Vidx, Pidx};
 use parse::FromElem;
 use config::{self, Config};
+
 
 
 error_chain!{
@@ -254,20 +255,6 @@ pub fn update_args<'a, 'b>() -> App<'a, 'b> {
     SubCommand::with_name("update")
         .about("Update CMSIS PDSC files for indexing")
         .version("0.1.0")
-}
-
-#[no_mangle]
-pub extern fn update_pdsc_index()  {
-    extern crate slog_term;
-    extern crate slog_async;
-    use slog::Drain;
-    let decorator = slog_term::TermDecorator::new().build();
-    let drain = slog_term::FullFormat::new(decorator).build().fuse();
-    let drain = slog_async::Async::new(drain).build().fuse();
-    let log = Logger::root(drain, o!());
-    let conf = Config::new().unwrap();
-    let vidx_list = conf.read_vidx_list(&log);
-    let updated = update(&conf, vidx_list, &log).unwrap();
 }
 
 pub fn update_command<'a>(conf: &Config, _: &ArgMatches<'a>, logger: &Logger) -> Result<()> {
