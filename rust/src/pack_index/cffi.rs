@@ -1,7 +1,9 @@
 use slog::Logger;
 use config::Config;
-use std::path::{PathBuf, Path};
-use std::slice::from_raw_parts_mut;
+use std::os::raw::c_char;
+use std::ffi::CString;
+use std::path::PathBuf;
+use std::ptr::null;
 
 use super::network::update;
 
@@ -42,38 +44,32 @@ macro_rules! with_from_raw {
 }
 
 #[no_mangle]
-pub extern fn update_pdsc_index_maxlen(ptr: *mut UpdateReturn) -> usize {
+pub extern fn update_pdsc_index_next(ptr: *mut UpdateReturn) -> *const c_char {
     if ! ptr.is_null() {
-        with_from_raw!(let boxed = ptr, {
-            boxed.0.iter().map(|pb|{
-                pb.to_str().unwrap_or_default().len()
-            }).max()
-        }).unwrap_or_default()
+        with_from_raw!(let mut boxed = ptr, {
+            if let Some(osstr) = boxed.0.pop().map(|p| p.into_os_string()){
+                match osstr.to_str() {
+                    Some(osstr) => {
+                        match CString::new(osstr) {
+                            Ok(cstr) => cstr.into_raw(),
+                            Err(_) => null()
+                        }
+                    },
+                    None => null()
+                }
+            } else {
+                null()
+            }
+        })
     } else {
-        0
+        null()
     }
 }
 
 #[no_mangle]
-pub extern fn update_pdsc_index_next(
-    ptr: *mut UpdateReturn,
-    buff: *mut u8,
-    buff_size: usize) -> bool {
-    if ! ptr.is_null() && ! buff.is_null() {
-        with_from_raw!(let mut boxed = ptr, {
-            let path = boxed.0.pop();
-            if let Some(s) = path.as_ref().map(PathBuf::as_path).and_then(Path::to_str) {
-                let len = ::std::cmp::min(buff_size, s.len());
-                let (from, _) = s.as_bytes().split_at(len);
-                let into = unsafe {from_raw_parts_mut(buff, len)};
-                into.copy_from_slice(from);
-                true
-            } else {
-                false
-            }
-        })
-    } else {
-        false
+pub extern fn cstring_free(ptr: *mut c_char) {
+    if ! ptr.is_null() {
+        drop(unsafe {CString::from_raw(ptr)})
     }
 }
 
@@ -81,6 +77,6 @@ pub extern fn update_pdsc_index_next(
 #[no_mangle]
 pub extern fn update_pdsc_index_free(ptr: *mut UpdateReturn) {
     if ! ptr.is_null() {
-        let _ = unsafe {Box::from_raw(ptr)};
+        drop(unsafe {Box::from_raw(ptr)})
     }
 }

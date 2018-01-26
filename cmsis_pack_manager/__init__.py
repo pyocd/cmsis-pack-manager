@@ -449,11 +449,13 @@ class Cache () :
 
     def _call_rust_update(self):
         to_free = lib.update_pdsc_index()
-        to_free = ffi.gc(to_free, lib.update_pdsc_index_free)
-        maxlen = lib.update_pdsc_index_maxlen(to_free)
-        buff = ffi.new("char[]", maxlen + 1)
-        while lib.update_pdsc_index_next(to_free, buff, maxlen):
-            yield ffi.string(buff)[:]
+        pdsc_index = ffi.gc(to_free, lib.update_pdsc_index_free)
+        while True:
+            next = lib.update_pdsc_index_next(pdsc_index)
+            if next:
+                yield ffi.string(ffi.gc(next, lib.cstring_free))
+            else:
+                break
 
     def cache_descriptors(self) :
         """Cache every PDSC file known.
@@ -545,9 +547,13 @@ class Cache () :
         return None
 
     def _merge_pdsc_from_contents(self, pdsc_contents, pdsc_filename):
-        pdsc_url = self.get_pdsc_url(pdsc_contents, pdsc_filename)
-        pack_url = self.get_pack_url(pdsc_contents)
-        self._merge_targets(pdsc_url, pack_url, pdsc_contents)
+        print("processing %s"% pdsc_filename)
+        try:
+            pdsc_url = self.get_pdsc_url(pdsc_contents, pdsc_filename)
+            pack_url = self.get_pack_url(pdsc_contents)
+            self._merge_targets(pdsc_url, pack_url, pdsc_contents)
+        except AttributeError:
+            pass
 
     def add_local_pack_file(self, filename):
         """Add a single pack file to the index
