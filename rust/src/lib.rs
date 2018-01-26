@@ -10,7 +10,6 @@ extern crate error_chain;
 extern crate futures_error_chain;
 #[macro_use]
 extern crate slog;
-#[macro_use]
 extern crate futures_await as futures;
 extern crate tokio_core;
 extern crate hyper;

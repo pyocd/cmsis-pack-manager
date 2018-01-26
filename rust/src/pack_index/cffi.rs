@@ -25,6 +25,14 @@ pub extern fn update_pdsc_index() -> *mut UpdateReturn {
 macro_rules! with_from_raw {
     (let $boxed:ident = $ptr:ident, $block:block) => {
         {
+            let $boxed = unsafe {Box::from_raw($ptr)};
+            let ret = $block;
+            Box::into_raw($boxed);
+            ret
+        }
+    };
+    (let mut $boxed:ident = $ptr:ident, $block:block) => {
+        {
             let mut $boxed = unsafe {Box::from_raw($ptr)};
             let ret = $block;
             Box::into_raw($boxed);
@@ -52,7 +60,7 @@ pub extern fn update_pdsc_index_next(
     buff: *mut u8,
     buff_size: usize) -> bool {
     if ! ptr.is_null() && ! buff.is_null() {
-        with_from_raw!(let boxed = ptr, {
+        with_from_raw!(let mut boxed = ptr, {
             let path = boxed.0.pop();
             if let Some(s) = path.as_ref().map(PathBuf::as_path).and_then(Path::to_str) {
                 let len = ::std::cmp::min(buff_size, s.len());
@@ -68,6 +76,7 @@ pub extern fn update_pdsc_index_next(
         false
     }
 }
+
 
 #[no_mangle]
 pub extern fn update_pdsc_index_free(ptr: *mut UpdateReturn) {

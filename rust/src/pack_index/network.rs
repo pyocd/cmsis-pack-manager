@@ -1,8 +1,8 @@
 use futures::prelude::*;
-use futures::{Stream, Poll, Async};
-use futures::stream::{iter_ok, iter_result, futures_unordered, FuturesUnordered};
+use futures::Stream;
+use futures::stream::{iter_ok, futures_unordered};
 use hyper::{self, Client, Response, Body, Chunk, Uri, StatusCode};
-use hyper::client::{FutureResponse, Connect};
+use hyper::client::Connect;
 use hyper::header::Location;
 use hyper_tls::HttpsConnector;
 use tokio_core::reactor::Core;
@@ -10,7 +10,7 @@ use std::borrow::Borrow;
 use std::fs::OpenOptions;
 use std::io::{self, Write};
 use std::iter::Iterator;
-use std::path::{PathBuf, Path};
+use std::path::PathBuf;
 use clap::{App, ArgMatches, SubCommand};
 use slog::Logger;
 
