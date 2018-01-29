@@ -297,6 +297,15 @@ class Cache () :
                 device, pdsc_url, pack_url)
         self._index.update(to_merge)
 
+    def _merge_aliases(self, pdsc_contents):
+        to_merge = {}
+        for dev in pdsc_contents("board"):
+            try :
+                to_merge[dev['name']] = dev.mounteddevice['dname']
+            except (KeyError, TypeError, IndexError) as e:
+                pass
+        self._aliases.update(to_merge)
+
     def _generate_index_helper(self, pdsc_url) :
         try :
             pack_url = self.pdsc_to_pack(pdsc_url)
@@ -310,13 +319,7 @@ class Cache () :
 
     def _generate_aliases_helper(self, d) :
         try :
-            mydict = []
-            for dev in self.pdsc_from_cache(d)("board"):
-                try :
-                    mydict.append((dev['name'], dev.mounteddevice['dname']))
-                except (KeyError, TypeError, IndexError) as e:
-                    pass
-            self._aliases.update(dict(mydict))
+            _merge_aliases(self.pdsc_from_cache(d))
         except (AttributeError, TypeError) as e :
             pass
         self.counter += 1
@@ -551,6 +554,7 @@ class Cache () :
             pdsc_url = self.get_pdsc_url(pdsc_contents, pdsc_filename)
             pack_url = self.get_pack_url(pdsc_contents)
             self._merge_targets(pdsc_url, pack_url, pdsc_contents)
+            self._merge_aliases(pdsc_contents)
         except AttributeError:
             pass
 
