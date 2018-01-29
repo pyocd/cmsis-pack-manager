@@ -1,8 +1,14 @@
 language: rust
-rust:
-  - stable
-  - beta
-  - nightly
+cache: cargo
+
 matrix:
-  allow_failures:
-    - rust: nightly
+  include:
+     - os: linux
+       script: cd rust && cargo test
+       rust: nightly
+     - os: linux
+       script: python setup.py build
+       rust: nightly
+     - os: osx
+       script: python setup.py build
+       rust: nightly
