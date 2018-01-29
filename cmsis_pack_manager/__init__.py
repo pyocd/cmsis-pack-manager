@@ -448,8 +448,7 @@ class Cache () :
         self.generate_aliases()
 
     def _call_rust_update(self):
-        to_free = lib.update_pdsc_index()
-        pdsc_index = ffi.gc(to_free, lib.update_pdsc_index_free)
+        pdsc_index = ffi.gc(lib.update_pdsc_index(), lib.update_pdsc_index_free)
         while True:
             next = lib.update_pdsc_index_next(pdsc_index)
             if next:
