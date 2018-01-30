@@ -14,16 +14,17 @@
 # limitations under the License.
 
 from setuptools import setup, find_packages
+from os.path import join
 
 def build_native(spec):
     build = spec.add_external_build(
         cmd=['cargo', 'build', '--release', '--lib'],
-        path='./rust'
+        path='rust'
     )
 
     spec.add_cffi_module(
         module_path='cmsis_pack_manager._native',
-        dylib=lambda: build.find_dylib('cmsis', in_path='target/release'),
+        dylib=lambda: build.find_dylib('cmsis', in_path=join('target', 'release')),
         header_filename=lambda: build.find_header('cmsis.h', in_path='target')
     )
 
