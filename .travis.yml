@@ -4,11 +4,12 @@ cache: cargo
 matrix:
   include:
      - os: linux
-       script: cd rust && cargo test
-       rust: nightly
-     - os: linux
-       script: python setup.py build
+       script:
+         - python setup.py build
+         - cd rust && cargo test
        rust: nightly
      - os: osx
-       script: python setup.py build
+       script:
+         - python setup.py build
+         - cd rust && cargo test
        rust: nightly
