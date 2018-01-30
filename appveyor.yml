@@ -14,3 +14,4 @@ environment:
       PYTHON: "C:\\Python27"
 
 build_script: appveyor.bat
+skip_branch_with_pr: true
