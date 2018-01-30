@@ -2,25 +2,27 @@ use std::path::PathBuf;
 use std::io::{self, BufRead, BufReader, Write};
 use std::fs::{create_dir_all, OpenOptions};
 
-use xdg::{self, BaseDirectories};
+use app_dirs::{self, AppInfo, AppDataType, app_root};
 use slog::Logger;
 
 error_chain!{
     foreign_links{
-        Xdg(xdg::BaseDirectoriesError);
+        Dirs(app_dirs::AppDirsError);
         Io(io::Error);
     }
 }
 
 pub struct Config {
-    pub pack_store: BaseDirectories,
+    pub pack_store: PathBuf,
     pub vidx_list: PathBuf,
 }
 
 impl Config {
     pub fn new() -> Result<Config> {
-        let pack_store = BaseDirectories::with_prefix("cmsis")?;
-        let vidx_list = pack_store.place_config_file("vendors.list")?;
+        let app_info = AppInfo{name: "cmsis", author: "Arm"};
+        let pack_store = app_root(AppDataType::UserData, &app_info)?;
+        let mut vidx_list = app_root(AppDataType::UserConfig, &app_info)?;
+        vidx_list.push("vendors.list");
         Ok(Config {
             pack_store,
             vidx_list,

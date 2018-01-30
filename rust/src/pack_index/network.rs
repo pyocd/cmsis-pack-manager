@@ -164,10 +164,11 @@ fn make_fd(
         ref version,
         ..
     }: &PdscRef,
-) -> Result<PathBuf> {
+) -> PathBuf {
+    let mut filename = config.pack_store.clone();
     let pdscname = format!("{}.{}.{}.pdsc", vendor, name, version);
-    let filename = config.pack_store.place_data_file(&pdscname)?;
-    Ok(filename)
+    filename.push(pdscname);
+    filename
 }
 
 fn download_pdsc<'a, C: Connect>(
@@ -177,7 +178,7 @@ fn download_pdsc<'a, C: Connect>(
     logger: &'a Logger,
 ) -> impl Future<Item = Option<PathBuf>, Error = Error> + 'a {
     async_block!{
-        let filename = make_fd(config, &pdsc_ref)?;
+        let filename = make_fd(config, &pdsc_ref);
         if filename.exists() {
             return Ok(None);
         }

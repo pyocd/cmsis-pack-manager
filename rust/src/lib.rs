@@ -17,7 +17,7 @@ extern crate hyper_tls;
 extern crate minidom;
 extern crate quick_xml;
 extern crate smallstring;
-extern crate xdg;
+extern crate app_dirs;
 extern crate clap;
 
 trait ResultLogExt<T, E> {
