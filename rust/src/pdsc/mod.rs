@@ -4,7 +4,9 @@ use minidom::{Element, Error, ErrorKind};
 use clap::{App, Arg, ArgMatches, SubCommand};
 use slog::Logger;
 
-use parse::{attr_map, attr_parse, child_text, assert_root_name, FromElem};
+#[macro_use]
+use parse::{self, attr_map, attr_parse, attr_parse_hex, child_text,
+            assert_root_name, get_child_no_ns, FromElem};
 use config::Config;
 use pack_index::network::Error as NetError;
 use ResultLogExt;
@@ -336,6 +338,163 @@ impl FromElem for Releases {
     }
 }
 
+#[derive(Debug)]
+struct MemoryPermissions {
+    read: bool,
+    write: bool,
+    execute: bool,
+}
+
+impl MemoryPermissions {
+    fn from_str(input: &str) -> Self {
+        let mut ret = MemoryPermissions{
+            read: false,
+            write: false,
+            execute: false,
+        };
+        for c in input.chars() {
+            match c {
+                'r' => ret.read = true,
+                'w' => ret.write = true,
+                'x' => ret.execute = true,
+                _ => ()
+            }
+        }
+        ret
+    }
+}
+
+#[derive(Debug)]
+struct Memory{
+    access: MemoryPermissions,
+    start: u64,
+    size: u64,
+    startup: bool,
+}
+
+impl FromElem for (String, Memory) {
+    fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
+        let access = e.attr("id")
+            .map(|memtype|
+                 if memtype.contains("ROM") {
+                     "rx"
+                 } else if memtype.contains("RAM"){
+                     "rw"
+                 } else {
+                     ""
+                 })
+            .or_else(|| e.attr("access"))
+            .map(|memtype| MemoryPermissions::from_str(memtype)).unwrap();
+        let name = e.attr("id").or_else(|| e.attr("name"))
+            .map(|s| s.to_string()).ok_or_else(|| err_msg!("No name found for memory"))?;
+        let start = attr_parse_hex(e,"start", "memory")?;
+        let size = attr_parse_hex(e, "size", "memory")?;
+        let startup = attr_parse(e, "startup", "memory").unwrap_or_default();
+        Ok((name,
+            Memory{
+                access,
+                start,
+                size,
+                startup
+            }
+        ))
+    }
+}
+
+type Memories = HashMap<String, Memory>;
+
+struct DeviceBuilder {
+    name: Option<String>,
+    memories: Memories
+}
+
+
+impl FromElem for DeviceBuilder {
+    fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
+        let mut memories = Memories::new();
+        for child in e.children() {
+            match child.name() {
+                "memory" => memories.extend(FromElem::from_elem(child, l).ok_warn(l).into_iter()),
+                _ => ()
+            }
+        }
+        Ok(DeviceBuilder{
+            name: e.attr("Dname").or_else(||{
+                e.attr("Dvariant")
+            }).map(|s| s.to_string()),
+            memories
+        })
+    }
+}
+
+#[derive(Debug)]
+struct Device {
+    name: String,
+    memories: Memories,
+}
+
+impl DeviceBuilder {
+    fn build(self) -> Result<Device, Error> {
+        Ok(Device{
+            name: self.name.ok_or_else(|| err_msg!("Device found without a name"))?,
+            memories: self.memories
+        })
+    }
+}
+
+type Devices = Vec<Device>;
+
+fn parse_sub_family(e: &Element, l: &Logger, family: &DeviceBuilder) -> Result<Devices, Error> {
+    let sub_family_device = FromElem::from_elem(e, l)?;
+    let mut all_devices = Devices::new();
+    for child in e.children() {
+        all_devices.extend(match child.name() {
+            "device" => parse_device(child, l, &sub_family_device)?,
+            _ => continue,
+        })
+    }
+    Ok(all_devices)
+}
+
+fn parse_device(e: &Element, l: &Logger, sub_family: &DeviceBuilder) -> Result<Devices, Error> {
+    let device = FromElem::from_elem(e, l)?;
+    let mut all_devices = Devices::new();
+    for child in e.children() {
+        all_devices.push(match child.name() {
+            "variant" => parse_variant(child, l, &device)?,
+            _ => continue,
+        })
+    }
+    if all_devices.is_empty() {
+        all_devices.push(device.build()?);
+    }
+    Ok(all_devices)
+}
+fn parse_variant(e: &Element, l: &Logger, device: &DeviceBuilder) -> Result<Device, Error> {
+    unimplemented!()
+}
+
+fn parse_family(e: &Element, l: &Logger) -> Result<Devices, Error> {
+    assert_root_name(e, "family");
+    let family_device = FromElem::from_elem(e, l)?;
+    let mut all_devices = Devices::new();
+    for child in e.children() {
+        all_devices.extend(match child.name() {
+            "subFamily" => parse_sub_family(child, &l, &family_device)?,
+            "device" => parse_device(child, &l, &family_device)?,
+            _ => continue,
+        })
+    }
+    Ok(all_devices)
+}
+
+impl FromElem for Devices {
+    fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
+        assert_root_name(e, "devices");
+        Ok(e.children().flat_map(|c| parse_family(c, l).unwrap()).collect())
+    }
+}
+
 struct Package {
     pub name: String,
     pub description: String,
@@ -345,6 +504,7 @@ struct Package {
     pub components: ComponentBuilders,
     pub releases: Releases,
     pub conditions: Conditions,
+    pub devices: Devices,
 }
 
 impl FromElem for Package {
@@ -357,14 +517,17 @@ impl FromElem for Package {
         let l = l.new(o!("Vendor" => vendor.clone(),
                          "Package" => name.clone()
         ));
-        let components = e.get_child("components", "")
+        let components = get_child_no_ns(e, "components")
             .and_then(|c| ComponentBuilders::from_elem(c, &l).ok_warn(&l))
             .unwrap_or_default();
-        let releases = e.get_child("releases", "")
+        let releases = get_child_no_ns(e, "releases")
             .and_then(|c| Releases::from_elem(c, &l).ok_warn(&l))
             .unwrap_or_default();
-        let conditions = e.get_child("conditions", "")
+        let conditions = get_child_no_ns(e, "conditions")
             .and_then(|c| Conditions::from_elem(c, &l).ok_warn(&l))
+            .unwrap_or_default();
+        let devices = get_child_no_ns(e, "devices")
+            .and_then(|c| Devices::from_elem(c, &l).ok_warn(&l))
             .unwrap_or_default();
         Ok(Self {
             name,
@@ -375,13 +538,14 @@ impl FromElem for Package {
             license: child_text(e, "license", "package").ok_warn(&l),
             releases,
             conditions,
+            devices,
         })
     }
 }
 
 
 #[derive(Debug)]
-pub struct Component{
+pub struct Component {
     vendor: String,
     class: String,
     group: String,
@@ -471,6 +635,9 @@ pub fn check_command<'a>(_: &Config, args: &ArgMatches<'a>, l: &Logger) -> Resul
                         }
                     }
                 }
+            }
+            for dev in c.devices.iter() {
+                info!(l, "{:?}", dev)
             }
             info!(l, "{} Valid Software Components", num_components);
             info!(l, "{} Valid Files References", num_files);

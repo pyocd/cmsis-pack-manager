@@ -51,7 +51,8 @@ where
     }
 }
 
+#[macro_use]
+pub mod parse;
 pub mod pack_index;
 pub mod pdsc;
-pub mod parse;
 pub mod config;
