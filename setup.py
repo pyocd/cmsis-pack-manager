@@ -13,18 +13,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+
 from setuptools import setup, find_packages
-from os.path import join
+from os.path import join, dirname
 
 def build_native(spec):
     build = spec.add_external_build(
         cmd=['cargo', 'build', '--release', '--lib'],
-        path='rust'
+        path=join(dirname(__file__), 'rust')
     )
 
     spec.add_cffi_module(
         module_path='cmsis_pack_manager._native',
-        dylib=lambda: build.find_dylib('cmsis', in_path=join('target', 'release')),
+        dylib=lambda: build.find_dylib('cmsis', in_path='target/release'),
         header_filename=lambda: build.find_header('cmsis.h', in_path='target')
     )
 

@@ -15,3 +15,5 @@ environment:
 
 build_script: appveyor.bat
 skip_branch_with_pr: true
+artifacts:
+  - path: dist\*

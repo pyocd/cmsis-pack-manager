@@ -48,7 +48,8 @@ if %ERRORLEVEL% NEQ 0 (
 start /wait msiexec /i build\rust-%RUST%-%TARGET_ARCH%-pc-windows-msvc.msi INSTALLDIR="%TARGET_PROGRAM_FILES%\Rust %RUST%" /quiet /qn /norestart
 if %ERRORLEVEL% NEQ 0 exit 1
 
-set PATH="%TARGET_PROGRAM_FILES%\Rust %RUST%\bin";%cd%\windows_build_tools;%PATH%
+set PATH=%TARGET_PROGRAM_FILES%\Rust %RUST%\bin;%cd%\windows_build_tools;%PATH%
+set TARGET=nightly-%TARGET_ARCH%-pc-windows-msvc
 
 if [%Configuration%] == [Release] set CARGO_MODE=--release
 
@@ -60,9 +61,13 @@ rustc --version
 cargo --version
 
 cd rust
-cargo test -vv %CARGO_MODE%
+cargo test %CARGO_MODE%
 if %ERRORLEVEL% NEQ 0 exit 1
 cd ..
+
+dir rust\target\release
+
+pip install git+https://github.com/getsentry/milksnake.git
 
 python setup.py build
 if %ERRORLEVEL% NEQ 0 exit 1
