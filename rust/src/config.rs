@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::io::{self, BufRead, BufReader, Write};
 use std::fs::{create_dir_all, OpenOptions};
 
-use app_dirs::{self, AppInfo, AppDataType, app_root};
+use app_dirs::{self, app_root, AppDataType, AppInfo};
 use slog::Logger;
 
 error_chain!{
@@ -17,31 +17,76 @@ pub struct Config {
     pub vidx_list: PathBuf,
 }
 
-impl Config {
-    pub fn new() -> Result<Config> {
-        let app_info = AppInfo{name: "cmsis", author: "Arm"};
-        let pack_store = app_root(AppDataType::UserData, &app_info)?;
-        let mut vidx_list = app_root(AppDataType::UserConfig, &app_info)?;
-        vidx_list.push("vendors.list");
+pub struct ConfigBuilder {
+    pack_store: Option<PathBuf>,
+    vidx_list: Option<PathBuf>,
+}
+
+impl ConfigBuilder {
+    pub fn new() -> Self {
+        Self {
+            pack_store: None,
+            vidx_list: None,
+        }
+    }
+
+    pub fn with_pack_store<T: Into<PathBuf>>(self, ps: T) -> Self {
+        Self {
+            pack_store: Some(ps.into()),
+            ..self
+        }
+    }
+
+    pub fn with_vidx_list<T: Into<PathBuf>>(self, vl: T) -> Self {
+        Self {
+            pack_store: Some(vl.into()),
+            ..self
+        }
+    }
+
+    pub fn build(self) -> Result<Config> {
+        let app_info = AppInfo {
+            name: "cmsis",
+            author: "Arm",
+        };
+        let pack_store = match self.pack_store {
+            Some(ps) => {
+                create_dir_all(&ps)?;
+                ps
+            }
+            None => app_root(AppDataType::UserData, &app_info)?,
+        };
+        let vidx_list = match self.vidx_list {
+            Some(vl) => vl,
+            None => {
+                let mut vl = app_root(AppDataType::UserConfig, &app_info)?;
+                vl.push("vendors.list");
+                vl
+            }
+        };
         Ok(Config {
             pack_store,
             vidx_list,
         })
     }
+}
+
+impl Config {
+    pub fn new() -> Result<Config> {
+        ConfigBuilder::new().build()
+    }
 
     pub fn read_vidx_list(&self, l: &Logger) -> Vec<String> {
         let fd = OpenOptions::new().read(true).open(&self.vidx_list);
         match fd.map_err(Error::from) {
-            Ok(r) => {
-                BufReader::new(r)
-                    .lines()
-                    .enumerate()
-                    .flat_map(|(linenum, line)| {
-                        line.map_err(|e| error!(l, "Could not parse line #{}: {}", linenum, e))
-                            .into_iter()
-                    })
-                    .collect()
-            }
+            Ok(r) => BufReader::new(r)
+                .lines()
+                .enumerate()
+                .flat_map(|(linenum, line)| {
+                    line.map_err(|e| error!(l, "Could not parse line #{}: {}", linenum, e))
+                        .into_iter()
+                })
+                .collect(),
             Err(_) => {
                 warn!(l, "Failed to open vendor index list read only. Recreating.");
                 let new_content = vec![
@@ -54,7 +99,7 @@ impl Config {
                             error!(
                                 l,
                                 "Could not create parent directory for vendor index list.\
-                                    Error: {}",
+                                 Error: {}",
                                 e
                             );
                         });
@@ -63,22 +108,21 @@ impl Config {
                         error!(l, "Could not get parent directory for vendors.list");
                     }
                 }
-                match OpenOptions::new().create(true).write(true).open(
-                    &self.vidx_list,
-                ) {
+                match OpenOptions::new()
+                    .create(true)
+                    .write(true)
+                    .open(&self.vidx_list)
+                {
                     Ok(mut fd) => {
                         let lines = new_content.join("\n");
                         fd.write_all(lines.as_bytes()).unwrap_or_else(|e| {
                             error!(l, "Could not create vendor list file: {}", e);
                         });
                     }
-                    Err(e) => {
-                        error!(
-                            l,
-                            "Could not open vendors index list file for writing {}",
-                            e
-                        )
-                    }
+                    Err(e) => error!(
+                        l,
+                        "Could not open vendors index list file for writing {}", e
+                    ),
                 }
                 new_content
             }

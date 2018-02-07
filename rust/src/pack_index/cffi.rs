@@ -1,5 +1,5 @@
 use slog::Logger;
-use config::Config;
+use config::ConfigBuilder;
 use std::os::raw::c_char;
 use std::ffi::{CStr, CString};
 use std::path::PathBuf;
@@ -18,15 +18,20 @@ pub extern fn update_pdsc_index(pack_store: *const c_char, vidx_list: *const c_c
     let drain = slog_term::FullFormat::new(decorator).build().fuse();
     let drain = slog_async::Async::new(drain).build().fuse();
     let log = Logger::root(drain, o!());
-    if ! pack_store.is_null(){
+    let conf_bld = ConfigBuilder::new();
+    let conf_bld = if ! pack_store.is_null(){
         let pstore = unsafe{ CStr::from_ptr(pack_store) }.to_string_lossy();
-        println!("got {} as pack_store", pstore);
-    }
-    if ! vidx_list.is_null(){
+        conf_bld.with_pack_store(pstore.into_owned())
+    } else {
+        conf_bld
+    };
+    let conf_bld = if ! vidx_list.is_null(){
         let vlist = unsafe{ CStr::from_ptr(vidx_list) }.to_string_lossy();
-        println!("got {} as vidx_list", vlist);
-    }
-    let conf = Config::new().unwrap();
+        conf_bld.with_vidx_list(vlist.into_owned())
+    } else {
+        conf_bld
+    };
+    let conf = conf_bld.build().unwrap();
     let vidx_list = conf.read_vidx_list(&log);
     let updated = update(&conf, vidx_list, &log).unwrap();
     Box::into_raw(Box::new(UpdateReturn(updated)))
