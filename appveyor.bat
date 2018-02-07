@@ -67,6 +67,8 @@ cd ..
 
 dir rust\target\release
 
+pip install --upgrade pip setuptools wheel
+
 pip install git+https://github.com/getsentry/milksnake.git
 
 python setup.py build

@@ -8,6 +8,8 @@ except ImportError:
     import socketserver
 import threading
 import urllib
+import tempfile
+from os.path import join, dirname
 
 import cmsis_pack_manager
 
@@ -19,5 +21,7 @@ def test_pull_pdscs():
     httpd_thread.setDaemon(True)
     httpd_thread.start()
 
-    c = cmsis_pack_manager.Cache(True, True)
-    c.cache_descriptors() #"localhost:%s" % PORT)
+    c = cmsis_pack_manager.Cache(True, True, vidx_list=join(dirname(__file__), 'test-pack-index', 'vendors.list'))
+    c.data_path = tempfile.mkdtemp()
+    c.cache_descriptors()
+    assert("MyDevice" in c.index)

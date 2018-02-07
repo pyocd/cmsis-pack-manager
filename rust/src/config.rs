@@ -39,7 +39,7 @@ impl ConfigBuilder {
 
     pub fn with_vidx_list<T: Into<PathBuf>>(self, vl: T) -> Self {
         Self {
-            pack_store: Some(vl.into()),
+            vidx_list: Some(vl.into()),
             ..self
         }
     }
@@ -51,13 +51,18 @@ impl ConfigBuilder {
         };
         let pack_store = match self.pack_store {
             Some(ps) => {
-                create_dir_all(&ps)?;
+                if !(&ps).exists() {
+                    create_dir_all(&ps)?;
+                }
                 ps
             }
             None => app_root(AppDataType::UserData, &app_info)?,
         };
         let vidx_list = match self.vidx_list {
-            Some(vl) => vl,
+            Some(vl) => {
+                let _ = OpenOptions::new().read(true).open(&vl)?;
+                vl
+            }
             None => {
                 let mut vl = app_root(AppDataType::UserConfig, &app_info)?;
                 vl.push("vendors.list");

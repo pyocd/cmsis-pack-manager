@@ -20,8 +20,6 @@ from setuptools import setup, find_packages
 from os.path import join, dirname
 
 def build_native(spec):
-    import pprint
-    pprint.PrettyPrinter().pprint(dict(os.environ))
     build = spec.add_external_build(
         cmd=['cargo', 'build', '--release', '--lib'],
         path=join(dirname(__file__), 'rust')
