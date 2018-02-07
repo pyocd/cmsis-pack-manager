@@ -14,11 +14,14 @@
 # limitations under the License.
 
 import sys
+import os
 
 from setuptools import setup, find_packages
 from os.path import join, dirname
 
 def build_native(spec):
+    import pprint
+    pprint.PrettyPrinter().pprint(dict(os.environ))
     build = spec.add_external_build(
         cmd=['cargo', 'build', '--release', '--lib'],
         path=join(dirname(__file__), 'rust')
@@ -36,16 +39,24 @@ setup(
     packages = ["cmsis_pack_manager"],
     zip_safe = False,
     platforms = 'any',
-    setup_requires = ['milksnake==0.1.1'],
+    setup_requires = [
+        'milksnake==0.1.1',
+        'pytest-runner'],
     install_requires = [
         'appdirs>=1.4',
         'beautifulsoup4>=4.4.1',
         'fuzzywuzzy>=0.10.0',
         'milksnake==0.1.1'],
+    tests_require = [
+        'hypothesis', 
+        'jinja2',
+        'mock',
+        'pytest'],
     entry_points = {
         'console_scripts' : [
             'pack-manager = cmsis_pack_manager.pack_manager:main'
         ]
     },
-    milksnake_tasks = [build_native]
+    milksnake_tasks = [build_native],
+    test_suite="tests"
 )

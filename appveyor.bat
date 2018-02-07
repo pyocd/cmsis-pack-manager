@@ -71,3 +71,7 @@ pip install git+https://github.com/getsentry/milksnake.git
 
 python setup.py build
 if %ERRORLEVEL% NEQ 0 exit 1
+
+set
+python setup.py test
+if %ERRORLEVEL% NEQ 0 exit 1
