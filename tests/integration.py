@@ -21,3 +21,4 @@ def test_pull_pdscs():
 
     c = cmsis_pack_manager.Cache(True, True)
     c.cache_descriptors() #"localhost:%s" % PORT)
+    assert(False)

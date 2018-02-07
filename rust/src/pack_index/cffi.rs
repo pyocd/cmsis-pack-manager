@@ -1,7 +1,7 @@
 use slog::Logger;
 use config::Config;
 use std::os::raw::c_char;
-use std::ffi::CString;
+use std::ffi::{CStr, CString};
 use std::path::PathBuf;
 use std::ptr::null;
 
@@ -10,7 +10,7 @@ use super::network::update;
 pub struct UpdateReturn(Vec<PathBuf>);
 
 #[no_mangle]
-pub extern fn update_pdsc_index() -> *mut UpdateReturn {
+pub extern fn update_pdsc_index(pack_store: *const c_char, vidx_list: *const c_char) -> *mut UpdateReturn {
     extern crate slog_term;
     extern crate slog_async;
     use slog::Drain;
@@ -18,6 +18,14 @@ pub extern fn update_pdsc_index() -> *mut UpdateReturn {
     let drain = slog_term::FullFormat::new(decorator).build().fuse();
     let drain = slog_async::Async::new(drain).build().fuse();
     let log = Logger::root(drain, o!());
+    if ! pack_store.is_null(){
+        let pstore = unsafe{ CStr::from_ptr(pack_store) }.to_string_lossy();
+        println!("got {} as pack_store", pstore);
+    }
+    if ! vidx_list.is_null(){
+        let vlist = unsafe{ CStr::from_ptr(vidx_list) }.to_string_lossy();
+        println!("got {} as vidx_list", vlist);
+    }
     let conf = Config::new().unwrap();
     let vidx_list = conf.read_vidx_list(&log);
     let updated = update(&conf, vidx_list, &log).unwrap();

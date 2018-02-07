@@ -89,7 +89,7 @@ class Cache () :
     :param no_timeouts: A boolean that, when True, disables the default connection timeout and low speed timeout for downloading things.
     :type no_timeouts: bool
     """
-    def __init__ (self, silent, no_timeouts, json_path=None, data_path=None) :
+    def __init__ (self, silent, no_timeouts, json_path=None, data_path=None, vidx_list=None) :
         default_path = user_data_dir('cmsis-pack-manager')
         json_path = default_path if not json_path else json_path
         self.silent = silent
@@ -102,6 +102,7 @@ class Cache () :
         self.index_path = join(json_path, "index.json")
         self.aliases_path = join(json_path, "aliases.json")
         self.data_path = default_path if not data_path else data_path
+        self.vidx_list = vidx_list
 
     def display_counter (self, message) :
         stdout.write("{} {}/{}\r".format(message, self.counter, self.total))
@@ -451,7 +452,9 @@ class Cache () :
         self.generate_aliases()
 
     def _call_rust_update(self):
-        pdsc_index = ffi.gc(lib.update_pdsc_index(), lib.update_pdsc_index_free)
+        cdata_path = ffi.new("char[]", self.data_path) if self.data_path else ffi.NULL
+        cvidx_path = ffi.new("char[]", self.vidx_list) if self.vidx_list else ffi.NULL
+        pdsc_index = ffi.gc(lib.update_pdsc_index(cdata_path, cvidx_path), lib.update_pdsc_index_free)
         while True:
             next = lib.update_pdsc_index_next(pdsc_index)
             if next:
