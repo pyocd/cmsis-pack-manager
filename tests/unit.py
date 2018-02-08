@@ -33,34 +33,8 @@ def test_strip_protocol(protocol, url):
     uri = protocol + u'://' + url
     assert(cmsis_pack_manager.strip_protocol(uri) == url)
 
-@given(text(alphabet=ascii_lowercase), text(alphabet=ascii_lowercase + ":/_."))
-@example("http", "google.com")
-@example("http", "google.com://foo")
-def test_cache_lookup(protocol, url):
-    obj = cmsis_pack_manager.Cache(True, True)
-    uri = protocol + u'://' + url
-    assert(obj.data_path in obj._cache_lookup(uri))
-
-@given(text(alphabet=ascii_lowercase + ":/_."), text())
-def test_cache_file(url, contents):
-    @patch("cmsis_pack_manager.Cache._cache_lookup")
-    @patch("cmsis_pack_manager.Cache.display_counter")
-    @patch("cmsis_pack_manager.urlopen")
-    @patch("cmsis_pack_manager.makedirs")
-    @patch("cmsis_pack_manager.open", create=True)
-    def inner_test(_open, _, _urlopen, __, _cache_lookup):
-        _open.return_value = MagicMock(spec=file)
-        _urlopen.return_value.read.return_value = contents
-        c = cmsis_pack_manager.Cache(True, True)
-        c.cache_file(url)
-        _urlopen.assert_called_with(url)
-        _open.assert_called_with(_cache_lookup.return_value, "wb+")
-        _open.return_value.__enter__.return_value.write.assert_called_with(contents)
-    inner_test()
-
-
 @given(text(alphabet=ascii_lowercase + "/", min_size=1),
-       text(alphabet=ascii_lowercase +"/", min_size=1))
+       text(alphabet=ascii_lowercase + "/", min_size=1))
 def test_pdsc_from_cache(data_path, url):
     @patch("cmsis_pack_manager.BeautifulSoup")
     @patch("cmsis_pack_manager.open", create=True)
