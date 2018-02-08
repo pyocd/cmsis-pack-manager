@@ -5,8 +5,8 @@ use clap::{App, Arg, ArgMatches, SubCommand};
 use slog::Logger;
 
 #[macro_use]
-use parse::{self, attr_map, attr_parse, attr_parse_hex, child_text,
-            assert_root_name, get_child_no_ns, FromElem};
+use parse::{assert_root_name, attr_map, attr_parse, attr_parse_hex, child_text, get_child_no_ns,
+            FromElem};
 use config::Config;
 use pack_index::network::Error as NetError;
 use ResultLogExt;
@@ -66,7 +66,7 @@ impl FromElem for FileRef {
 }
 
 #[derive(Debug, Clone)]
-pub struct ComponentBuilder{
+pub struct ComponentBuilder {
     vendor: Option<String>,
     class: Option<String>,
     group: Option<String>,
@@ -83,7 +83,7 @@ pub struct ComponentBuilder{
     files: Vec<FileRef>,
 }
 
-impl FromElem for ComponentBuilder{
+impl FromElem for ComponentBuilder {
     fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
         assert_root_name(e, "component")?;
         let mut l = l.new(o!("in" => "Component"));
@@ -104,9 +104,7 @@ impl FromElem for ComponentBuilder{
             l = l.new(o!("SubGroup" => s));
         }
         let files = e.get_child("files", "")
-            .map(move |child| {
-                FileRef::vec_from_children(child.children(), &l)
-            })
+            .map(move |child| FileRef::vec_from_children(child.children(), &l))
             .unwrap_or_default();
         Ok(Self {
             vendor,
@@ -155,13 +153,11 @@ impl Bundle {
         }
         self.components
             .into_iter()
-            .map(|comp| {
-                ComponentBuilder {
-                    class: comp.class.or_else(|| Some(class.clone())),
-                    version: comp.version.or_else(|| Some(version.clone())),
-                    vendor: comp.vendor.or_else(|| vendor.clone()),
-                    ..comp
-                }
+            .map(|comp| ComponentBuilder {
+                class: comp.class.or_else(|| Some(class.clone())),
+                version: comp.version.or_else(|| Some(version.clone())),
+                vendor: comp.vendor.or_else(|| vendor.clone()),
+                ..comp
             })
             .collect()
     }
@@ -177,10 +173,12 @@ impl FromElem for Bundle {
                          "Class" => class.clone(),
                          "Version" => version.clone()));
         let components = e.children()
-            .filter_map(move |chld| if chld.name() == "component" {
-                ComponentBuilder::from_elem(chld, &l).ok()
-            } else {
-                None
+            .filter_map(move |chld| {
+                if chld.name() == "component" {
+                    ComponentBuilder::from_elem(chld, &l).ok()
+                } else {
+                    None
+                }
             })
             .collect();
         Ok(Self {
@@ -208,12 +206,10 @@ fn child_to_component_iter(
             let component = ComponentBuilder::from_elem(e, l)?;
             Ok(Box::new(Some(component).into_iter()))
         }
-        _ => {
-            Err(Error::from_kind(ErrorKind::Msg(String::from(format!(
-                "element of name {} is not allowed as a descendant of components",
-                e.name()
-            )))))
-        }
+        _ => Err(Error::from_kind(ErrorKind::Msg(String::from(format!(
+            "element of name {} is not allowed as a descendant of components",
+            e.name()
+        ))))),
     }
 }
 
@@ -222,17 +218,15 @@ type ComponentBuilders = Vec<ComponentBuilder>;
 impl FromElem for ComponentBuilders {
     fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
         assert_root_name(e, "components")?;
-        Ok(
-            e.children()
-                .flat_map(move |c| match child_to_component_iter(c, l) {
-                    Ok(iter) => iter,
-                    Err(e) => {
-                        error!(l, "when trying to parse component: {}", e);
-                        Box::new(None.into_iter())
-                    }
-                })
-                .collect(),
-        )
+        Ok(e.children()
+            .flat_map(move |c| match child_to_component_iter(c, l) {
+                Ok(iter) => iter,
+                Err(e) => {
+                    error!(l, "when trying to parse component: {}", e);
+                    Box::new(None.into_iter())
+                }
+            })
+            .collect())
     }
 }
 
@@ -246,7 +240,7 @@ struct ConditionComponent {
 
 impl FromElem for ConditionComponent {
     fn from_elem(e: &Element, _: &Logger) -> Result<Self, Error> {
-        Ok(ConditionComponent{
+        Ok(ConditionComponent {
             device_family: attr_map(e, "Dfamily", "condition").ok(),
             device_sub_family: attr_map(e, "Dsubfamily", "condition").ok(),
             device_variant: attr_map(e, "Dvariant", "condition").ok(),
@@ -280,8 +274,7 @@ impl FromElem for Condition {
                 "require" => {
                     require.push(ConditionComponent::from_elem(e, l)?);
                 }
-                "description" => {
-                }
+                "description" => {}
                 _ => {
                     warn!(l, "Found unkonwn element {} in components", elem.name());
                 }
@@ -301,24 +294,21 @@ type Conditions = Vec<Condition>;
 impl FromElem for Conditions {
     fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
         assert_root_name(e, "conditions")?;
-        Ok(
-            e.children()
-                .flat_map(|c| Condition::from_elem(c, l).ok_warn(l))
-                .collect()
-        )
+        Ok(e.children()
+            .flat_map(|c| Condition::from_elem(c, l).ok_warn(l))
+            .collect())
     }
 }
 
 struct Release {
     version: String,
     pub text: String,
-
 }
 
 impl FromElem for Release {
     fn from_elem(e: &Element, _: &Logger) -> Result<Self, Error> {
         assert_root_name(e, "release")?;
-        Ok(Self{
+        Ok(Self {
             version: attr_map(e, "version", "release")?,
             text: e.text(),
         })
@@ -330,15 +320,13 @@ type Releases = Vec<Release>;
 impl FromElem for Releases {
     fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
         assert_root_name(e, "releases")?;
-        Ok(
-            e.children()
-                .flat_map(|c| Release::from_elem(c, l).ok_warn(l))
-                .collect()
-        )
+        Ok(e.children()
+            .flat_map(|c| Release::from_elem(c, l).ok_warn(l))
+            .collect())
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct MemoryPermissions {
     read: bool,
     write: bool,
@@ -347,7 +335,7 @@ struct MemoryPermissions {
 
 impl MemoryPermissions {
     fn from_str(input: &str) -> Self {
-        let mut ret = MemoryPermissions{
+        let mut ret = MemoryPermissions {
             read: false,
             write: false,
             execute: false,
@@ -357,15 +345,15 @@ impl MemoryPermissions {
                 'r' => ret.read = true,
                 'w' => ret.write = true,
                 'x' => ret.execute = true,
-                _ => ()
+                _ => (),
             }
         }
         ret
     }
 }
 
-#[derive(Debug)]
-struct Memory{
+#[derive(Debug, Clone)]
+struct Memory {
     access: MemoryPermissions,
     start: u64,
     size: u64,
@@ -373,58 +361,60 @@ struct Memory{
 }
 
 impl FromElem for (String, Memory) {
-    fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
+    fn from_elem(e: &Element, _l: &Logger) -> Result<Self, Error> {
         let access = e.attr("id")
-            .map(|memtype|
-                 if memtype.contains("ROM") {
-                     "rx"
-                 } else if memtype.contains("RAM"){
-                     "rw"
-                 } else {
-                     ""
-                 })
+            .map(|memtype| {
+                if memtype.contains("ROM") {
+                    "rx"
+                } else if memtype.contains("RAM") {
+                    "rw"
+                } else {
+                    ""
+                }
+            })
             .or_else(|| e.attr("access"))
-            .map(|memtype| MemoryPermissions::from_str(memtype)).unwrap();
-        let name = e.attr("id").or_else(|| e.attr("name"))
-            .map(|s| s.to_string()).ok_or_else(|| err_msg!("No name found for memory"))?;
-        let start = attr_parse_hex(e,"start", "memory")?;
+            .map(|memtype| MemoryPermissions::from_str(memtype))
+            .unwrap();
+        let name = e.attr("id")
+            .or_else(|| e.attr("name"))
+            .map(|s| s.to_string())
+            .ok_or_else(|| err_msg!("No name found for memory"))?;
+        let start = attr_parse_hex(e, "start", "memory")?;
         let size = attr_parse_hex(e, "size", "memory")?;
         let startup = attr_parse(e, "startup", "memory").unwrap_or_default();
-        Ok((name,
-            Memory{
+        Ok((
+            name,
+            Memory {
                 access,
                 start,
                 size,
-                startup
-            }
+                startup,
+            },
         ))
     }
 }
 
 type Memories = HashMap<String, Memory>;
 
-struct DeviceBuilder {
-    name: Option<String>,
-    memories: Memories
+fn merge_memories(lhs: Memories, rhs: &Memories) -> Memories {
+    let rhs: Vec<_> = rhs.iter()
+        .filter_map(|(k, v)| {
+            if lhs.contains_key(k) {
+                None
+            } else {
+                Some((k.clone(), v.clone()))
+            }
+        })
+        .collect();
+    let mut lhs = lhs;
+    lhs.extend(rhs);
+    lhs
 }
 
-
-impl FromElem for DeviceBuilder {
-    fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
-        let mut memories = Memories::new();
-        for child in e.children() {
-            match child.name() {
-                "memory" => memories.extend(FromElem::from_elem(child, l).ok_warn(l).into_iter()),
-                _ => ()
-            }
-        }
-        Ok(DeviceBuilder{
-            name: e.attr("Dname").or_else(||{
-                e.attr("Dvariant")
-            }).map(|s| s.to_string()),
-            memories
-        })
-    }
+#[derive(Debug)]
+struct DeviceBuilder<'dom> {
+    name: Option<&'dom str>,
+    memories: Memories,
 }
 
 #[derive(Debug)]
@@ -433,65 +423,111 @@ struct Device {
     memories: Memories,
 }
 
-impl DeviceBuilder {
+impl<'dom> DeviceBuilder<'dom> {
+    fn from_elem(e: &'dom Element) -> Self {
+        let memories = Memories::new();
+        let bldr = DeviceBuilder {
+            name: e.attr("Dname").or_else(|| e.attr("Dvariant")),
+            memories,
+        };
+        bldr
+    }
+
     fn build(self) -> Result<Device, Error> {
-        Ok(Device{
-            name: self.name.ok_or_else(|| err_msg!("Device found without a name"))?,
-            memories: self.memories
+        Ok(Device {
+            name: self.name
+                .map(|s| s.into())
+                .ok_or_else(|| err_msg!("Device found without a name"))?,
+            memories: self.memories,
         })
+    }
+
+    fn add_parent(self, parent: &Self) -> Self {
+        Self {
+            name: self.name.or(parent.name),
+            memories: merge_memories(self.memories, &parent.memories),
+        }
+    }
+
+    fn add_memory(&mut self, (name, mem): (String, Memory)) -> &mut Self {
+        self.memories.insert(name, mem);
+        self
     }
 }
 
-type Devices = Vec<Device>;
-
-fn parse_sub_family(e: &Element, l: &Logger, family: &DeviceBuilder) -> Result<Devices, Error> {
-    let sub_family_device = FromElem::from_elem(e, l)?;
-    let mut all_devices = Devices::new();
-    for child in e.children() {
-        all_devices.extend(match child.name() {
-            "device" => parse_device(child, l, &sub_family_device)?,
-            _ => continue,
+fn parse_device<'dom>(e: &'dom Element, l: &Logger) -> Vec<DeviceBuilder<'dom>> {
+    let mut device = DeviceBuilder::from_elem(e);
+    let variants = e.children()
+        .filter_map(|child| match child.name() {
+            "variant" => Some(DeviceBuilder::from_elem(child)),
+            "memory" => {
+                FromElem::from_elem(child, l).map(|mem| device.add_memory(mem));
+                None
+            },
+            _ => None,
         })
+        .collect::<Vec<_>>();
+    if variants.is_empty() {
+        vec![device]
+    } else {
+        variants
+            .into_iter()
+            .map(|bld| bld.add_parent(&device))
+            .collect()
     }
-    Ok(all_devices)
-}
-
-fn parse_device(e: &Element, l: &Logger, sub_family: &DeviceBuilder) -> Result<Devices, Error> {
-    let device = FromElem::from_elem(e, l)?;
-    let mut all_devices = Devices::new();
-    for child in e.children() {
-        all_devices.push(match child.name() {
-            "variant" => parse_variant(child, l, &device)?,
-            _ => continue,
-        })
-    }
-    if all_devices.is_empty() {
-        all_devices.push(device.build()?);
-    }
-    Ok(all_devices)
-}
-fn parse_variant(e: &Element, l: &Logger, device: &DeviceBuilder) -> Result<Device, Error> {
-    unimplemented!()
 }
 
-fn parse_family(e: &Element, l: &Logger) -> Result<Devices, Error> {
-    assert_root_name(e, "family");
-    let family_device = FromElem::from_elem(e, l)?;
-    let mut all_devices = Devices::new();
-    for child in e.children() {
-        all_devices.extend(match child.name() {
-            "subFamily" => parse_sub_family(child, &l, &family_device)?,
-            "device" => parse_device(child, &l, &family_device)?,
-            _ => continue,
+fn parse_sub_family<'dom>(e: &'dom Element, l: &Logger) -> Vec<DeviceBuilder<'dom>> {
+    let mut sub_family_device = DeviceBuilder::from_elem(e);
+    let devices = e.children()
+        .flat_map(|child| match child.name() {
+            "device" => parse_device(child, l),
+            "memory" => {
+                FromElem::from_elem(child, l).map(|mem| sub_family_device.add_memory(mem));
+                Vec::new()
+            },
+            _ => Vec::new(),
         })
-    }
-    Ok(all_devices)
+        .collect::<Vec<_>>();
+    devices
+        .into_iter()
+        .map(|bldr| bldr.add_parent(&sub_family_device))
+        .collect()
 }
+
+fn parse_family<'dom>(e: &Element, l: &Logger) -> Result<Vec<Device>, Error> {
+    let mut family_device = DeviceBuilder::from_elem(e);
+    let all_devices = e.children()
+        .flat_map(|child| match child.name() {
+            "subFamily" => parse_sub_family(child, &l),
+            "device" => parse_device(child, &l),
+            "memory" => {
+                FromElem::from_elem(child, l).map(|mem| family_device.add_memory(mem));
+                Vec::new()
+            },
+            _ => Vec::new(),
+        })
+        .collect::<Vec<_>>();
+    all_devices
+        .into_iter()
+        .map(|bldr| bldr.add_parent(&family_device).build())
+        .collect()
+}
+
+type Devices = HashMap<String, Device>;
 
 impl FromElem for Devices {
     fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
-        assert_root_name(e, "devices");
-        Ok(e.children().flat_map(|c| parse_family(c, l).unwrap()).collect())
+        e.children()
+            .fold(Ok(HashMap::new()), |res, c| match (res, parse_family(c, l)) {
+                (Ok(mut devs), Ok(add_this)) => {
+                    devs.extend(add_this.into_iter().map(|dev| (dev.name.clone(), dev)));
+                    Ok(devs)
+                },
+                (Ok(_), Err(e)) => Err(e),
+                (Err(e), Ok(_)) => Err(e),
+                (Err(e), Err(_)) => Err(e),
+            })
     }
 }
 
@@ -543,7 +579,6 @@ impl FromElem for Package {
     }
 }
 
-
 #[derive(Debug)]
 pub struct Component {
     vendor: String,
@@ -566,14 +601,17 @@ type Components = Vec<Component>;
 
 impl Package {
     fn make_components(&self) -> Components {
-        self.components.clone().into_iter().map(|comp| {
-            Component{
+        self.components
+            .clone()
+            .into_iter()
+            .map(|comp| Component {
                 vendor: comp.vendor.unwrap_or_else(|| self.vendor.clone()),
                 class: comp.class.unwrap(),
                 group: comp.group.unwrap(),
                 sub_group: comp.sub_group,
                 variant: comp.variant,
-                version: comp.version.unwrap_or_else(|| self.releases[0].version.clone()),
+                version: comp.version
+                    .unwrap_or_else(|| self.releases[0].version.clone()),
                 api_version: comp.api_version,
                 condition: comp.condition,
                 max_instances: comp.max_instances,
@@ -582,8 +620,8 @@ impl Package {
                 description: comp.description,
                 rte_addition: comp.rte_addition,
                 files: comp.files,
-            }
-        }).collect()
+            })
+            .collect()
     }
 
     fn make_condition_lookup<'a>(&'a self, l: &Logger) -> HashMap<&'a str, &'a Condition> {
@@ -599,9 +637,7 @@ impl Package {
 
 pub fn check_args<'a, 'b>() -> App<'a, 'b> {
     SubCommand::with_name("check")
-        .about(
-            "Check a project or pack for correct usage of the CMSIS standard",
-        )
+        .about("Check a project or pack for correct usage of the CMSIS standard")
         .version("0.1.0")
         .arg(
             Arg::with_name("INPUT")
@@ -620,25 +656,48 @@ pub fn check_command<'a>(_: &Config, args: &ArgMatches<'a>, l: &Logger) -> Resul
             let cond_lookup = c.make_condition_lookup(l);
             let mut num_components = 0;
             let mut num_files = 0;
-            for &Component{ref class, ref group, ref condition, ref files, ..} in c.make_components().iter() {
+            for &Component {
+                ref class,
+                ref group,
+                ref condition,
+                ref files,
+                ..
+            } in c.make_components().iter()
+            {
                 num_components += 1;
                 num_files += files.iter().count();
                 if let &Some(ref cond_name) = condition {
                     if cond_lookup.get(cond_name.as_str()).is_none() {
-                        warn!(l, "Component {}::{} references an unknown condition '{}'", class, group, cond_name);
+                        warn!(
+                            l,
+                            "Component {}::{} references an unknown condition '{}'",
+                            class,
+                            group,
+                            cond_name
+                        );
                     }
                 }
-                for &FileRef{ref path, ref condition, ..} in files.iter() {
+                for &FileRef {
+                    ref path,
+                    ref condition,
+                    ..
+                } in files.iter()
+                {
                     if let &Some(ref cond_name) = condition {
                         if cond_lookup.get(cond_name.as_str()).is_none() {
-                            warn!(l, "File {:?} Component {}::{} references an unknown condition '{}'", path, class, group, cond_name);
+                            warn!(
+                                l,
+                                "File {:?} Component {}::{} references an unknown condition '{}'",
+                                path,
+                                class,
+                                group,
+                                cond_name
+                            );
                         }
                     }
                 }
             }
-            for dev in c.devices.iter() {
-                info!(l, "{:?}", dev)
-            }
+            info!(l, "{} Valid Devices", c.devices.len());
             info!(l, "{} Valid Software Components", num_components);
             info!(l, "{} Valid Files References", num_files);
         }
