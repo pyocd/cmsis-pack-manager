@@ -7,8 +7,6 @@ extern crate enum_derive;
 #[macro_use]
 extern crate error_chain;
 #[macro_use]
-extern crate futures_error_chain;
-#[macro_use]
 extern crate slog;
 extern crate futures_await as futures;
 extern crate tokio_core;

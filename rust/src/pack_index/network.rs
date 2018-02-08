@@ -1,7 +1,7 @@
 use futures::prelude::*;
 use futures::Stream;
-use futures::stream::{iter_ok, futures_unordered};
-use hyper::{self, Client, Response, Body, Chunk, Uri, StatusCode};
+use futures::stream::{futures_unordered, iter_ok};
+use hyper::{self, Body, Chunk, Client, Response, StatusCode, Uri};
 use hyper::client::Connect;
 use hyper::header::Location;
 use hyper_tls::HttpsConnector;
@@ -16,11 +16,9 @@ use slog::Logger;
 
 use minidom;
 
-use super::{PdscRef, Vidx, Pidx};
+use super::{PdscRef, Pidx, Vidx};
 use parse::FromElem;
 use config::{self, Config};
-
-
 
 error_chain!{
     links{
@@ -28,63 +26,68 @@ error_chain!{
         ConfigErr(config::Error, config::ErrorKind);
     }
     foreign_links{
-
         HttpErr(hyper::Error);
         UriErr(hyper::error::UriError);
         IOErr(io::Error);
     }
 }
 
-future_chain!{}
-
-trait ClientRedirExt<C> where C: Connect {
+trait ClientRedirExt<C>
+where
+    C: Connect,
+{
     fn redirectable<'a>(
-        &'a self, uri: Uri, logger: &'a Logger
-    ) -> Box<Future<Item=Response, Error=hyper::Error> + 'a>;
+        &'a self,
+        uri: Uri,
+        logger: &'a Logger,
+    ) -> Box<Future<Item = Response, Error = hyper::Error> + 'a>;
 }
 
 impl<C: Connect> ClientRedirExt<C> for Client<C, Body> {
     fn redirectable<'a>(
-        &'a self, mut uri: Uri, logger: &'a Logger
-    ) -> Box<Future<Item=Response, Error=hyper::Error> + 'a> {
-        Box::new(
-            async_block!{
-                let mut urls = Vec::new();
-                loop {
-                    urls.push(uri.clone());
-                    let res = await!(self.get(uri))?;
-                    match res.status() {
-                        StatusCode::MovedPermanently |
-                        StatusCode::Found |
-                        StatusCode::SeeOther |
-                        StatusCode::TemporaryRedirect |
-                        StatusCode::PermanentRedirect => {
-                            let mut new_uri: Uri = res.headers()
-                                .get::<Location>()
-                                .unwrap_or(&Location::new(""))
-                                .parse()?;
-                            if let Some(ref old_uri) = urls.last() {
-                                if new_uri.authority().is_none() {
-                                    if let Some(authority) = old_uri.authority() {
-                                        new_uri = format!("{}{}", authority, old_uri).parse()?
-                                    }
+        &'a self,
+        mut uri: Uri,
+        logger: &'a Logger,
+    ) -> Box<Future<Item = Response, Error = hyper::Error> + 'a> {
+        Box::new(async_block!{
+            let mut urls = Vec::new();
+            loop {
+                urls.push(uri.clone());
+                let res = await!(self.get(uri))?;
+                match res.status() {
+                    StatusCode::MovedPermanently |
+                    StatusCode::Found |
+                    StatusCode::SeeOther |
+                    StatusCode::TemporaryRedirect |
+                    StatusCode::PermanentRedirect => {
+                        let mut new_uri: Uri = res.headers()
+                            .get::<Location>()
+                            .unwrap_or(&Location::new(""))
+                            .parse()?;
+                        if let Some(ref old_uri) = urls.last() {
+                            if new_uri.authority().is_none() {
+                                if let Some(authority) = old_uri.authority() {
+                                    new_uri = format!("{}{}", authority, old_uri).parse()?
                                 }
-                                debug!(logger, "Redirecting from {} to {}", old_uri, new_uri);
                             }
-                            uri = new_uri;
+                            debug!(logger, "Redirecting from {} to {}", old_uri, new_uri);
                         }
-                        _ => {
-                            return Ok(res);
-                        }
+                        uri = new_uri;
+                    }
+                    _ => {
+                        return Ok(res);
                     }
                 }
-            })
+            }
+        })
     }
 }
 
 fn download_vidx<'a, C: Connect, I: Into<String>>(
-    client: &'a Client<C, Body>, vidx_ref: I, logger:&'a Logger,
-) -> impl Future<Item=Vidx, Error=Error> + 'a {
+    client: &'a Client<C, Body>,
+    vidx_ref: I,
+    logger: &'a Logger,
+) -> impl Future<Item = Vidx, Error = Error> + 'a {
     let vidx = vidx_ref.into();
     async_block!{
         let uri = vidx.parse()?;
@@ -107,9 +110,10 @@ where
     I: IntoIterator + 'a,
     <I as IntoIterator>::Item: Into<String>,
 {
-    futures_unordered(list.into_iter().map(
-        |vidx_ref| download_vidx(client, vidx_ref, logger)
-    ))
+    futures_unordered(
+        list.into_iter()
+            .map(|vidx_ref| download_vidx(client, vidx_ref, logger)),
+    )
 }
 
 fn parse_vidx(body: Chunk, logger: &Logger) -> Result<Vidx> {
@@ -117,7 +121,7 @@ fn parse_vidx(body: Chunk, logger: &Logger) -> Result<Vidx> {
     Vidx::from_string(string.borrow(), logger).map_err(Error::from)
 }
 
-fn into_uri(Pidx {url, vendor, ..}: Pidx) -> String {
+fn into_uri(Pidx { url, vendor, .. }: Pidx) -> String {
     format!("{}{}.pidx", url, vendor)
 }
 
