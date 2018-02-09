@@ -1,15 +1,27 @@
+#[macro_use]
+extern crate utils;
+#[macro_use]
+extern crate slog;
+#[macro_use]
+extern crate custom_derive;
+#[macro_use]
+extern crate enum_derive;
+
+extern crate pack_index;
+extern crate clap;
+extern crate minidom;
+
 use std::path::{Path, PathBuf};
 use std::collections::HashMap;
 use minidom::{Element, Error, ErrorKind};
 use clap::{App, Arg, ArgMatches, SubCommand};
 use slog::Logger;
 
-#[macro_use]
-use parse::{assert_root_name, attr_map, attr_parse, attr_parse_hex, child_text, get_child_no_ns,
-            FromElem};
-use config::Config;
+use utils::parse::{assert_root_name, attr_map, attr_parse, attr_parse_hex, child_text,
+                   get_child_no_ns, FromElem};
+use utils::ResultLogExt;
+use pack_index::config::Config;
 use pack_index::network::Error as NetError;
-use ResultLogExt;
 
 custom_derive!{
     #[allow(non_camel_case_types)]
@@ -213,20 +225,21 @@ fn child_to_component_iter(
     }
 }
 
-type ComponentBuilders = Vec<ComponentBuilder>;
+#[derive(Default)]
+struct ComponentBuilders(Vec<ComponentBuilder>);
 
 impl FromElem for ComponentBuilders {
     fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
         assert_root_name(e, "components")?;
-        Ok(e.children()
-            .flat_map(move |c| match child_to_component_iter(c, l) {
-                Ok(iter) => iter,
-                Err(e) => {
-                    error!(l, "when trying to parse component: {}", e);
-                    Box::new(None.into_iter())
-                }
-            })
-            .collect())
+        Ok(ComponentBuilders(e.children()
+                .flat_map(move |c| match child_to_component_iter(c, l) {
+                    Ok(iter) => iter,
+                    Err(e) => {
+                        error!(l, "when trying to parse component: {}", e);
+                        Box::new(None.into_iter())
+                    }
+                })
+                .collect()))
     }
 }
 
@@ -289,14 +302,16 @@ impl FromElem for Condition {
     }
 }
 
-type Conditions = Vec<Condition>;
+#[derive(Default)]
+struct Conditions(Vec<Condition>);
 
 impl FromElem for Conditions {
     fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
         assert_root_name(e, "conditions")?;
-        Ok(e.children()
-            .flat_map(|c| Condition::from_elem(c, l).ok_warn(l))
-            .collect())
+        Ok(Conditions(
+            e.children()
+                .flat_map(|c| Condition::from_elem(c, l).ok_warn(l))
+                .collect()))
     }
 }
 
@@ -315,14 +330,16 @@ impl FromElem for Release {
     }
 }
 
-type Releases = Vec<Release>;
+#[derive(Default)]
+struct Releases(Vec<Release>);
 
 impl FromElem for Releases {
     fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
         assert_root_name(e, "releases")?;
-        Ok(e.children()
-            .flat_map(|c| Release::from_elem(c, l).ok_warn(l))
-            .collect())
+        Ok(Releases(
+            e.children()
+                .flat_map(|c| Release::from_elem(c, l).ok_warn(l))
+                .collect()))
     }
 }
 
@@ -360,7 +377,9 @@ struct Memory {
     startup: bool,
 }
 
-impl FromElem for (String, Memory) {
+struct MemElem(String, Memory);
+
+impl FromElem for MemElem {
     fn from_elem(e: &Element, _l: &Logger) -> Result<Self, Error> {
         let access = e.attr("id")
             .map(|memtype| {
@@ -382,7 +401,7 @@ impl FromElem for (String, Memory) {
         let start = attr_parse_hex(e, "start", "memory")?;
         let size = attr_parse_hex(e, "size", "memory")?;
         let startup = attr_parse(e, "startup", "memory").unwrap_or_default();
-        Ok((
+        Ok(MemElem(
             name,
             Memory {
                 access,
@@ -394,12 +413,13 @@ impl FromElem for (String, Memory) {
     }
 }
 
-type Memories = HashMap<String, Memory>;
+#[derive(Debug)]
+struct Memories(HashMap<String, Memory>);
 
 fn merge_memories(lhs: Memories, rhs: &Memories) -> Memories {
-    let rhs: Vec<_> = rhs.iter()
+    let rhs: Vec<_> = rhs.0.iter()
         .filter_map(|(k, v)| {
-            if lhs.contains_key(k) {
+            if lhs.0.contains_key(k) {
                 None
             } else {
                 Some((k.clone(), v.clone()))
@@ -407,7 +427,7 @@ fn merge_memories(lhs: Memories, rhs: &Memories) -> Memories {
         })
         .collect();
     let mut lhs = lhs;
-    lhs.extend(rhs);
+    lhs.0.extend(rhs);
     lhs
 }
 
@@ -425,7 +445,7 @@ struct Device {
 
 impl<'dom> DeviceBuilder<'dom> {
     fn from_elem(e: &'dom Element) -> Self {
-        let memories = Memories::new();
+        let memories = Memories(HashMap::new());
         let bldr = DeviceBuilder {
             name: e.attr("Dname").or_else(|| e.attr("Dvariant")),
             memories,
@@ -449,8 +469,8 @@ impl<'dom> DeviceBuilder<'dom> {
         }
     }
 
-    fn add_memory(&mut self, (name, mem): (String, Memory)) -> &mut Self {
-        self.memories.insert(name, mem);
+    fn add_memory(&mut self, MemElem(name, mem): MemElem) -> &mut Self {
+        self.memories.0.insert(name, mem);
         self
     }
 }
@@ -514,7 +534,8 @@ fn parse_family<'dom>(e: &Element, l: &Logger) -> Result<Vec<Device>, Error> {
         .collect()
 }
 
-type Devices = HashMap<String, Device>;
+#[derive(Default)]
+struct Devices(HashMap<String, Device>);
 
 impl FromElem for Devices {
     fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
@@ -527,7 +548,7 @@ impl FromElem for Devices {
                 (Ok(_), Err(e)) => Err(e),
                 (Err(e), Ok(_)) => Err(e),
                 (Err(e), Err(_)) => Err(e),
-            })
+            }).map(Devices)
     }
 }
 
@@ -601,7 +622,7 @@ type Components = Vec<Component>;
 
 impl Package {
     fn make_components(&self) -> Components {
-        self.components
+        self.components.0
             .clone()
             .into_iter()
             .map(|comp| Component {
@@ -611,7 +632,7 @@ impl Package {
                 sub_group: comp.sub_group,
                 variant: comp.variant,
                 version: comp.version
-                    .unwrap_or_else(|| self.releases[0].version.clone()),
+                    .unwrap_or_else(|| self.releases.0[0].version.clone()),
                 api_version: comp.api_version,
                 condition: comp.condition,
                 max_instances: comp.max_instances,
@@ -625,8 +646,8 @@ impl Package {
     }
 
     fn make_condition_lookup<'a>(&'a self, l: &Logger) -> HashMap<&'a str, &'a Condition> {
-        let mut map = HashMap::with_capacity(self.conditions.iter().count());
-        for cond in self.conditions.iter() {
+        let mut map = HashMap::with_capacity(self.conditions.0.iter().count());
+        for cond in self.conditions.0.iter() {
             if let Some(dup) = map.insert(cond.id.as_str(), cond) {
                 warn!(l, "Duplicate Condition found {}", dup.id);
             }
@@ -652,7 +673,7 @@ pub fn check_command<'a>(_: &Config, args: &ArgMatches<'a>, l: &Logger) -> Resul
     match Package::from_path(Path::new(filename.clone()), &l) {
         Ok(c) => {
             info!(l, "Parsing succedded");
-            info!(l, "{} Valid Conditions", c.conditions.iter().count());
+            info!(l, "{} Valid Conditions", c.conditions.0.iter().count());
             let cond_lookup = c.make_condition_lookup(l);
             let mut num_components = 0;
             let mut num_files = 0;
@@ -697,7 +718,7 @@ pub fn check_command<'a>(_: &Config, args: &ArgMatches<'a>, l: &Logger) -> Resul
                     }
                 }
             }
-            info!(l, "{} Valid Devices", c.devices.len());
+            info!(l, "{} Valid Devices", c.devices.0.len());
             info!(l, "{} Valid Software Components", num_components);
             info!(l, "{} Valid Files References", num_files);
         }

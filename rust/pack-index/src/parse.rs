@@ -1,13 +1,7 @@
 use smallstring::SmallString;
 use minidom::{Element, Error};
 use slog::Logger;
-
-use parse::{attr_map, child_text, assert_root_name, get_child_no_ns, FromElem};
-#[allow(unused_imports)]
-use ResultLogExt;
-
-pub mod network;
-pub mod cffi;
+use utils::parse::{assert_root_name, attr_map, child_text, get_child_no_ns, FromElem};
 
 #[derive(Debug, Clone)]
 pub struct PdscRef {

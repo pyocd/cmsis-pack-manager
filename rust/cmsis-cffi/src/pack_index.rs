@@ -1,11 +1,11 @@
 use slog::Logger;
-use config::ConfigBuilder;
 use std::os::raw::c_char;
 use std::ffi::{CStr, CString};
 use std::path::PathBuf;
 use std::ptr::{null, null_mut};
 
-use super::network::update;
+use pi::network::update;
+use pi::config::ConfigBuilder;
 
 pub struct UpdateReturn(Vec<PathBuf>);
 

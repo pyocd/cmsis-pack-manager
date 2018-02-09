@@ -16,8 +16,8 @@ use slog::Logger;
 
 use minidom;
 
-use super::{PdscRef, Pidx, Vidx};
-use parse::FromElem;
+use parse::{PdscRef, Pidx, Vidx};
+use utils::parse::FromElem;
 use config::{self, Config};
 
 error_chain!{
@@ -188,7 +188,7 @@ fn download_pdsc<'a, C: Connect>(
         }
         let uri = make_uri(&pdsc_ref)?;
         let PdscRef{vendor, name, version, ..} = pdsc_ref;
-        info!(logger, "Updating package {}::{} to version {}", vendor, name, version);
+        debug!(logger, "Updating package {}::{} to version {}", vendor, name, version);
         let mut fd = OpenOptions::new()
             .write(true)
             .create(true)

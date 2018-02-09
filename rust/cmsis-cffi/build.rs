@@ -8,7 +8,7 @@ fn main() {
     config.language = cbindgen::Language::C;
     match cbindgen::generate_with_config(&crate_dir, config) {
         Ok(k) => {
-            k.write_to_file("target/cmsis.h");
+            k.write_to_file("../target/cmsis.h");
         }
         Err(e) => {
             println!("{}", e);

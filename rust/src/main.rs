@@ -1,13 +1,14 @@
-extern crate cmsis;
 #[macro_use]
 extern crate slog;
 extern crate slog_term;
 extern crate slog_async;
 extern crate clap;
+extern crate pack_index;
+extern crate pdsc;
 
-use cmsis::config::Config;
-use cmsis::pack_index::network::{update_args, update_command, Error};
-use cmsis::pdsc::{check_args, check_command};
+use pack_index::config::Config;
+use pack_index::network::{update_args, update_command, Error};
+use pdsc::{check_args, check_command};
 use clap::{Arg, App};
 use slog::Drain;
 

@@ -2,28 +2,18 @@
 name = "cmsis"
 version = "0.1.0"
 authors = ["Jimmy Brisson <theotherjimmy@gmail.com>"]
-build = "build.rs"
-
-[lib]
-name = "cmsis"
-crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-custom_derive = "0.1.1"
-enum_derive = "0.1.7"
 error-chain = "0.10.0"
-futures-await = "0.1.0"
-hyper = "0.11.2"
-hyper-tls = "0.1.2"
-minidom = "0.5.0"
-quick-xml = "0.7.3"
-smallstring = "*"
-tokio-core = "0.1.6"
 slog = "^2"
 slog-term = "^2"
 slog-async = "^2"
 clap = "2.19.0"
 app_dirs = {git = "https://github.com/theotherjimmy/app-dirs-rs.git", branch = "fix-nightly-1-29"}
+pack-index = { path = "pack-index" }
+pdsc = { path = "pdsc" }
+utils = { path = "utils" }
+cmsis-cffi = { path = "cmsis-cffi", optional = true }
 
 [build-dependencies]
 cbindgen = "0.1"
@@ -33,3 +23,8 @@ time = "*"
 
 [profile.release]
 debug = true
+
+[workspace]
+
+[features]
+cffi = ["cmsis-cffi"]
