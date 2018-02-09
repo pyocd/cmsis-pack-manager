@@ -51,10 +51,6 @@ if %ERRORLEVEL% NEQ 0 exit 1
 set PATH=%TARGET_PROGRAM_FILES%\Rust %RUST%\bin;%cd%\windows_build_tools;%PATH%
 set TARGET=nightly-%TARGET_ARCH%-pc-windows-msvc
 
-if [%Configuration%] == [Release] set CARGO_MODE=--release
-
-set
-
 link /?
 cl /?
 rustc --version
@@ -67,9 +63,9 @@ cd ..
 
 dir rust\target\release
 
-pip install --upgrade pip setuptools wheel
+python -m pip install --upgrade pip setuptools wheel
 
-pip install git+https://github.com/getsentry/milksnake.git
+python -m pip install git+https://github.com/getsentry/milksnake.git
 
 python setup.py build
 if %ERRORLEVEL% NEQ 0 exit 1
