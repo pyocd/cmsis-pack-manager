@@ -431,9 +431,29 @@ fn merge_memories(lhs: Memories, rhs: &Memories) -> Memories {
     lhs
 }
 
+#[derive(Debug, Clone)]
+struct Algorithm{
+    file_name: PathBuf,
+    start: u64,
+    size: u64,
+    default: bool,
+}
+
+impl FromElem for Algorithm {
+    fn from_elem(e: &Element, _l: &Logger) -> Result<Self, Error> {
+        Ok(Self{
+            file_name: attr_map(e, "name", "algorithm")?,
+            start: attr_parse_hex(e, "start", "algorithm")?,
+            size: attr_parse_hex(e, "size", "algorithm")?,
+            default: attr_parse(e, "default", "algorithm").unwrap_or_default(),
+        })
+    }
+}
+
 #[derive(Debug)]
 struct DeviceBuilder<'dom> {
     name: Option<&'dom str>,
+    algorithms: Vec<Algorithm>,
     memories: Memories,
 }
 
@@ -441,6 +461,7 @@ struct DeviceBuilder<'dom> {
 struct Device {
     name: String,
     memories: Memories,
+    algorithms: Vec<Algorithm>,
 }
 
 impl<'dom> DeviceBuilder<'dom> {
@@ -449,6 +470,7 @@ impl<'dom> DeviceBuilder<'dom> {
         let bldr = DeviceBuilder {
             name: e.attr("Dname").or_else(|| e.attr("Dvariant")),
             memories,
+            algorithms: Vec::new(),
         };
         bldr
     }
@@ -459,18 +481,26 @@ impl<'dom> DeviceBuilder<'dom> {
                 .map(|s| s.into())
                 .ok_or_else(|| err_msg!("Device found without a name"))?,
             memories: self.memories,
+            algorithms: self.algorithms,
         })
     }
 
-    fn add_parent(self, parent: &Self) -> Self {
+    fn add_parent(mut self, parent: &Self) -> Self {
+        self.algorithms.extend_from_slice(&parent.algorithms);
         Self {
             name: self.name.or(parent.name),
+            algorithms: self.algorithms,
             memories: merge_memories(self.memories, &parent.memories),
         }
     }
 
     fn add_memory(&mut self, MemElem(name, mem): MemElem) -> &mut Self {
         self.memories.0.insert(name, mem);
+        self
+    }
+
+    fn add_algorithm(&mut self, alg: Algorithm) -> &mut Self {
+        self.algorithms.push(alg);
         self
     }
 }
@@ -484,6 +514,10 @@ fn parse_device<'dom>(e: &'dom Element, l: &Logger) -> Vec<DeviceBuilder<'dom>> 
                 FromElem::from_elem(child, l).map(|mem| device.add_memory(mem));
                 None
             },
+            "algorithm" => {
+                FromElem::from_elem(child, l).map(|alg| device.add_algorithm(alg)).ok_warn(l);
+                None
+            }
             _ => None,
         })
         .collect::<Vec<_>>();
@@ -506,6 +540,10 @@ fn parse_sub_family<'dom>(e: &'dom Element, l: &Logger) -> Vec<DeviceBuilder<'do
                 FromElem::from_elem(child, l).map(|mem| sub_family_device.add_memory(mem));
                 Vec::new()
             },
+            "algorithm" => {
+                FromElem::from_elem(child, l).map(|alg| sub_family_device.add_algorithm(alg));
+                Vec::new()
+            }
             _ => Vec::new(),
         })
         .collect::<Vec<_>>();
@@ -525,6 +563,10 @@ fn parse_family<'dom>(e: &Element, l: &Logger) -> Result<Vec<Device>, Error> {
                 FromElem::from_elem(child, l).map(|mem| family_device.add_memory(mem));
                 Vec::new()
             },
+            "algorithm" => {
+                FromElem::from_elem(child, l).map(|alg| family_device.add_algorithm(alg));
+                Vec::new()
+            }
             _ => Vec::new(),
         })
         .collect::<Vec<_>>();
