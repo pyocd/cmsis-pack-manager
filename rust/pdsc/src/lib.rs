@@ -6,11 +6,17 @@ extern crate slog;
 extern crate custom_derive;
 #[macro_use]
 extern crate enum_derive;
+#[macro_use]
+extern crate serde_derive;
+#[macro_use]
+extern crate serde_json;
 
 extern crate pack_index;
 extern crate clap;
 extern crate minidom;
 
+use std::fs::OpenOptions;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::collections::HashMap;
 use minidom::{Element, Error, ErrorKind};
@@ -343,7 +349,7 @@ impl FromElem for Releases {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 struct MemoryPermissions {
     read: bool,
     write: bool,
@@ -369,7 +375,7 @@ impl MemoryPermissions {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 struct Memory {
     access: MemoryPermissions,
     start: u64,
@@ -413,7 +419,7 @@ impl FromElem for MemElem {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 struct Memories(HashMap<String, Memory>);
 
 fn merge_memories(lhs: Memories, rhs: &Memories) -> Memories {
@@ -431,7 +437,7 @@ fn merge_memories(lhs: Memories, rhs: &Memories) -> Memories {
     lhs
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 struct Algorithm{
     file_name: PathBuf,
     start: u64,
@@ -457,7 +463,7 @@ struct DeviceBuilder<'dom> {
     memories: Memories,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 struct Device {
     name: String,
     memories: Memories,
@@ -576,7 +582,7 @@ fn parse_family<'dom>(e: &Element, l: &Logger) -> Result<Vec<Device>, Error> {
         .collect()
 }
 
-#[derive(Default)]
+#[derive(Default, Serialize)]
 struct Devices(HashMap<String, Device>);
 
 impl FromElem for Devices {
@@ -767,6 +773,62 @@ pub fn check_command<'a>(_: &Config, args: &ArgMatches<'a>, l: &Logger) -> Resul
         Err(e) => {
             error!(l, "parsing {}: {}", filename, e);
         }
+    }
+    debug!(l, "exiting");
+    Ok(())
+}
+
+pub fn dump_devices_args<'a, 'b>() -> App<'a, 'b> {
+    SubCommand::with_name("dump-devices")
+        .about("Dump devices as json")
+        .version("0.1.0")
+        .arg(
+            Arg::with_name("output")
+                .short("o")
+                .takes_value(true)
+                .help("Dump JSON in the specified file")
+        )
+        .arg(
+            Arg::with_name("INPUT")
+                .help("Input file to dump devices from")
+                .index(1),
+        )
+
+}
+
+pub fn dump_devices_command<'a>(c: &Config, args: &ArgMatches<'a>, l: &Logger) -> Result<(), NetError> {
+    let filenames = args.value_of("INPUT").map(|input| vec![Box::new(Path::new(input)).to_path_buf()])
+        .or_else(||{
+            c.pack_store.read_dir().ok().map(
+                |rd| rd.flat_map(
+                    |dirent| dirent.into_iter().map(|p| p.path())
+                ).collect()
+            )
+        }).unwrap();
+    let devices = filenames.iter().flat_map(|filename| 
+        match Package::from_path(filename, &l) {
+            Ok(c) => {
+                c.devices.0
+            }
+            Err(e) => {
+                error!(l, "parsing {:?}: {}", filename, e);
+                HashMap::new()
+            }
+        }
+    )
+        .collect::<HashMap<_, _>>();
+    match args.value_of("output") {
+        Some(to_file) =>  {
+            let mut options =  OpenOptions::new();
+            options.write(true);
+            options.create(true);
+            if let Ok(fd) = options.open(to_file) {
+                serde_json::to_writer_pretty(fd, &devices).unwrap();
+            } else {
+                println!("Could not open file {}", to_file);
+            }
+        },
+        None => println!("{}", &serde_json::to_string_pretty(&devices).unwrap())
     }
     debug!(l, "exiting");
     Ok(())

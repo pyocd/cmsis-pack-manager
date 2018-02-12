@@ -8,7 +8,7 @@ extern crate pdsc;
 
 use pack_index::config::Config;
 use pack_index::network::{update_args, update_command, Error};
-use pdsc::{check_args, check_command};
+use pdsc::{check_args, check_command, dump_devices_args, dump_devices_command};
 use clap::{Arg, App};
 use slog::Drain;
 
@@ -22,6 +22,7 @@ fn main() {
         ))
         .subcommand(update_args())
         .subcommand(check_args())
+        .subcommand(dump_devices_args())
         .get_matches();
 
     let decorator = slog_term::TermDecorator::new().build();
@@ -42,6 +43,12 @@ fn main() {
             Config::new()
                 .map_err(Error::from)
                 .and_then(|config| check_command(&config, sub_m, &log))
+                .unwrap();
+        }
+        ("dump-devices", Some(sub_m)) => {
+            Config::new()
+                .map_err(Error::from)
+                .and_then(|config| dump_devices_command(&config, sub_m, &log))
                 .unwrap();
         }
         (bad_command, Some(_)) => {
