@@ -33,7 +33,13 @@ pub fn attr_parse_hex<'a>(
     from.attr(name)
         .ok_or_else(|| err_msg!("{} not found in {} element", name, elemname))
         .and_then(|st| {
-            u64::from_str_radix(&st[2..], 16).map_err(|e| err_msg!("{}", e))
+            if st.starts_with("0x") {
+                u64::from_str_radix(&st[2..], 16).map_err(|e| err_msg!("{}", e))
+            } else if st.starts_with("0") {
+                u64::from_str_radix(&st[1..], 8).map_err(|e| err_msg!("{}", e))
+            } else {
+                u64::from_str_radix(st, 10).map_err(|e| err_msg!("{}", e))
+            }
         })
 }
 
