@@ -640,7 +640,7 @@ impl FromElem for Package {
             vendor,
             url,
             components,
-            license: child_text(e, "license", "package").ok_warn(&l),
+            license: child_text(e, "license", "package").ok(),
             releases,
             conditions,
             devices,
