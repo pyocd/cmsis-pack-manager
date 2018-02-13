@@ -419,7 +419,7 @@ impl FromElem for MemElem {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 struct Memories(HashMap<String, Memory>);
 
 fn merge_memories(lhs: Memories, rhs: &Memories) -> Memories {
@@ -600,6 +600,25 @@ impl FromElem for Devices {
     }
 }
 
+#[derive(Debug, Serialize)]
+struct DumpDevice<'a> {
+    name: &'a str,
+    memories: &'a Memories,
+    algorithms: &'a Vec<Algorithm>,
+    pdsc_file: String,
+}
+
+impl<'a> DumpDevice<'a> {
+    fn from_device(dev: &'a Device, pdsc_file: String) -> Self {
+        Self{
+            name: &dev.name,
+            memories: &dev.memories,
+            algorithms: &dev.algorithms,
+            pdsc_file
+        }
+    }
+}
+
 struct Package {
     pub name: String,
     pub description: String,
@@ -727,6 +746,15 @@ impl Package {
         }
         map
     }
+
+    fn make_dump_devices<'a>(&'a self) -> Vec<(&'a str, DumpDevice<'a>)> {
+        let pdsc_file = format!("{}.{}.{}.pdsc", self.vendor, self.name, self.releases.0[0].version);
+        self.devices.0
+            .iter()
+            .map(|(name, d)| (name.as_str(), DumpDevice::from_device(d, pdsc_file.clone())))
+            .collect()
+
+    }
 }
 
 pub fn check_args<'a, 'b>() -> App<'a, 'b> {
@@ -842,7 +870,7 @@ pub fn dump_devices<P: AsRef<Path>, A: AsRef<Path>, I: IntoIterator<Item=A>>(
             }
         }
     ).collect::<Vec<Package>>();
-    let devices = pdscs.iter().flat_map(|pdsc| pdsc.devices.0.iter()).collect::<HashMap<_, _>>();
+    let devices = pdscs.iter().flat_map(|pdsc| pdsc.make_dump_devices().into_iter()).collect::<HashMap<_, _>>();
     match device_dest {
         Some(to_file) =>  {
             let mut options =  OpenOptions::new();
