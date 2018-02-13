@@ -3,11 +3,11 @@ extern crate slog;
 extern crate slog_term;
 extern crate slog_async;
 extern crate clap;
-extern crate pack_index;
+extern crate cmsis_update;
 extern crate pdsc;
 
-use pack_index::config::Config;
-use pack_index::network::{update_args, update_command, Error};
+use cmsis_update::config::Config;
+use cmsis_update::{update_args, update_command, Error};
 use pdsc::{check_args, check_command, dump_devices_args, dump_devices_command};
 use clap::{Arg, App};
 use slog::Drain;

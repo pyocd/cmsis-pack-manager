@@ -1,3 +1,17 @@
+extern crate app_dirs;
+extern crate futures_await as futures;
+extern crate tokio_core;
+extern crate hyper;
+extern crate hyper_tls;
+
+extern crate utils;
+extern crate pack_index;
+extern crate pdsc;
+#[macro_use]
+extern crate error_chain;
+
+pub mod config;
+
 use futures::prelude::*;
 use futures::Stream;
 use futures::stream::{futures_unordered, iter_ok};
@@ -16,7 +30,7 @@ use slog::Logger;
 
 use minidom;
 
-use parse::{PdscRef, Pidx, Vidx};
+use pack_index::{PdscRef, Pidx, Vidx};
 use utils::parse::FromElem;
 use config::{self, Config};
 

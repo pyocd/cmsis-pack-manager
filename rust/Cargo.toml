@@ -10,9 +10,8 @@ slog-term = "^2"
 slog-async = "^2"
 clap = "2.19.0"
 app_dirs = {git = "https://github.com/theotherjimmy/app-dirs-rs.git", branch = "fix-nightly-1-29"}
-pack-index = { path = "pack-index" }
 pdsc = { path = "pdsc" }
-utils = { path = "utils" }
+cmsis-update = { path = "cmsis-update" }
 cmsis-cffi = { path = "cmsis-cffi", optional = true }
 
 [build-dependencies]
