@@ -153,7 +153,8 @@ def command_find_part (cache, matches, long=False, intersection=True,
         for alias in aliases :
             print alias
             if long :
-                pp.pprint(cache.index[cache.aliases[alias]])
+                if cache.aliases[alias]["mounted_devices"]:
+                    pp.pprint(cache.index[cache.aliases[alias]["mounted_devices"][0]])
 
 @subcommand('dump-parts',
             dict(name='out', help='Directory to dump to'),

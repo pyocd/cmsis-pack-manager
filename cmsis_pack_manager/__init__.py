@@ -465,7 +465,8 @@ class Cache () :
     def _call_rust_parse(self):
         cdata_path = ffi.new("char[]", self.data_path) if self.data_path else ffi.NULL
         cindex_path = ffi.new("char[]", self.index_path.encode("utf-8")) if self.index_path else ffi.NULL
-        pdsc_index = lib.dump_pdsc_json(cdata_path, cindex_path)
+        calias_path = ffi.new("char[]", self.aliases_path.encode("utf-8")) if self.aliases_path else ffi.NULL
+        pdsc_index = lib.dump_pdsc_json(cdata_path, cindex_path, calias_path)
 
     def cache_descriptors(self) :
         """Cache every PDSC file known.
@@ -477,8 +478,6 @@ class Cache () :
         for _ in self._call_rust_update():
             pass
         self._call_rust_parse()
-        with open(self.aliases_path, "w+") as fd:
-            fd.write("{}")
 
     def cache_descriptor_list(self, list) :
         """Cache a list of PDSC files.

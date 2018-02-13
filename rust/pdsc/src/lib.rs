@@ -610,6 +610,7 @@ struct Package {
     pub releases: Releases,
     pub conditions: Conditions,
     pub devices: Devices,
+    pub boards: Vec<Board>,
 }
 
 impl FromElem for Package {
@@ -634,6 +635,9 @@ impl FromElem for Package {
         let devices = get_child_no_ns(e, "devices")
             .and_then(|c| Devices::from_elem(c, &l).ok_warn(&l))
             .unwrap_or_default();
+        let boards = get_child_no_ns(e, "boards")
+            .map(|c| Board::vec_from_children(c.children(), &l))
+            .unwrap_or_default();
         Ok(Self {
             name,
             description,
@@ -644,6 +648,27 @@ impl FromElem for Package {
             releases,
             conditions,
             devices,
+            boards,
+        })
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct Board {
+    name: String,
+    mounted_devices: Vec<String>
+}
+
+impl FromElem for Board {
+    fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
+        Ok(Self{
+            name: attr_map(e, "name", "board")?,
+            mounted_devices: e.children().flat_map(|c| match c.name() {
+                "mountedDevice" => {
+                    attr_map(c, "Dname", "mountedDevice").ok()
+                },
+                _ => None
+            }).collect()
         })
     }
 }
@@ -783,8 +808,14 @@ pub fn dump_devices_args<'a, 'b>() -> App<'a, 'b> {
         .about("Dump devices as json")
         .version("0.1.0")
         .arg(
-            Arg::with_name("output")
-                .short("o")
+            Arg::with_name("devices")
+                .short("d")
+                .takes_value(true)
+                .help("Dump JSON in the specified file")
+        )
+        .arg(
+            Arg::with_name("boards")
+                .short("b")
                 .takes_value(true)
                 .help("Dump JSON in the specified file")
         )
@@ -798,34 +829,54 @@ pub fn dump_devices_args<'a, 'b>() -> App<'a, 'b> {
 
 pub fn dump_devices<P: AsRef<Path>, A: AsRef<Path>, I: IntoIterator<Item=A>>(
     files: I,
-    dest: Option<P>,
+    device_dest: Option<P>,
+    board_dest: Option<P>,
     l: &Logger
 ) -> Result<(), NetError> {
-    let devices = files.into_iter().flat_map(|filename|
+    let pdscs = files.into_iter().flat_map(|filename|
         match Package::from_path(filename.as_ref(), &l) {
-            Ok(c) => {
-                c.devices.0
-            }
+            Ok(c) => Some(c),
             Err(e) => {
                 error!(l, "parsing {:?}: {}", filename.as_ref(), e);
-                HashMap::new()
+                None
             }
         }
-    ).collect::<HashMap<_, _>>();
-    match dest {
+    ).collect::<Vec<Package>>();
+    let devices = pdscs.iter().flat_map(|pdsc| pdsc.devices.0.iter()).collect::<HashMap<_, _>>();
+    match device_dest {
         Some(to_file) =>  {
             let mut options =  OpenOptions::new();
             options.write(true);
             options.create(true);
             options.truncate(true);
             if let Ok(fd) = options.open(to_file.as_ref()) {
-                Ok(serde_json::to_writer_pretty(fd, &devices).unwrap())
+                serde_json::to_writer_pretty(fd, &devices).unwrap();
             } else {
-                Ok(println!("Could not open file {:?}", to_file.as_ref()))
+                println!("Could not open file {:?}", to_file.as_ref());
             }
         },
-        None => Ok(println!("{}", &serde_json::to_string_pretty(&devices).unwrap()))
+        None => println!("{}", &serde_json::to_string_pretty(&devices).unwrap()),
     }
+    let boards = pdscs
+        .iter()
+        .flat_map(|pdsc| pdsc.boards.iter())
+        .map(|b| (&b.name, b))
+        .collect::<HashMap<_, _>>();
+    match board_dest {
+        Some(to_file) =>  {
+            let mut options =  OpenOptions::new();
+            options.write(true);
+            options.create(true);
+            options.truncate(true);
+            if let Ok(fd) = options.open(to_file.as_ref()) {
+                serde_json::to_writer_pretty(fd, &boards).unwrap();
+            } else {
+                println!("Could not open file {:?}", to_file.as_ref());
+            }
+        },
+        None => println!("{}", &serde_json::to_string_pretty(&devices).unwrap()),
+    }
+    Ok(())
 }
 
 pub fn dump_devices_command<'a>(c: &Config, args: &ArgMatches<'a>, l: &Logger) -> Result<(), NetError> {
@@ -837,7 +888,7 @@ pub fn dump_devices_command<'a>(c: &Config, args: &ArgMatches<'a>, l: &Logger) -
             ).collect()
         )
     }).unwrap();
-    dump_devices(filenames, args.value_of("output"), l);
+    dump_devices(filenames, args.value_of("devices"), args.value_of("boards"), l);
     debug!(l, "exiting");
     Ok(())
 }

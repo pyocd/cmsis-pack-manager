@@ -9,7 +9,8 @@ use pack_desc::dump_devices;
 #[no_mangle]
 pub extern "C" fn dump_pdsc_json(
     pack_store: *const c_char,
-    destination: *const c_char,
+    devices_dest: *const c_char,
+    boards_dest: *const c_char,
 ) -> () {
     extern crate slog_term;
     extern crate slog_async;
@@ -32,8 +33,14 @@ pub extern "C" fn dump_pdsc_json(
             return;
         }
     };
-    let dest: Option<Cow<str>> = if !pack_store.is_null() {
-        let fname = unsafe { CStr::from_ptr(destination) }.to_string_lossy();
+    let dev_dest: Option<Cow<str>> = if !devices_dest.is_null() {
+        let fname = unsafe { CStr::from_ptr(devices_dest) }.to_string_lossy();
+        Some(fname)
+    } else {
+        None
+    };
+    let brd_dest: Option<Cow<str>> = if !boards_dest.is_null() {
+        let fname = unsafe { CStr::from_ptr(boards_dest) }.to_string_lossy();
         Some(fname)
     } else {
         None
@@ -42,7 +49,10 @@ pub extern "C" fn dump_pdsc_json(
         |rd| rd.into_iter().map(
             |dirent| dirent.path()
         )).collect::<Vec<_>>();
-    if let Err(e) = dump_devices(filenames, dest.map(|d| d.to_string()), &log) {
+    if let Err(e) = dump_devices(filenames,
+                                 dev_dest.map(|d| d.to_string()),
+                                 brd_dest.map(|d| d.to_string()),
+                                 &log) {
         println!("pdsc indexing : {:?}", e);
     }
 }
