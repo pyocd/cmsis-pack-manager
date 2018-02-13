@@ -13,6 +13,7 @@ slog = "^2"
 slog-term = "^2"
 slog-async = "^2"
 pack-index = { path = "../pack-index" }
+pdsc = { path = "../pdsc" }
 
 [build-dependencies]
 cbindgen = "0.1"

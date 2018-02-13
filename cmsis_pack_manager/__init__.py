@@ -462,6 +462,11 @@ class Cache () :
             else:
                 break
 
+    def _call_rust_parse(self):
+        cdata_path = ffi.new("char[]", self.data_path) if self.data_path else ffi.NULL
+        cindex_path = ffi.new("char[]", self.index_path.encode("utf-8")) if self.index_path else ffi.NULL
+        pdsc_index = lib.dump_pdsc_json(cdata_path, cindex_path)
+
     def cache_descriptors(self) :
         """Cache every PDSC file known.
 
@@ -469,10 +474,11 @@ class Cache () :
 
         .. note:: This process may use 11MB of drive space and take upwards of 1 minute.
         """
-        for pdsc_filename in self._call_rust_update():
-            with open(pdsc_filename) as pdsc:
-                self._merge_pdsc_from_contents(BeautifulSoup(pdsc, "html.parser"),
-                                               pdsc_filename)
+        for _ in self._call_rust_update():
+            pass
+        self._call_rust_parse()
+        with open(self.aliases_path, "w+") as fd:
+            fd.write("{}")
 
     def cache_descriptor_list(self, list) :
         """Cache a list of PDSC files.

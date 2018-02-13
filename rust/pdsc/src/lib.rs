@@ -796,40 +796,48 @@ pub fn dump_devices_args<'a, 'b>() -> App<'a, 'b> {
 
 }
 
-pub fn dump_devices_command<'a>(c: &Config, args: &ArgMatches<'a>, l: &Logger) -> Result<(), NetError> {
-    let filenames = args.value_of("INPUT").map(|input| vec![Box::new(Path::new(input)).to_path_buf()])
-        .or_else(||{
-            c.pack_store.read_dir().ok().map(
-                |rd| rd.flat_map(
-                    |dirent| dirent.into_iter().map(|p| p.path())
-                ).collect()
-            )
-        }).unwrap();
-    let devices = filenames.iter().flat_map(|filename| 
-        match Package::from_path(filename, &l) {
+pub fn dump_devices<P: AsRef<Path>, A: AsRef<Path>, I: IntoIterator<Item=A>>(
+    files: I,
+    dest: Option<P>,
+    l: &Logger
+) -> Result<(), NetError> {
+    let devices = files.into_iter().flat_map(|filename|
+        match Package::from_path(filename.as_ref(), &l) {
             Ok(c) => {
                 c.devices.0
             }
             Err(e) => {
-                error!(l, "parsing {:?}: {}", filename, e);
+                error!(l, "parsing {:?}: {}", filename.as_ref(), e);
                 HashMap::new()
             }
         }
-    )
-        .collect::<HashMap<_, _>>();
-    match args.value_of("output") {
+    ).collect::<HashMap<_, _>>();
+    match dest {
         Some(to_file) =>  {
             let mut options =  OpenOptions::new();
             options.write(true);
             options.create(true);
-            if let Ok(fd) = options.open(to_file) {
-                serde_json::to_writer_pretty(fd, &devices).unwrap();
+            options.truncate(true);
+            if let Ok(fd) = options.open(to_file.as_ref()) {
+                Ok(serde_json::to_writer_pretty(fd, &devices).unwrap())
             } else {
-                println!("Could not open file {}", to_file);
+                Ok(println!("Could not open file {:?}", to_file.as_ref()))
             }
         },
-        None => println!("{}", &serde_json::to_string_pretty(&devices).unwrap())
+        None => Ok(println!("{}", &serde_json::to_string_pretty(&devices).unwrap()))
     }
+}
+
+pub fn dump_devices_command<'a>(c: &Config, args: &ArgMatches<'a>, l: &Logger) -> Result<(), NetError> {
+    let files = args.value_of("INPUT").map(|input| vec![Box::new(Path::new(input)).to_path_buf()]);
+    let filenames = files.or_else(||{
+        c.pack_store.read_dir().ok().map(
+            |rd| rd.flat_map(
+                |dirent| dirent.into_iter().map(|p| p.path())
+            ).collect()
+        )
+    }).unwrap();
+    dump_devices(filenames, args.value_of("output"), l);
     debug!(l, "exiting");
     Ok(())
 }
