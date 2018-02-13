@@ -26,4 +26,6 @@ def test_pull_pdscs():
         vidx_list=join(dirname(__file__), 'test-pack-index', 'vendors.list'))
     c.cache_descriptors()
     assert("MyDevice" in c.index)
+    assert("MyBoard" in c.aliases)
+    assert("MyDevice" in c.aliases["MyBoard"]["mounted_devices"])
     httpd.shutdown()

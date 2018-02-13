@@ -13,4 +13,9 @@
       </device>
     </family>
   </devices>
+  <boards>
+    <board name="MyBoard">
+      <mountedDevice vendor="MyVendor" Dname="MyDevice"/>
+    </board>
+  </boards>
 </package>
