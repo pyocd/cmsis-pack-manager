@@ -8,15 +8,14 @@ extern crate custom_derive;
 extern crate enum_derive;
 #[macro_use]
 extern crate serde_derive;
-#[macro_use]
 extern crate serde_json;
+extern crate failure;
 
 extern crate pack_index;
 extern crate clap;
 extern crate minidom;
 
 use std::fs::OpenOptions;
-use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::collections::HashMap;
 use minidom::{Element, Error, ErrorKind};
@@ -27,7 +26,7 @@ use utils::parse::{assert_root_name, attr_map, attr_parse, attr_parse_hex, child
                    get_child_no_ns, FromElem};
 use utils::ResultLogExt;
 use pack_index::config::Config;
-use pack_index::network::Error as NetError;
+use failure::Error as FailError;
 
 custom_derive!{
     #[allow(non_camel_case_types)]
@@ -769,7 +768,7 @@ pub fn check_args<'a, 'b>() -> App<'a, 'b> {
         )
 }
 
-pub fn check_command<'a>(_: &Config, args: &ArgMatches<'a>, l: &Logger) -> Result<(), NetError> {
+pub fn check_command<'a>(_: &Config, args: &ArgMatches<'a>, l: &Logger) -> Result<(), FailError> {
     let filename = args.value_of("INPUT").unwrap();
     match Package::from_path(Path::new(filename.clone()), &l) {
         Ok(c) => {
@@ -860,7 +859,7 @@ pub fn dump_devices<P: AsRef<Path>, A: AsRef<Path>, I: IntoIterator<Item=A>>(
     device_dest: Option<P>,
     board_dest: Option<P>,
     l: &Logger
-) -> Result<(), NetError> {
+) -> Result<(), FailError> {
     let pdscs = files.into_iter().flat_map(|filename|
         match Package::from_path(filename.as_ref(), &l) {
             Ok(c) => Some(c),
@@ -907,7 +906,7 @@ pub fn dump_devices<P: AsRef<Path>, A: AsRef<Path>, I: IntoIterator<Item=A>>(
     Ok(())
 }
 
-pub fn dump_devices_command<'a>(c: &Config, args: &ArgMatches<'a>, l: &Logger) -> Result<(), NetError> {
+pub fn dump_devices_command<'a>(c: &Config, args: &ArgMatches<'a>, l: &Logger) -> Result<(), FailError> {
     let files = args.value_of("INPUT").map(|input| vec![Box::new(Path::new(input)).to_path_buf()]);
     let filenames = files.or_else(||{
         c.pack_store.read_dir().ok().map(
@@ -916,7 +915,7 @@ pub fn dump_devices_command<'a>(c: &Config, args: &ArgMatches<'a>, l: &Logger) -
             ).collect()
         )
     }).unwrap();
-    dump_devices(filenames, args.value_of("devices"), args.value_of("boards"), l);
+    let to_ret = dump_devices(filenames, args.value_of("devices"), args.value_of("boards"), l);
     debug!(l, "exiting");
-    Ok(())
+    to_ret
 }

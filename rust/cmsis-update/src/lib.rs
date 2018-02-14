@@ -1,50 +1,40 @@
-extern crate app_dirs;
+#![feature(proc_macro, conservative_impl_trait, generators, libc)]
+
 extern crate futures_await as futures;
 extern crate tokio_core;
 extern crate hyper;
 extern crate hyper_tls;
+extern crate minidom;
+extern crate clap;
+extern crate failure;
+
+#[macro_use]
+extern crate slog;
 
 extern crate utils;
 extern crate pack_index;
 extern crate pdsc;
-#[macro_use]
-extern crate error_chain;
-
-pub mod config;
 
 use futures::prelude::*;
 use futures::Stream;
 use futures::stream::{futures_unordered, iter_ok};
-use hyper::{self, Body, Chunk, Client, Response, StatusCode, Uri};
+use hyper::{Body, Chunk, Client, Response, StatusCode, Uri};
 use hyper::client::Connect;
 use hyper::header::Location;
 use hyper_tls::HttpsConnector;
 use tokio_core::reactor::Core;
 use std::borrow::Borrow;
 use std::fs::OpenOptions;
-use std::io::{self, Write};
+use std::io::Write;
 use std::iter::Iterator;
 use std::path::PathBuf;
 use clap::{App, ArgMatches, SubCommand};
 use slog::Logger;
-
-use minidom;
+use failure::Error;
 
 use pack_index::{PdscRef, Pidx, Vidx};
+use pack_index::config::Config;
 use utils::parse::FromElem;
-use config::{self, Config};
-
-error_chain!{
-    links{
-        MinidomErr(minidom::Error, minidom::ErrorKind);
-        ConfigErr(config::Error, config::ErrorKind);
-    }
-    foreign_links{
-        HttpErr(hyper::Error);
-        UriErr(hyper::error::UriError);
-        IOErr(io::Error);
-    }
-}
 
 trait ClientRedirExt<C>
 where
@@ -101,7 +91,7 @@ fn download_vidx<'a, C: Connect, I: Into<String>>(
     client: &'a Client<C, Body>,
     vidx_ref: I,
     logger: &'a Logger,
-) -> impl Future<Item = Vidx, Error = Error> + 'a {
+) -> impl Future<Item = Result<Vidx, minidom::Error>, Error = hyper::Error> + 'a {
     let vidx = vidx_ref.into();
     async_block!{
         let uri = vidx.parse()?;
@@ -110,7 +100,7 @@ fn download_vidx<'a, C: Connect, I: Into<String>>(
                 .map(Response::body)
                 .flatten_stream()
                 .concat2())?;
-        parse_vidx(body, logger)
+        Ok(parse_vidx(body, logger))
     }
 }
 
@@ -118,7 +108,7 @@ fn download_vidx_list<'a, C, I>(
     list: I,
     client: &'a Client<C, Body>,
     logger: &'a Logger,
-) -> impl Stream<Item = Vidx, Error = Error> + 'a
+) -> impl Stream<Item = Result<Vidx, minidom::Error>, Error = hyper::Error> + 'a
 where
     C: Connect,
     I: IntoIterator + 'a,
@@ -130,9 +120,9 @@ where
     )
 }
 
-fn parse_vidx(body: Chunk, logger: &Logger) -> Result<Vidx> {
+fn parse_vidx(body: Chunk, logger: &Logger) -> Result<Vidx, minidom::Error> {
     let string = String::from_utf8_lossy(body.as_ref());
-    Vidx::from_string(string.borrow(), logger).map_err(Error::from)
+    Vidx::from_string(string.borrow(), logger)
 }
 
 fn into_uri(Pidx { url, vendor, .. }: Pidx) -> String {
@@ -153,7 +143,10 @@ where
 {
     let pidx_urls = vendor_index.into_iter().map(into_uri);
     let job = download_vidx_list(pidx_urls, client, logger)
-        .map(|vidx| iter_ok(vidx.pdsc_index.into_iter()))
+        .filter_map(|vidx| match vidx {
+            Ok(v) => Some(iter_ok(v.pdsc_index.into_iter())),
+            Err(_) => None,
+        })
         .flatten();
     iter_ok(pdsc_index.into_iter()).chain(job)
 }
@@ -165,7 +158,7 @@ fn make_uri(
         ref name,
         ..
     }: &PdscRef,
-) -> Result<Uri> {
+) -> Result<Uri, Error> {
     let uri = if url.ends_with('/') {
         format!("{}{}.{}.pdsc", url, vendor, name)
     } else {
@@ -243,21 +236,24 @@ fn update_inner<C, I>(
     core: &mut Core,
     client: &Client<C, Body>,
     logger: &Logger,
-) -> Result<Vec<PathBuf>>
+) -> Result<Vec<PathBuf>, Error>
 where
     C: Connect,
     I: IntoIterator<Item = String>,
 {
     let parsed_vidx = download_vidx_list(vidx_list, client, logger);
     let pdsc_list = parsed_vidx
-        .map(|vidx| flatmap_pdscs(vidx, client, logger))
+        .filter_map(|vidx| match vidx {
+            Ok(v) => Some(flatmap_pdscs(v, client, logger)),
+            Err(_) => None,
+        })
         .flatten();
     let pdscs = download_pdsc_stream(config, pdsc_list, client, logger);
     core.run(pdscs.filter_map(id).collect())
 }
 
 /// Flatten a list of Vidx Urls into a list of updated CMSIS packs
-pub fn update<I>(config: &Config, vidx_list: I, logger: &Logger) -> Result<Vec<PathBuf>>
+pub fn update<I>(config: &Config, vidx_list: I, logger: &Logger) -> Result<Vec<PathBuf>, Error>
 where
     I: IntoIterator<Item = String>,
 {
@@ -276,7 +272,7 @@ pub fn update_args<'a, 'b>() -> App<'a, 'b> {
         .version("0.1.0")
 }
 
-pub fn update_command<'a>(conf: &Config, _: &ArgMatches<'a>, logger: &Logger) -> Result<()> {
+pub fn update_command<'a>(conf: &Config, _: &ArgMatches<'a>, logger: &Logger) -> Result<(), Error> {
     let vidx_list = conf.read_vidx_list(&logger);
     for url in vidx_list.iter() {
         info!(logger, "Updating registry from `{}`", url);
@@ -297,7 +293,3 @@ pub fn update_command<'a>(conf: &Config, _: &ArgMatches<'a>, logger: &Logger) ->
     Ok(())
 }
 
-#[cfg(test)]
-mod test {
-    use super::*;
-}

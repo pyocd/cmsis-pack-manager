@@ -1,5 +1,6 @@
 #[macro_use]
 extern crate slog;
+extern crate cmsis_update;
 extern crate pack_index as pi;
 extern crate pdsc as pack_desc;
 

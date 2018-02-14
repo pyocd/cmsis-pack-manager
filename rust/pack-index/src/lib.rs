@@ -1,12 +1,13 @@
-#![feature(proc_macro, conservative_impl_trait, generators, libc)]
-
+extern crate app_dirs;
 extern crate minidom;
 extern crate quick_xml;
 extern crate utils;
 extern crate smallstring;
-extern crate clap;
 #[macro_use]
 extern crate slog;
+extern crate failure;
+
+pub mod config;
 
 use smallstring::SmallString;
 use minidom::{Element, Error};

@@ -12,6 +12,7 @@ crate-type = ["cdylib"]
 slog = "^2"
 slog-term = "^2"
 slog-async = "^2"
+cmsis-update = { path = "../cmsis-update" }
 pack-index = { path = "../pack-index" }
 pdsc = { path = "../pdsc" }
 

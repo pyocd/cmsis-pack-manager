@@ -1,16 +1,10 @@
 use std::path::PathBuf;
-use std::io::{self, BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader, Write};
 use std::fs::{create_dir_all, OpenOptions};
 
-use app_dirs::{self, app_root, AppDataType, AppInfo};
+use app_dirs::{app_root, AppDataType, AppInfo};
 use slog::Logger;
-
-error_chain!{
-    foreign_links{
-        Dirs(app_dirs::AppDirsError);
-        Io(io::Error);
-    }
-}
+use failure::Error;
 
 pub struct Config {
     pub pack_store: PathBuf,
@@ -44,7 +38,7 @@ impl ConfigBuilder {
         }
     }
 
-    pub fn build(self) -> Result<Config> {
+    pub fn build(self) -> Result<Config, Error> {
         let app_info = AppInfo {
             name: "cmsis",
             author: "Arm",
@@ -77,7 +71,7 @@ impl ConfigBuilder {
 }
 
 impl Config {
-    pub fn new() -> Result<Config> {
+    pub fn new() -> Result<Config, Error> {
         ConfigBuilder::new().build()
     }
 

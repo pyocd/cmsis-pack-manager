@@ -4,13 +4,14 @@ version = "0.1.0"
 authors = ["Jimmy Brisson <theotherjimmy@gmail.com>"]
 
 [dependencies]
-error-chain = "0.10.0"
 slog = "^2"
 slog-term = "^2"
 slog-async = "^2"
 clap = "2.19.0"
+failure = "0.1.1"
 app_dirs = {git = "https://github.com/theotherjimmy/app-dirs-rs.git", branch = "fix-nightly-1-29"}
 pdsc = { path = "pdsc" }
+pack-index = { path = "pack-index" }
 cmsis-update = { path = "cmsis-update" }
 cmsis-cffi = { path = "cmsis-cffi", optional = true }
 

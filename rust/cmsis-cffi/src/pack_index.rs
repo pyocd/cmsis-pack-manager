@@ -4,7 +4,7 @@ use std::ffi::{CStr, CString};
 use std::path::PathBuf;
 use std::ptr::{null, null_mut};
 
-use pi::network::update;
+use cmsis_update::update;
 use pi::config::ConfigBuilder;
 
 pub struct UpdateReturn(Vec<PathBuf>);
