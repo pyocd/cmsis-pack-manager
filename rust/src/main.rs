@@ -9,7 +9,7 @@ extern crate pdsc;
 extern crate failure;
 
 use pack_index::config::Config;
-use cmsis_update::{update_args, update_command};
+use cmsis_update::{update_args, update_command, install_args, install_command};
 use pdsc::{check_args, check_command, dump_devices_args, dump_devices_command};
 use clap::{Arg, App};
 use slog::Drain;
@@ -26,6 +26,7 @@ fn main() {
         .subcommand(update_args())
         .subcommand(check_args())
         .subcommand(dump_devices_args())
+        .subcommand(install_args())
         .get_matches();
 
     let decorator = slog_term::TermDecorator::new().build();
@@ -40,6 +41,12 @@ fn main() {
             Config::new()
                 .map_err(Error::from)
                 .and_then(|config| update_command(&config, sub_m, &log))
+                .unwrap();
+        }
+        ("install", Some(sub_m)) => {
+            Config::new()
+                .map_err(Error::from)
+                .and_then(|config| install_command(&config, sub_m, &log))
                 .unwrap();
         }
         ("check", Some(sub_m)) => {

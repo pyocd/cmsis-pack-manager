@@ -320,8 +320,8 @@ impl FromElem for Conditions {
     }
 }
 
-struct Release {
-    version: String,
+pub struct Release {
+    pub version: String,
     pub text: String,
 }
 
@@ -336,7 +336,13 @@ impl FromElem for Release {
 }
 
 #[derive(Default)]
-struct Releases(Vec<Release>);
+pub struct Releases(Vec<Release>);
+
+impl Releases {
+    pub fn latest_release(&self) -> &Release {
+        &self.0[0]
+    }
+}
 
 impl FromElem for Releases {
     fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
@@ -618,16 +624,16 @@ impl<'a> DumpDevice<'a> {
     }
 }
 
-struct Package {
+pub struct Package {
     pub name: String,
     pub description: String,
     pub vendor: String,
     pub url: String,
     pub license: Option<String>,
-    pub components: ComponentBuilders,
+    components: ComponentBuilders,
     pub releases: Releases,
-    pub conditions: Conditions,
-    pub devices: Devices,
+    conditions: Conditions,
+    devices: Devices,
     pub boards: Vec<Board>,
 }
 
@@ -723,7 +729,7 @@ impl Package {
                 sub_group: comp.sub_group,
                 variant: comp.variant,
                 version: comp.version
-                    .unwrap_or_else(|| self.releases.0[0].version.clone()),
+                    .unwrap_or_else(|| self.releases.latest_release().version.clone()),
                 api_version: comp.api_version,
                 condition: comp.condition,
                 max_instances: comp.max_instances,

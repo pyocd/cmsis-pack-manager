@@ -17,26 +17,30 @@ extern crate pdsc;
 
 use futures::prelude::*;
 use futures::Stream;
+use futures::stream::iter_ok;
 use hyper::{Body, Client};
 use hyper::client::Connect;
 use hyper_tls::HttpsConnector;
 use tokio_core::reactor::Core;
 use std::iter::Iterator;
-use std::path::PathBuf;
-use clap::{App, ArgMatches, SubCommand};
+use std::path::{Path, PathBuf};
+use clap::{App, Arg, ArgMatches, SubCommand};
 use slog::Logger;
 use failure::Error;
 
 use pack_index::config::Config;
+use pdsc::Package;
+use utils::parse::FromElem;
 
 pub mod upgrade;
 mod redirect;
 mod vidx;
 mod dl_pdsc;
+mod dl_pack;
 
 use vidx::{download_vidx_list, flatmap_pdscs};
 use dl_pdsc::{download_pdsc_stream};
-
+use dl_pack::{download_pack_stream};
 
 /// Create a future of the update command.
 pub fn update_future<'a, C, I>(
@@ -45,9 +49,8 @@ pub fn update_future<'a, C, I>(
     client: &'a Client<C, Body>,
     logger: &'a Logger,
 ) -> impl Future<Item = Vec<PathBuf>, Error = Error> + 'a
-    where
-    C: Connect,
-    I: IntoIterator<Item = String> + 'a,
+    where C: Connect,
+          I: IntoIterator<Item = String> + 'a,
 {
     let parsed_vidx = download_vidx_list(vidx_list, client, logger);
     let pdsc_list = parsed_vidx
@@ -121,3 +124,82 @@ pub fn update_command<'a>(conf: &Config, _: &ArgMatches<'a>, logger: &Logger) ->
     Ok(())
 }
 
+pub fn install_future<'a, C, I>(
+    config: &'a Config,
+    pdscs: I,
+    client: &'a Client<C, Body>,
+    logger: &'a Logger,
+) -> impl Future<Item = Vec<PathBuf>, Error = Error> + 'a
+    where C: Connect,
+          I: IntoIterator<Item = Package> + 'a,
+{
+    let packs = download_pack_stream(config, iter_ok(pdscs), client, logger);
+    packs.filter_map(id).collect()
+}
+
+// This will "trick" the borrow checker into thinking that the lifetimes for
+// client and core are at least as big as the lifetime for pdscs, which they actually are
+fn install_inner<C, I>(
+    config: &Config,
+    pdsc_list: I,
+    core: &mut Core,
+    client: &Client<C, Body>,
+    logger: &Logger,
+) -> Result<Vec<PathBuf>, Error>
+    where
+    C: Connect,
+    I: IntoIterator<Item = Package>,
+{
+    core.run(install_future(config, pdsc_list, client, logger))
+}
+
+/// Flatten a list of Vidx Urls into a list of updated CMSIS packs
+pub fn install<I>(config: &Config, pdsc_list: I, logger: &Logger) -> Result<Vec<PathBuf>, Error>
+    where
+    I: IntoIterator<Item = Package>,
+{
+    let mut core = Core::new().unwrap();
+    let handle = core.handle();
+    let client = Client::configure()
+        .keep_alive(true)
+        .connector(HttpsConnector::new(4, &handle).unwrap())
+        .build(&handle);
+    install_inner(config, pdsc_list, &mut core, &client, logger)
+}
+
+pub fn install_args() -> App<'static, 'static> {
+    SubCommand::with_name("install")
+        .about("Install a CMSIS Pack file")
+        .version("0.1.0")
+        .arg(
+            Arg::with_name("PDSC")
+                .required(true)
+                .takes_value(true)
+                .index(1)
+                .multiple(true)
+        )
+}
+
+pub fn install_command<'a>(
+    conf: &Config,
+    args: &ArgMatches<'a>,
+    logger: &Logger
+) -> Result<(), Error> {
+    let pdsc_list = args.values_of("PDSC")
+        .unwrap()
+        .filter_map(|input| Package::from_path(Path::new(input), logger).ok());
+    let updated = install(conf, pdsc_list, logger)?;
+    let num_updated = updated.iter().map(|_| 1).sum::<u32>();
+    match num_updated {
+        0 => {
+            info!(logger, "Already up to date");
+        }
+        1 => {
+            info!(logger, "Updated 1 package");
+        }
+        _ => {
+            info!(logger, "Updated {} package", num_updated);
+        }
+    }
+    Ok(())
+}
