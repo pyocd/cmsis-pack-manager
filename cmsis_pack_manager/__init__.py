@@ -447,26 +447,22 @@ class Cache () :
 
         .. note:: This process may use 4GB of drive space and take upwards of 10 minutes to complete.
         """
-        self.cache_pack_list(self.get_urls())
-        self.generate_index()
-        self.generate_aliases()
+        parsed_packs = self.cache_descriptors()
+        cdata_path = ffi.new("char[]", self.data_path) if self.data_path else ffi.NULL
+        lib.update_packs(cdata_path, parsed_packs)
 
     def _call_rust_update(self):
         cdata_path = ffi.new("char[]", self.data_path) if self.data_path else ffi.NULL
         cvidx_path = ffi.new("char[]", self.vidx_list) if self.vidx_list else ffi.NULL
         pdsc_index = ffi.gc(lib.update_pdsc_index(cdata_path, cvidx_path), lib.update_pdsc_index_free)
-        while True:
-            next = lib.update_pdsc_index_next(pdsc_index)
-            if next:
-                yield ffi.string(ffi.gc(next, lib.cstring_free))
-            else:
-                break
+        return pdsc_index
 
-    def _call_rust_parse(self):
-        cdata_path = ffi.new("char[]", self.data_path) if self.data_path else ffi.NULL
+    def _call_rust_parse(self, pdsc_index):
         cindex_path = ffi.new("char[]", self.index_path.encode("utf-8")) if self.index_path else ffi.NULL
         calias_path = ffi.new("char[]", self.aliases_path.encode("utf-8")) if self.aliases_path else ffi.NULL
-        pdsc_index = lib.dump_pdsc_json(cdata_path, cindex_path, calias_path)
+        parsed_packs = ffi.gc(lib.parse_packs(pdsc_index), lib.parse_packs_free)
+        pdsc_index = lib.dump_pdsc_json(parsed_packs, cindex_path, calias_path)
+        return parsed_packs
 
     def cache_descriptors(self) :
         """Cache every PDSC file known.
@@ -475,9 +471,9 @@ class Cache () :
 
         .. note:: This process may use 11MB of drive space and take upwards of 1 minute.
         """
-        for _ in self._call_rust_update():
-            pass
-        self._call_rust_parse()
+        pdsc_index = self._call_rust_update()
+        parsed_packs = self._call_rust_parse(pdsc_index)
+        return parsed_packs
 
     def cache_descriptor_list(self, list) :
         """Cache a list of PDSC files.

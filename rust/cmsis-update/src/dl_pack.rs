@@ -49,12 +49,12 @@ fn make_fd(
     filename
 }
 
-fn download_pack<'a, C: Connect>(
+fn download_pack<'b, 'a: 'b,  C: Connect>(
     config: &'a Config,
-    pdsc: Package,
-    client: &'a Client<C, Body>,
+    pdsc: &'a Package,
+    client: &'b Client<C, Body>,
     logger: &'a Logger,
-) -> impl Future<Item = Option<PathBuf>, Error = Error> + 'a {
+) -> impl Future<Item = Option<PathBuf>, Error = Error> + 'b {
     async_block!{
         let filename = make_fd(config, &pdsc);
         if filename.exists() {
@@ -75,15 +75,16 @@ fn download_pack<'a, C: Connect>(
     }
 }
 
-pub(crate) fn download_pack_stream<'a, F, C>(
+pub(crate) fn download_pack_stream<'a, 'b, F, C>(
     config: &'a Config,
     stream: F,
-    client: &'a Client<C, Body>,
+    client: &'b Client<C, Body>,
     logger: &'a Logger,
-) -> impl Stream<Item = Option<PathBuf>, Error = Error> + 'a
+) -> impl Stream<Item = Option<PathBuf>, Error = Error> + 'b
     where
-    F: Stream<Item = Package, Error = Error> + 'a,
+    F: Stream<Item = &'a Package, Error = Error> + 'b,
     C: Connect,
+    'a: 'b
 {
     stream
         .map(move |pdsc| download_pack(config, pdsc, client, logger))

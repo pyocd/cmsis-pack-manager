@@ -347,10 +347,14 @@ impl Releases {
 impl FromElem for Releases {
     fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
         assert_root_name(e, "releases")?;
-        Ok(Releases(
-            e.children()
-                .flat_map(|c| Release::from_elem(c, l).ok_warn(l))
-                .collect()))
+        let to_ret: Vec<_> = e.children()
+            .flat_map(|c| Release::from_elem(c, l).ok_warn(l))
+            .collect();
+        if to_ret.len() == 0usize {
+            Err(err_msg!("There must be at least one release!"))
+        } else {
+            Ok(Releases(to_ret))
+        }
     }
 }
 
@@ -860,22 +864,17 @@ pub fn dump_devices_args<'a, 'b>() -> App<'a, 'b> {
 
 }
 
-pub fn dump_devices<P: AsRef<Path>, A: AsRef<Path>, I: IntoIterator<Item=A>>(
-    files: I,
+pub fn dump_devices<'a, P: AsRef<Path>, I: IntoIterator<Item = &'a Package>>(
+    pdscs: I,
     device_dest: Option<P>,
     board_dest: Option<P>,
     l: &Logger
 ) -> Result<(), FailError> {
-    let pdscs = files.into_iter().flat_map(|filename|
-        match Package::from_path(filename.as_ref(), &l) {
-            Ok(c) => Some(c),
-            Err(e) => {
-                error!(l, "parsing {:?}: {}", filename.as_ref(), e);
-                None
-            }
-        }
-    ).collect::<Vec<Package>>();
-    let devices = pdscs.iter().flat_map(|pdsc| pdsc.make_dump_devices().into_iter()).collect::<HashMap<_, _>>();
+    let pdscs: Vec<&Package> = pdscs.into_iter().collect();
+    let devices = pdscs
+        .iter()
+        .flat_map(|pdsc| pdsc.make_dump_devices().into_iter())
+        .collect::<HashMap<_, _>>();
     match device_dest {
         Some(to_file) =>  {
             let mut options =  OpenOptions::new();
@@ -921,7 +920,18 @@ pub fn dump_devices_command<'a>(c: &Config, args: &ArgMatches<'a>, l: &Logger) -
             ).collect()
         )
     }).unwrap();
-    let to_ret = dump_devices(filenames, args.value_of("devices"), args.value_of("boards"), l);
+    let pdscs = filenames
+        .into_iter()
+        .flat_map(|filename|
+                  match Package::from_path(&filename, &l) {
+                      Ok(c) => Some(c),
+                      Err(e) => {
+                          error!(l, "parsing {:?}: {}", filename, e);
+                          None
+                      }
+                  }
+        ).collect::<Vec<Package>>();
+    let to_ret = dump_devices(&pdscs, args.value_of("devices"), args.value_of("boards"), l);
     debug!(l, "exiting");
     to_ret
 }

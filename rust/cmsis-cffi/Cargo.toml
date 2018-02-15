@@ -15,6 +15,7 @@ slog-async = "^2"
 cmsis-update = { path = "../cmsis-update" }
 pack-index = { path = "../pack-index" }
 pdsc = { path = "../pdsc" }
+utils = { path = "../utils" }
 
 [build-dependencies]
 cbindgen = "0.1"

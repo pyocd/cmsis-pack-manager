@@ -124,14 +124,14 @@ pub fn update_command<'a>(conf: &Config, _: &ArgMatches<'a>, logger: &Logger) ->
     Ok(())
 }
 
-pub fn install_future<'a, C, I>(
+pub fn install_future<'client,'a: 'client,  C, I: 'a,>(
     config: &'a Config,
     pdscs: I,
-    client: &'a Client<C, Body>,
+    client: &'client Client<C, Body>,
     logger: &'a Logger,
-) -> impl Future<Item = Vec<PathBuf>, Error = Error> + 'a
+) -> impl Future<Item = Vec<PathBuf>, Error = Error> + 'client
     where C: Connect,
-          I: IntoIterator<Item = Package> + 'a,
+          I: IntoIterator<Item = &'a Package>,
 {
     let packs = download_pack_stream(config, iter_ok(pdscs), client, logger);
     packs.filter_map(id).collect()
@@ -139,24 +139,28 @@ pub fn install_future<'a, C, I>(
 
 // This will "trick" the borrow checker into thinking that the lifetimes for
 // client and core are at least as big as the lifetime for pdscs, which they actually are
-fn install_inner<C, I>(
-    config: &Config,
+fn install_inner<'client, 'a: 'client, C, I: 'a>(
+    config: &'a Config,
     pdsc_list: I,
     core: &mut Core,
-    client: &Client<C, Body>,
-    logger: &Logger,
+    client: &'client Client<C, Body>,
+    logger: &'a Logger,
 ) -> Result<Vec<PathBuf>, Error>
     where
     C: Connect,
-    I: IntoIterator<Item = Package>,
+    I: IntoIterator<Item = &'a Package>,
 {
     core.run(install_future(config, pdsc_list, client, logger))
 }
 
 /// Flatten a list of Vidx Urls into a list of updated CMSIS packs
-pub fn install<I>(config: &Config, pdsc_list: I, logger: &Logger) -> Result<Vec<PathBuf>, Error>
+pub fn install<'a, I: 'a>(
+    config: &'a Config,
+    pdsc_list: I,
+    logger: &'a Logger
+) -> Result<Vec<PathBuf>, Error>
     where
-    I: IntoIterator<Item = Package>,
+    I: IntoIterator<Item = &'a Package>,
 {
     let mut core = Core::new().unwrap();
     let handle = core.handle();
@@ -185,10 +189,11 @@ pub fn install_command<'a>(
     args: &ArgMatches<'a>,
     logger: &Logger
 ) -> Result<(), Error> {
-    let pdsc_list = args.values_of("PDSC")
+    let pdsc_list: Vec<_> = args.values_of("PDSC")
         .unwrap()
-        .filter_map(|input| Package::from_path(Path::new(input), logger).ok());
-    let updated = install(conf, pdsc_list, logger)?;
+        .filter_map(|input| Package::from_path(Path::new(input), logger).ok())
+        .collect();
+    let updated = install(conf, pdsc_list.iter(), logger)?;
     let num_updated = updated.iter().map(|_| 1).sum::<u32>();
     match num_updated {
         0 => {

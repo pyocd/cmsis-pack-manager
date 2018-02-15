@@ -9,6 +9,12 @@ use pi::config::ConfigBuilder;
 
 pub struct UpdateReturn(Vec<PathBuf>);
 
+impl UpdateReturn {
+    pub fn iter(&self) -> impl Iterator<Item = &PathBuf> {
+        self.0.iter()
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn update_pdsc_index(
     pack_store: *const c_char,
@@ -47,25 +53,6 @@ pub extern "C" fn update_pdsc_index(
         Err(e) => {
             println!("pack indexing : {:?}", e);
             null_mut()
-        }
-    }
-}
-
-macro_rules! with_from_raw {
-    (let $boxed:ident = $ptr:ident, $block:block) => {
-        {
-            let $boxed = unsafe {Box::from_raw($ptr)};
-            let ret = $block;
-            Box::into_raw($boxed);
-            ret
-        }
-    };
-    (let mut $boxed:ident = $ptr:ident, $block:block) => {
-        {
-            let mut $boxed = unsafe {Box::from_raw($ptr)};
-            let ret = $block;
-            Box::into_raw($boxed);
-            ret
         }
     }
 }
