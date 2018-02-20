@@ -34,27 +34,38 @@ def test_strip_protocol(protocol, url):
     assert(cmsis_pack_manager.strip_protocol(uri) == url)
 
 @given(text(alphabet=ascii_lowercase + "/", min_size=1),
-       text(alphabet=ascii_lowercase + "/", min_size=1))
-def test_pdsc_from_cache(data_path, url):
+       text(alphabet=ascii_lowercase, min_size=1),
+       text(alphabet=ascii_lowercase, min_size=1),
+       text(alphabet=ascii_lowercase, min_size=1))
+def test_pack_from_cache(data_path, vendor, pack, version):
     @patch("cmsis_pack_manager.BeautifulSoup")
     @patch("cmsis_pack_manager.open", create=True)
     def inner_test(_open, _bs):
         _open.return_value.__enter__.return_value = MagicMock
         c = cmsis_pack_manager.Cache(True, True, data_path=data_path)
-        c.pdsc_from_cache(url)
-        _open.called_with(join(data_path, url), "r")
+        device = {'from_pack': {'vendor': vendor , 'pack': pack,
+                                'version': version}}
+        c.pdsc_from_cache(device)
+        assert(vendor in _open.call_args[0][0])
+        assert(pack in _open.call_args[0][0])
+        assert(version in _open.call_args[0][0])
         _bs.called_with(_open.return_value.__enter__.return_value, "html.parser")
     inner_test()
 
 @given(text(alphabet=ascii_lowercase + "/", min_size=1),
-       text(alphabet=ascii_lowercase +"/", min_size=1))
-def test_pack_from_cache(data_path, url):
+       text(alphabet=ascii_lowercase, min_size=1),
+       text(alphabet=ascii_lowercase, min_size=1),
+       text(alphabet=ascii_lowercase, min_size=1))
+def test_pack_from_cache(data_path, vendor, pack, version):
     @patch("cmsis_pack_manager.ZipFile")
     def inner_test(_zf):
         c = cmsis_pack_manager.Cache(True, True, data_path=data_path)
-        device = {'pack_file': url}
+        device = {'from_pack': {'vendor': vendor , 'pack': pack,
+                                'version': version}}
         c.pack_from_cache(device)
-        _zf.called_with(join(data_path, url))
+        assert(vendor in _zf.call_args[0][0])
+        assert(pack in _zf.call_args[0][0])
+        assert(version in _zf.call_args[0][0])
     inner_test()
 
 VERSION_TEMPLATE = (

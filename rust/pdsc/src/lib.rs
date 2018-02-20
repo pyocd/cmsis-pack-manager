@@ -614,16 +614,29 @@ struct DumpDevice<'a> {
     name: &'a str,
     memories: &'a Memories,
     algorithms: &'a Vec<Algorithm>,
-    pdsc_file: String,
+    from_pack: FromPack<'a>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+struct FromPack<'a> {
+    vendor: &'a str,
+    pack: &'a str,
+    version: &'a str,
+}
+
+impl<'a> FromPack<'a> {
+    fn new(vendor: &'a str, pack: &'a str, version: &'a str) -> Self {
+        Self{vendor, pack, version}
+    }
 }
 
 impl<'a> DumpDevice<'a> {
-    fn from_device(dev: &'a Device, pdsc_file: String) -> Self {
+    fn from_device(dev: &'a Device, from_pack: FromPack<'a>) -> Self {
         Self{
             name: &dev.name,
             memories: &dev.memories,
             algorithms: &dev.algorithms,
-            pdsc_file
+            from_pack: from_pack
         }
     }
 }
@@ -757,10 +770,10 @@ impl Package {
     }
 
     fn make_dump_devices<'a>(&'a self) -> Vec<(&'a str, DumpDevice<'a>)> {
-        let pdsc_file = format!("{}.{}.{}.pdsc", self.vendor, self.name, self.releases.0[0].version);
+        let from_pack = FromPack::new(&self.vendor, &self.name, &self.releases.latest_release().version);
         self.devices.0
             .iter()
-            .map(|(name, d)| (name.as_str(), DumpDevice::from_device(d, pdsc_file.clone())))
+            .map(|(name, d)| (name.as_str(), DumpDevice::from_device(d, from_pack.clone())))
             .collect()
 
     }

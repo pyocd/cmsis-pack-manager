@@ -475,29 +475,7 @@ class Cache () :
         parsed_packs = self._call_rust_parse(pdsc_index)
         return parsed_packs
 
-    def cache_descriptor_list(self, list) :
-        """Cache a list of PDSC files.
-
-        :param list: URLs of PDSC files to cache.
-        :type list: [str]
-        """
-        self.total = len(list)
-        self.display_counter("Caching Files")
-        do_queue(Reader, self.cache_file, list)
-        stdout.write("\n")
-
-    def cache_pack_list(self, list) :
-        """Cache a list of PACK files, referenced by their PDSC URL
-
-        :param list: URLs of PDSC files to cache.
-        :type list: [str]
-        """
-        self.total = len(list) * 2
-        self.display_counter("Caching Files")
-        do_queue(Reader, self.cache_pdsc_and_pack, list)
-        stdout.write("\n")
-
-    def pdsc_from_cache(self, url) :
+    def pdsc_from_cache(self, device) :
         """Low level inteface for extracting a PDSC file from the cache.
 
         Assumes that the file specified is a PDSC file and is in the cache.
@@ -507,7 +485,9 @@ class Cache () :
         :return: A parsed representation of the PDSC file.
         :rtype: BeautifulSoup
         """
-        dest = join(self.data_path, strip_protocol(url))
+        from_pack = device['from_pack']
+        dest = join(self.data_path, "{}.{}.{}.pdsc".format(
+            from_pack['vendor'], from_pack['pack'], from_pack['version']))
         with open(dest, "r") as fd :
             return BeautifulSoup(fd, "html.parser")
 
@@ -521,11 +501,11 @@ class Cache () :
         :return: A parsed representation of the PACK file.
         :rtype: ZipFile
         """
+        from_pack = device['from_pack']
         return ZipFile(join(self.data_path,
-                            strip_protocol(device['pack_file'])))
-
-    def gen_dict_from_cache() :
-        pdsc_files = pdsc_from_cache(RootPackUrl)
+                            from_pack['vendor'],
+                            from_pack['pack'],
+                            from_pack['version'] + ".pack"))
 
     def cache_and_parse(self, url) :
         """A low level shortcut that Caches and Parses a PDSC file.
