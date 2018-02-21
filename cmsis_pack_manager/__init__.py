@@ -448,12 +448,12 @@ class Cache () :
         .. note:: This process may use 4GB of drive space and take upwards of 10 minutes to complete.
         """
         parsed_packs = self.cache_descriptors()
-        cdata_path = ffi.new("char[]", self.data_path) if self.data_path else ffi.NULL
+        cdata_path = ffi.new("char[]", self.data_path.encode("utf-8")) if self.data_path else ffi.NULL
         lib.update_packs(cdata_path, parsed_packs)
 
     def _call_rust_update(self):
-        cdata_path = ffi.new("char[]", self.data_path) if self.data_path else ffi.NULL
-        cvidx_path = ffi.new("char[]", self.vidx_list) if self.vidx_list else ffi.NULL
+        cdata_path = ffi.new("char[]", self.data_path.encode("utf-8")) if self.data_path else ffi.NULL
+        cvidx_path = ffi.new("char[]", self.vidx_list.encode("utf-8")) if self.vidx_list else ffi.NULL
         pdsc_index = ffi.gc(lib.update_pdsc_index(cdata_path, cvidx_path), lib.update_pdsc_index_free)
         return pdsc_index
 
