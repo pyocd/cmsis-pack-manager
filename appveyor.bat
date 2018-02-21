@@ -65,8 +65,6 @@ dir rust\target\release
 
 python -m pip install --upgrade pip setuptools wheel
 
-python -m pip install git+https://github.com/getsentry/milksnake.git
-
 python setup.py build
 if %ERRORLEVEL% NEQ 0 exit 1
 
