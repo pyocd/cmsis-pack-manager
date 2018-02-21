@@ -65,9 +65,8 @@ dir rust\target\release
 
 python -m pip install --upgrade pip setuptools wheel
 
-python setup.py build
+python setup.py bdist_wheel
 if %ERRORLEVEL% NEQ 0 exit 1
 
-set
 python setup.py test
 if %ERRORLEVEL% NEQ 0 exit 1
