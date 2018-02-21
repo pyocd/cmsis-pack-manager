@@ -19,7 +19,7 @@ use std::borrow::Cow;
 use std::fs::OpenOptions;
 use std::io::Read;
 use std::path::{Path, PathBuf};
-use std::collections::HashMap;
+use std::collections::{HashMap, BTreeMap};
 use minidom::{Element, Error, ErrorKind};
 use clap::{App, Arg, ArgMatches, SubCommand};
 use slog::Logger;
@@ -895,7 +895,7 @@ pub fn dump_devices<'a, P: AsRef<Path>, I: IntoIterator<Item = &'a Package>>(
             if ! devices.is_empty() {
                 let mut file_contents = Vec::new();
                 let mut old_devices: HashMap<&str, DumpDevice> = HashMap::new();
-                let mut all_devices = HashMap::new();
+                let mut all_devices = BTreeMap::new();
                 if let Ok(mut fd) = OpenOptions::new().read(true).open(to_file.as_ref()) {
                     fd.read_to_end(&mut file_contents)?;
                     old_devices = serde_json::from_slice(&file_contents).unwrap_or_default();
