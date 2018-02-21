@@ -14,6 +14,7 @@ from os.path import join, dirname
 import cmsis_pack_manager
 
 def test_pull_pdscs():
+    socketserver.TCPServer.allow_reuse_address = True
     PORT = 8001
     handler = http.SimpleHTTPRequestHandler
     httpd = socketserver.TCPServer(("", PORT), handler)
@@ -24,8 +25,14 @@ def test_pull_pdscs():
     c = cmsis_pack_manager.Cache(
         True, True, json_path=tempfile.mkdtemp(), data_path=tempfile.mkdtemp(),
         vidx_list=join(dirname(__file__), 'test-pack-index', 'vendors.list'))
-    c.cache_descriptors()
+    c.cache_everything()
     assert("MyDevice" in c.index)
     assert("MyBoard" in c.aliases)
     assert("MyDevice" in c.aliases["MyBoard"]["mounted_devices"])
+    assert(c.pack_from_cache(c.index["MyDevice"]).open("MyVendor.MyPack.pdsc"))
+    c.cache_everything()
     httpd.shutdown()
+    assert("MyDevice" in c.index)
+    assert("MyBoard" in c.aliases)
+    assert("MyDevice" in c.aliases["MyBoard"]["mounted_devices"])
+    assert(c.pack_from_cache(c.index["MyDevice"]).open("MyVendor.MyPack.pdsc"))
