@@ -15,7 +15,9 @@ extern crate pack_index;
 extern crate clap;
 extern crate minidom;
 
+use std::borrow::Cow;
 use std::fs::OpenOptions;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::collections::HashMap;
 use minidom::{Element, Error, ErrorKind};
@@ -358,7 +360,7 @@ impl FromElem for Releases {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct MemoryPermissions {
     read: bool,
     write: bool,
@@ -384,7 +386,7 @@ impl MemoryPermissions {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct Memory {
     access: MemoryPermissions,
     start: u64,
@@ -428,7 +430,7 @@ impl FromElem for MemElem {
     }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 struct Memories(HashMap<String, Memory>);
 
 fn merge_memories(lhs: Memories, rhs: &Memories) -> Memories {
@@ -446,7 +448,7 @@ fn merge_memories(lhs: Memories, rhs: &Memories) -> Memories {
     lhs
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct Algorithm{
     file_name: PathBuf,
     start: u64,
@@ -609,15 +611,15 @@ impl FromElem for Devices {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 struct DumpDevice<'a> {
     name: &'a str,
-    memories: &'a Memories,
-    algorithms: &'a Vec<Algorithm>,
+    memories: Cow<'a, Memories>,
+    algorithms: Cow<'a, Vec<Algorithm>>,
     from_pack: FromPack<'a>,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 struct FromPack<'a> {
     vendor: &'a str,
     pack: &'a str,
@@ -634,8 +636,8 @@ impl<'a> DumpDevice<'a> {
     fn from_device(dev: &'a Device, from_pack: FromPack<'a>) -> Self {
         Self{
             name: &dev.name,
-            memories: &dev.memories,
-            algorithms: &dev.algorithms,
+            memories: Cow::Borrowed(&dev.memories),
+            algorithms: Cow::Borrowed(&dev.algorithms),
             from_pack: from_pack
         }
     }
@@ -890,14 +892,25 @@ pub fn dump_devices<'a, P: AsRef<Path>, I: IntoIterator<Item = &'a Package>>(
         .collect::<HashMap<_, _>>();
     match device_dest {
         Some(to_file) =>  {
-            let mut options =  OpenOptions::new();
-            options.write(true);
-            options.create(true);
-            options.truncate(true);
-            if let Ok(fd) = options.open(to_file.as_ref()) {
-                serde_json::to_writer_pretty(fd, &devices).unwrap();
-            } else {
-                println!("Could not open file {:?}", to_file.as_ref());
+            if ! devices.is_empty() {
+                let mut file_contents = Vec::new();
+                let mut old_devices: HashMap<&str, DumpDevice> = HashMap::new();
+                let mut all_devices = HashMap::new();
+                if let Ok(mut fd) = OpenOptions::new().read(true).open(to_file.as_ref()) {
+                    fd.read_to_end(&mut file_contents)?;
+                    old_devices = serde_json::from_slice(&file_contents).unwrap_or_default();
+                }
+                all_devices.extend(old_devices.iter());
+                all_devices.extend(devices.iter());
+                let mut options =  OpenOptions::new();
+                options.write(true);
+                options.create(true);
+                options.truncate(true);
+                if let Ok(fd) = options.open(to_file.as_ref()) {
+                    serde_json::to_writer_pretty(fd, &all_devices).unwrap();
+                } else {
+                    println!("Could not open file {:?}", to_file.as_ref());
+                }
             }
         },
         None => println!("{}", &serde_json::to_string_pretty(&devices).unwrap()),
