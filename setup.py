@@ -33,7 +33,7 @@ def build_native(spec):
 
 setup(
     name = "cmsis-pack-manager",
-    version = "0.1.0",
+    version = "0.1.1",
     packages = ["cmsis_pack_manager"],
     zip_safe = False,
     platforms = 'any',

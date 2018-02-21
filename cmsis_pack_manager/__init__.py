@@ -69,18 +69,32 @@ class Cache () :
         >>> from ArmPackManager import Cache
         >>> a = Cache()
         >>> a.index["LPC1768"]
-        {u'algorithm': {u'RAMsize': u'0x0FE0',
-                u'RAMstart': u'0x10000000',
-                u'name': u'Flash/LPC_IAP_512.FLM',
-                u'size': u'0x80000',
-                u'start': u'0x00000000'},
-         u'compile': [u'Device/Include/LPC17xx.h', u'LPC175x_6x'],
-         u'debug': u'SVD/LPC176x5x.svd',
-         u'pdsc_file': u'http://www.keil.com/pack/Keil.LPC1700_DFP.pdsc',
-         u'memory': {u'IRAM1': {u'size': u'0x8000', u'start': u'0x10000000'},
-                     u'IRAM2': {u'size': u'0x8000', u'start': u'0x2007C000'},
-                     u'IROM1': {u'size': u'0x80000', u'start': u'0x00000000'}}}
-
+        {u'algorithms': [{u'default': False,
+                          u'file_name': u'Flash/LPC_IAP_512.FLM',
+                          u'size': 524288,
+                          u'start': 0}],
+         u'from_pack': {u'pack': u'LPC1700_DFP',
+                        u'vendor': u'Keil',
+                        u'version': u'2.4.0'},
+         u'memories': {u'IRAM1': {u'access': {u'execute': False,
+                                              u'read': True,
+                                              u'write': True},
+                                  u'size': 32768,
+                                  u'start': 268435456,
+                                  u'startup': False},
+                       u'IRAM2': {u'access': {u'execute': False,
+                                              u'read': True,
+                                              u'write': True},
+                                  u'size': 32768,
+                                  u'start': 537378816,
+                                  u'startup': False},
+                       u'IROM1': {u'access': {u'execute': True,
+                                              u'read': True,
+                                              u'write': False},
+                                  u'size': 524288,
+                                  u'start': 0,
+                                  u'startup': False}},
+         u'name': u'LPC1768'}
 
         """
         if not self._index :
@@ -90,27 +104,17 @@ class Cache () :
 
     @property
     def aliases(self) :
-        """An index of most of the important data in all cached PDSC files.
+        """An index of the boards in all CMSIS Pack Descriptions.
 
         :Example:
 
-        >>> from ArmPackManager import Cache
+        >>> from cmsis_pack_manager import Cache
         >>> a = Cache()
-        >>> a.index["LPC1768"]
-        {u'algorithm': {u'RAMsize': u'0x0FE0',
-                u'RAMstart': u'0x10000000',
-                u'name': u'Flash/LPC_IAP_512.FLM',
-                u'size': u'0x80000',
-                u'start': u'0x00000000'},
-         u'compile': [u'Device/Include/LPC17xx.h', u'LPC175x_6x'],
-         u'debug': u'SVD/LPC176x5x.svd',
-         u'pdsc_file': u'http://www.keil.com/pack/Keil.LPC1700_DFP.pdsc',
-         u'memory': {u'IRAM1': {u'size': u'0x8000', u'start': u'0x10000000'},
-                     u'IRAM2': {u'size': u'0x8000', u'start': u'0x2007C000'},
-                     u'IROM1': {u'size': u'0x80000', u'start': u'0x00000000'}}}
-
-
+        >>> a.aliases["LPC1788-32 Developers Kit"]
+        {"name": "LPC1788-32 Developers Kit",
+         "mounted_devices": ["LPC1788"]}
         """
+
         if not self._aliases :
             with open(self.aliases_path) as i :
                 self._aliases = load(i)

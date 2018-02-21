@@ -38,7 +38,7 @@ def subcommand(name, *args, **kwargs):
                 subparser.add_argument(*opt, **arg)
 
         subparser.add_argument("-v", "--verbose", action="store_true", dest="verbose", help="Verbose diagnostic output")
-        subparser.add_argument("-vv", "--very_verbose", action="store_true", dest="very_verbose", help="Very verbose diagnostic output")
+        subparser.add_argument("-vv", "--very-verbose", action="store_true", dest="very_verbose", help="Very verbose diagnostic output")
         subparser.add_argument("--no-timeouts", action="store_true", help="Remove all timeouts and try to download unconditionally")
         subparser.add_argument("--and", action="store_true", dest="intersection", help="Combine search terms as if with an `and`")
         subparser.add_argument("--or", action="store_false", dest="intersection", help="Combine search terms as if with an `or`")
@@ -90,15 +90,11 @@ def fuzzy_find(matches, urls) :
     return [v for k,v in choices]
 
 @subcommand('cache',
-            dict(name='matches', nargs="*",
-                 help="a bunch of things to search for in part names"),
             dict(name=['-e','--everything'], action="store_true",
                  help="Download everything possible"),
             dict(name=['-d','--descriptors'], action="store_true",
                  help="Download all descriptors"),
-            dict(name=["-b","--batch"], action="store_true",
-                 help="Don't ask for user input and assume download all"),
-            help="Cache a group of PACK or PDSC files")
+            help="Cache PACK or PDSC files")
 def command_cache (cache, matches, everything=False, descriptors=False, batch=False, verbose= False, intersection=True) :
     if everything :
         cache.cache_everything()
@@ -106,24 +102,7 @@ def command_cache (cache, matches, everything=False, descriptors=False, batch=Fa
     if descriptors :
         cache.cache_descriptors()
         return True
-    if not matches :
-        print("No action specified nothing to do")
-    else :
-        urls = cache.get_urls()
-        if intersection :
-            choices = fuzzy_find(matches, map(basename, urls))
-        else :
-            choices = sum([fuzzy_find([m], map(basename, urls)) for m in matches], [])
-        if not batch and len(choices) > 1 :
-            choices = user_selection("Please select a file to cache", choices)
-        to_download = []
-        for choice in choices :
-            for url in urls :
-                if choice in url :
-                    to_download.append(url)
-        cache.cache_pack_list(to_download)
-        return True
-
+    print("No action specified nothing to do")
 
 @subcommand('find-part',
             dict(name='matches', nargs="+", help="Words to match to processors"),
@@ -146,15 +125,19 @@ def command_find_part (cache, matches, long=False, intersection=True,
         aliases = sum([fuzzy_find([m], cache.aliases.keys()) for m in matches], [])
     if print_parts:
         for part in choices :
-            print part
+            print(part)
             if long :
                 pp.pprint(cache.index[part])
     if print_aliases:
         for alias in aliases :
-            print alias
+            print(alias)
             if long :
                 if cache.aliases[alias]["mounted_devices"]:
-                    pp.pprint(cache.index[cache.aliases[alias]["mounted_devices"][0]])
+                    part = cache.aliases[alias]["mounted_devices"][0]
+                    try:
+                        pp.pprint(cache.index[part])
+                    except KeyError:
+                        print("Could not find part: %s" % part)
 
 @subcommand('dump-parts',
             dict(name='out', help='Directory to dump to'),
@@ -168,7 +151,7 @@ def command_dump_parts (cache, out, parts, intersection=False) :
             index.update(cache.index[part])
     else :
         for part in parts :
-            index.update(dict(cache.find_device(part)))
+            index.update(dict(fuzzy_find([part], cache.index)))
     for n, p in index.iteritems() :
         try :
             if not exists(join(out, dirname(p['algorithm']['file']))) :
@@ -179,22 +162,6 @@ def command_dump_parts (cache, out, parts, intersection=False) :
             print("[Warning] {} does not have an associated flashing algorithm".format(n))
     with open(join(out, "index.json"), "wb+") as fd :
         dump(index,fd)
-
-
-@subcommand('cache-part',
-            dict(name='matches', nargs="+", help="words to match to devices"),
-            help='Cache PACK files associated with the parts matching the provided words')
-def command_cache_part (cache, matches, intersection=True) :
-    index = cache.index
-    if intersection :
-        choices = fuzzy_find(matches, index.keys())
-        aliases = fuzzy_find(matches, cache.aliases.keys())
-    else :
-        choices = sum([fuzzy_find([m], index.keys()) for m in matches], [])
-        aliases = sum([fuzzy_find([m], cache.aliases.keys()) for m in matches], [])
-    urls = set([index[c]['pdsc_file'] for c in choices])
-    urls += set([index[cache.aliasse[a]] for a in aliases])
-    cache.cache_pack_list(list(urls))
 
 def get_argparse() :
     return parser
