@@ -1,0 +1,19 @@
+version: 1.0.{build}
+os:
+  - Visual Studio 2015
+clone_depth: 1
+environment:
+  matrix:
+    - TOOLCHAIN_VERSION: 14.0
+      RUST: nightly
+      PYTHON: "C:\\Python27"
+      platform: Win32
+    - TOOLCHAIN_VERSION: 14.0
+      RUST: nightly
+      PYTHON: "C:\\Python27-x64"
+      platform: x64
+
+build_script: appveyor.bat
+skip_branch_with_pr: true
+artifacts:
+  - path: dist\*

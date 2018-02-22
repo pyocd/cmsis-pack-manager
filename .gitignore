@@ -1,0 +1,11 @@
+# Build stuff
+/rust/Cargo.lock
+/rust/target/
+/build
+/dist
+**/_native__lib.so
+*.egg-info
+
+# Editor stuff
+.#*
+**/*.rs.bk

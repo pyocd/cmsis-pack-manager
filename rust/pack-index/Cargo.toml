@@ -1,0 +1,13 @@
+[package]
+name = "pack-index"
+version = "0.1.0"
+authors = ["Jimmy Brisson <theotherjimmy@gmail.com>"]
+
+[dependencies]
+minidom = "0.5.0"
+quick-xml = "0.7.3"
+smallstring = "*"
+slog = "^2"
+failure = "0.1.1"
+app_dirs = {git = "https://github.com/theotherjimmy/app-dirs-rs.git", branch = "fix-nightly-1-29"}
+utils = { path = "../utils" }

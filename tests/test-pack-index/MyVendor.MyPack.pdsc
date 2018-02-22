@@ -1,0 +1,21 @@
+<package schemaVersion="1.4" xmlns:xs="http://www.w3.org/2001/XMLSchema-instance" xs:noNamespaceSchemaLocation="PACK.xsd">
+  <vendor>MyVendor</vendor>
+  <name>MyPack</name>                                                       <!-- name of package -->
+  <description>dumy</description>
+  <url>http://localhost:8001/tests/test-pack-index/</url>
+  <releases>
+    <release version="1.1.0">
+    </release>
+  </releases>
+  <devices>
+    <family>
+      <device Dname="MyDevice">
+      </device>
+    </family>
+  </devices>
+  <boards>
+    <board name="MyBoard">
+      <mountedDevice vendor="MyVendor" Dname="MyDevice"/>
+    </board>
+  </boards>
+</package>

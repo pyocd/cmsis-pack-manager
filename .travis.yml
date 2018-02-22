@@ -1,0 +1,11 @@
+language: rust
+cache: cargo
+
+matrix:
+  include:
+     - os: linux
+       script: sh travis.sh
+       rust: nightly
+     - os: osx
+       script: sh travis.sh
+       rust: nightly
