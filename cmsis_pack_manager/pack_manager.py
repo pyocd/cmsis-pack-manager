@@ -95,7 +95,7 @@ def fuzzy_find(matches, urls) :
             dict(name=['-d','--descriptors'], action="store_true",
                  help="Download all descriptors"),
             help="Cache PACK or PDSC files")
-def command_cache (cache, matches, everything=False, descriptors=False, batch=False, verbose= False, intersection=True) :
+def command_cache (cache, everything=False, descriptors=False, verbose=False, intersection=True) :
     if everything :
         cache.cache_everything()
         return True
