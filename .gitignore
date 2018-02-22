@@ -3,8 +3,16 @@
 /rust/target/
 /build
 /dist
+**/_native.py
 **/_native__lib.so
+**/_native__ffi.py
 *.egg-info
+*.pyc
+.eggs
+
+# Test stuff
+.cache
+.hypothesis
 
 # Editor stuff
 .#*
