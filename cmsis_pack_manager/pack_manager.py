@@ -44,9 +44,15 @@ def subcommand(name, *args, **kwargs):
         subparser.add_argument("--or", action="store_false", dest="intersection", help="Combine search terms as if with an `or`")
         subparser.add_argument("--union", action="store_false", dest="intersection", help="Combine search terms as if with a set union")
         subparser.add_argument("--intersection", action="store_true", dest="intersection", help="Combine search terms as if with a set intersection")
+        subparser.add_argument("--vidx-list", dest="vidx_list")
+        subparser.add_argument("--data-path", dest="data_path")
+        subparser.add_argument("--json-path", dest="json_path")
         
         def thunk(parsed_args):
-            cache = Cache(not parsed_args.verbose, parsed_args.no_timeouts)
+            cache = Cache(not parsed_args.verbose, parsed_args.no_timeouts,
+                          vidx_list=parsed_args.vidx_list,
+                          data_path=parsed_args.data_path,
+                          json_path=parsed_args.json_path)
             argv = [arg['dest'] if 'dest' in arg else arg['name'] for arg in args]
             argv = [(arg if isinstance(arg, basestring) else arg[-1]).strip('-')
                     for arg in argv]
@@ -98,9 +104,11 @@ def fuzzy_find(matches, urls) :
 def command_cache (cache, everything=False, descriptors=False, verbose=False, intersection=True) :
     if everything :
         cache.cache_everything()
+        print("Packs Cached")
         return True
     if descriptors :
         cache.cache_descriptors()
+        print("Descriptors Cached")
         return True
     print("No action specified nothing to do")
 
