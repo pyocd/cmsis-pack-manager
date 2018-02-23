@@ -33,7 +33,6 @@ use pack_index::config::Config;
 use pdsc::Package;
 use utils::parse::FromElem;
 
-pub mod upgrade;
 mod redirect;
 mod vidx;
 mod dl_pdsc;
