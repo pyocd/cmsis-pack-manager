@@ -1,12 +1,14 @@
 use std::fs::{create_dir_all, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use failure::Error;
 use futures::Stream;
 use futures::prelude::*;
 use hyper::{Body, Client, Uri};
 use hyper::client::Connect;
+use indicatif::{ProgressBar, ProgressStyle};
 use slog::Logger;
 
 use pdsc::Package;
@@ -54,6 +56,7 @@ fn download_pack<'b, 'a: 'b,  C: Connect>(
     pdsc: &'a Package,
     client: &'b Client<C, Body>,
     logger: &'a Logger,
+    indicator: Option<Arc<ProgressBar>>
 ) -> impl Future<Item = Option<PathBuf>, Error = Error> + 'b {
     async_block!{
         let filename = make_fd(config, &pdsc);
@@ -70,6 +73,9 @@ fn download_pack<'b, 'a: 'b,  C: Connect>(
         #[async]
         for bytes in response.body() {
             fd.write_all(bytes.as_ref())?;
+            if let Some(ref spinner) = indicator {
+                spinner.inc(bytes.len() as u64);
+            }
         }
         Ok(Some(filename))
     }
@@ -80,13 +86,30 @@ pub(crate) fn download_pack_stream<'a, 'b, F, C>(
     stream: F,
     client: &'b Client<C, Body>,
     logger: &'a Logger,
+    spin: bool,
 ) -> impl Stream<Item = Option<PathBuf>, Error = Error> + 'b
     where
     F: Stream<Item = &'a Package, Error = Error> + 'b,
     C: Connect,
     'a: 'b
 {
-    stream
-        .map(move |pdsc| download_pack(config, pdsc, client, logger))
-        .buffer_unordered(32)
+    async_stream_block!(
+        if spin {
+            let spinner = Arc::new(ProgressBar::new_spinner());
+            spinner.set_style(ProgressStyle::default_spinner()
+                              .template("[{elapsed_precise}] Downloading Packs {spinner} {bytes}"));
+            #[async]
+            for pdsc_ref in stream {
+                stream_yield!(download_pack(config, pdsc_ref, client,
+                                            logger, Some(spinner.clone())))
+            }
+        } else {
+            #[async]
+            for pdsc_ref in stream {
+                stream_yield!(download_pack(config, pdsc_ref, client,
+                                            logger, None))
+            }
+        }
+        Ok(())
+    ).buffer_unordered(32)
 }

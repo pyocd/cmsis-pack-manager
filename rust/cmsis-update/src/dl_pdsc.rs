@@ -1,12 +1,14 @@
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use failure::Error;
 use futures::Stream;
 use futures::prelude::*;
 use hyper::{Body, Client, Uri};
 use hyper::client::Connect;
+use indicatif::{ProgressBar, ProgressStyle};
 use slog::Logger;
 
 use pack_index::{PdscRef};
@@ -50,6 +52,7 @@ fn download_pdsc<'a, C: Connect>(
     pdsc_ref: PdscRef,
     client: &'a Client<C, Body>,
     logger: &'a Logger,
+    indicator: Option<Arc<ProgressBar>>
 ) -> impl Future<Item = Option<PathBuf>, Error = Error> + 'a {
     async_block!{
         let filename = make_fd(config, &pdsc_ref);
@@ -67,6 +70,9 @@ fn download_pdsc<'a, C: Connect>(
         #[async]
         for bytes in response.body() {
             fd.write_all(bytes.as_ref())?;
+            if let Some(ref spinner) = indicator {
+                spinner.inc(bytes.len() as u64);
+            }
         }
         Ok(Some(filename))
     }
@@ -77,12 +83,29 @@ pub(crate) fn download_pdsc_stream<'a, F, C>(
     stream: F,
     client: &'a Client<C, Body>,
     logger: &'a Logger,
+    spin: bool,
 ) -> impl Stream<Item = Option<PathBuf>, Error = Error> + 'a
 where
     F: Stream<Item = PdscRef, Error = Error> + 'a,
     C: Connect,
 {
-    stream
-        .map(move |pdsc_ref| download_pdsc(config, pdsc_ref, client, logger))
-        .buffer_unordered(32)
+    async_stream_block!(
+        if spin {
+            let spinner = Arc::new(ProgressBar::new_spinner());
+            spinner.set_style(ProgressStyle::default_spinner()
+                              .template("[{elapsed_precise}] Downloading Pack Descriptions {spinner} {bytes}"));
+            #[async]
+            for pdsc_ref in stream {
+                stream_yield!(download_pdsc(config, pdsc_ref, client,
+                                            logger, Some(spinner.clone())))
+            }
+        } else {
+            #[async]
+            for pdsc_ref in stream {
+                stream_yield!(download_pdsc(config, pdsc_ref, client,
+                                            logger, None))
+            }
+        }
+        Ok(())
+    ).buffer_unordered(32)
 }

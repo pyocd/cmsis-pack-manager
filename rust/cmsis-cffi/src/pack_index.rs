@@ -48,7 +48,7 @@ pub extern "C" fn update_pdsc_index(
         }
     };
     let vidx_list = conf.read_vidx_list(&log);
-    match update(&conf, vidx_list, &log) {
+    match update(&conf, vidx_list, &log, true) {
         Ok(updated) => Box::into_raw(Box::new(UpdateReturn(updated))),
         Err(e) => {
             println!("pack indexing : {:?}", e);
