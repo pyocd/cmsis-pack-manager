@@ -34,7 +34,7 @@ pub extern "C" fn update_packs(pack_store: *const c_char, parsed_packs: *mut Par
         };
         with_from_raw!(let packs = parsed_packs, {
             {
-                install(&conf, packs.iter(), &log);
+                install(&conf, packs.iter(), &log, true);
             }
         })
     }

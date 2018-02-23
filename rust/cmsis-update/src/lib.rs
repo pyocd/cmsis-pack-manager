@@ -7,6 +7,7 @@ extern crate hyper_tls;
 extern crate minidom;
 extern crate clap;
 extern crate failure;
+extern crate indicatif;
 
 #[macro_use]
 extern crate slog;
@@ -32,7 +33,6 @@ use pack_index::config::Config;
 use pdsc::Package;
 use utils::parse::FromElem;
 
-pub mod upgrade;
 mod redirect;
 mod vidx;
 mod dl_pdsc;
@@ -48,6 +48,7 @@ pub fn update_future<'a, C, I>(
     vidx_list: I,
     client: &'a Client<C, Body>,
     logger: &'a Logger,
+    spin: bool,
 ) -> impl Future<Item = Vec<PathBuf>, Error = Error> + 'a
     where C: Connect,
           I: IntoIterator<Item = String> + 'a,
@@ -59,7 +60,7 @@ pub fn update_future<'a, C, I>(
             Err(_) => None,
         })
         .flatten();
-    let pdscs = download_pdsc_stream(config, pdsc_list, client, logger);
+    let pdscs = download_pdsc_stream(config, pdsc_list, client, logger, spin);
     pdscs.filter_map(id).collect()
 }
 
@@ -75,16 +76,17 @@ fn update_inner<C, I>(
     core: &mut Core,
     client: &Client<C, Body>,
     logger: &Logger,
+    spin: bool,
 ) -> Result<Vec<PathBuf>, Error>
 where
     C: Connect,
     I: IntoIterator<Item = String>,
 {
-    core.run(update_future(config, vidx_list, client, logger))
+    core.run(update_future(config, vidx_list, client, logger, spin))
 }
 
 /// Flatten a list of Vidx Urls into a list of updated CMSIS packs
-pub fn update<I>(config: &Config, vidx_list: I, logger: &Logger) -> Result<Vec<PathBuf>, Error>
+pub fn update<I>(config: &Config, vidx_list: I, logger: &Logger, spin: bool) -> Result<Vec<PathBuf>, Error>
 where
     I: IntoIterator<Item = String>,
 {
@@ -94,7 +96,7 @@ where
         .keep_alive(true)
         .connector(HttpsConnector::new(4, &handle).unwrap())
         .build(&handle);
-    update_inner(config, vidx_list, &mut core, &client, logger)
+    update_inner(config, vidx_list, &mut core, &client, logger, spin)
 }
 
 pub fn update_args<'a, 'b>() -> App<'a, 'b> {
@@ -108,7 +110,7 @@ pub fn update_command<'a>(conf: &Config, _: &ArgMatches<'a>, logger: &Logger) ->
     for url in vidx_list.iter() {
         info!(logger, "Updating registry from `{}`", url);
     }
-    let updated = update(conf, vidx_list, logger)?;
+    let updated = update(conf, vidx_list, logger, true)?;
     let num_updated = updated.iter().map(|_| 1).sum::<u32>();
     match num_updated {
         0 => {
@@ -129,11 +131,12 @@ pub fn install_future<'client,'a: 'client,  C, I: 'a,>(
     pdscs: I,
     client: &'client Client<C, Body>,
     logger: &'a Logger,
+    spin: bool,
 ) -> impl Future<Item = Vec<PathBuf>, Error = Error> + 'client
     where C: Connect,
           I: IntoIterator<Item = &'a Package>,
 {
-    let packs = download_pack_stream(config, iter_ok(pdscs), client, logger);
+    let packs = download_pack_stream(config, iter_ok(pdscs), client, logger, spin);
     packs.filter_map(id).collect()
 }
 
@@ -145,19 +148,21 @@ fn install_inner<'client, 'a: 'client, C, I: 'a>(
     core: &mut Core,
     client: &'client Client<C, Body>,
     logger: &'a Logger,
+    spin: bool,
 ) -> Result<Vec<PathBuf>, Error>
     where
     C: Connect,
     I: IntoIterator<Item = &'a Package>,
 {
-    core.run(install_future(config, pdsc_list, client, logger))
+    core.run(install_future(config, pdsc_list, client, logger, spin))
 }
 
 /// Flatten a list of Vidx Urls into a list of updated CMSIS packs
 pub fn install<'a, I: 'a>(
     config: &'a Config,
     pdsc_list: I,
-    logger: &'a Logger
+    logger: &'a Logger,
+    spin: bool,
 ) -> Result<Vec<PathBuf>, Error>
     where
     I: IntoIterator<Item = &'a Package>,
@@ -168,7 +173,7 @@ pub fn install<'a, I: 'a>(
         .keep_alive(true)
         .connector(HttpsConnector::new(4, &handle).unwrap())
         .build(&handle);
-    install_inner(config, pdsc_list, &mut core, &client, logger)
+    install_inner(config, pdsc_list, &mut core, &client, logger, spin)
 }
 
 pub fn install_args() -> App<'static, 'static> {
@@ -193,7 +198,7 @@ pub fn install_command<'a>(
         .unwrap()
         .filter_map(|input| Package::from_path(Path::new(input), logger).ok())
         .collect();
-    let updated = install(conf, pdsc_list.iter(), logger)?;
+    let updated = install(conf, pdsc_list.iter(), logger, true)?;
     let num_updated = updated.iter().map(|_| 1).sum::<u32>();
     match num_updated {
         0 => {
