@@ -15,9 +15,6 @@ pack-index = { path = "pack-index" }
 cmsis-update = { path = "cmsis-update" }
 cmsis-cffi = { path = "cmsis-cffi", optional = true }
 
-[build-dependencies]
-cbindgen = "0.1"
-
 [dev-dependencies]
 time = "*"
 

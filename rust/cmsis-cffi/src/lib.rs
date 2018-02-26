@@ -7,7 +7,8 @@ extern crate slog_async;
 extern crate cmsis_update;
 extern crate pack_index as pi;
 extern crate pdsc as pack_desc;
-extern crate utils;
+extern crate utils as cmsis_utils;
+extern crate failure;
 
 macro_rules! with_from_raw {
     (let $boxed:ident = $ptr:ident, $block:block) => {
@@ -27,7 +28,12 @@ macro_rules! with_from_raw {
         }
     }
 }
+#[macro_use]
+mod utils;
+
 pub mod pack_index;
 pub mod pdsc;
 pub mod pack;
+
+
 
