@@ -12,10 +12,12 @@ crate-type = ["cdylib"]
 slog = "^2"
 slog-term = "^2"
 slog-async = "^2"
+failure = "0.1.1"
+
 cmsis-update = { path = "../cmsis-update" }
 pack-index = { path = "../pack-index" }
 pdsc = { path = "../pdsc" }
 utils = { path = "../utils" }
 
 [build-dependencies]
-cbindgen = "0.1"
+cbindgen = "~0.5.0"

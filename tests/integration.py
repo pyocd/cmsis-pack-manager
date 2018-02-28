@@ -59,3 +59,14 @@ def test_pull_pdscs_cli():
     assert("MyBoard" in c.aliases)
     assert("MyDevice" in c.aliases["MyBoard"]["mounted_devices"])
     assert(c.pack_from_cache(c.index["MyDevice"]).open("MyVendor.MyPack.pdsc"))
+
+def test_panic_handling():
+    from cmsis_pack_manager import ffi
+    c = cmsis_pack_manager.Cache(
+        True, True, json_path=tempfile.mkdtemp(), data_path=tempfile.mkdtemp(),
+        vidx_list=join(dirname(__file__), 'test-pack-index', 'vendors.list'))
+    try:
+        c._call_rust_parse(ffi.NULL)
+        assert False
+    except:
+        pass
