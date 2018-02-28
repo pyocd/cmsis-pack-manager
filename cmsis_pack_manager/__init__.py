@@ -21,6 +21,15 @@ import warnings
 from appdirs import user_data_dir
 from ._native import ffi, lib
 
+class _RaiseRust(object):
+    def __enter__(self):
+        pass
+
+    def __exit__(self, exc_type, exc_val, exe_tb):
+        maybe_err = ffi.gc(lib.err_get_last_message(), lib.err_last_message_free)
+        if maybe_err:
+            raise Exception(ffi.string(maybe_err))
+
 class Cache () :
     """ The Cache object is the only relevant API object at the moment
 
@@ -132,14 +141,17 @@ class Cache () :
     def _call_rust_update(self):
         cdata_path = ffi.new("char[]", self.data_path.encode("utf-8")) if self.data_path else ffi.NULL
         cvidx_path = ffi.new("char[]", self.vidx_list.encode("utf-8")) if self.vidx_list else ffi.NULL
-        pdsc_index = ffi.gc(lib.update_pdsc_index(cdata_path, cvidx_path), lib.update_pdsc_index_free)
+        with _RaiseRust():
+            pdsc_index = ffi.gc(lib.update_pdsc_index(cdata_path, cvidx_path), lib.update_pdsc_index_free)
         return pdsc_index
 
     def _call_rust_parse(self, pdsc_index):
         cindex_path = ffi.new("char[]", self.index_path.encode("utf-8")) if self.index_path else ffi.NULL
         calias_path = ffi.new("char[]", self.aliases_path.encode("utf-8")) if self.aliases_path else ffi.NULL
-        parsed_packs = ffi.gc(lib.parse_packs(pdsc_index), lib.parse_packs_free)
-        pdsc_index = lib.dump_pdsc_json(parsed_packs, cindex_path, calias_path)
+        with _RaiseRust():
+            parsed_packs = ffi.gc(lib.parse_packs(pdsc_index), lib.parse_packs_free)
+        with _RaiseRust():
+            pdsc_index = lib.dump_pdsc_json(parsed_packs, cindex_path, calias_path)
         return parsed_packs
 
     def cache_descriptors(self) :

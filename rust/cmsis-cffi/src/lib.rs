@@ -29,7 +29,7 @@ macro_rules! with_from_raw {
     }
 }
 #[macro_use]
-mod utils;
+pub mod utils;
 
 pub mod pack_index;
 pub mod pdsc;

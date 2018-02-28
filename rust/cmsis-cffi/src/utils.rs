@@ -1,8 +1,10 @@
-use std::fmt;
 use std::mem;
 use std::panic;
+use std::ptr;
 use std::thread;
 use std::cell::RefCell;
+use std::os::raw::c_char;
+use std::ffi::CString;
 
 use failure::{Error, err_msg};
 
@@ -14,6 +16,26 @@ fn set_last_error(err: Error) {
     LAST_ERROR.with(|e| {
         *e.borrow_mut() = Some(err);
     });
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn err_get_last_message() -> *const c_char {
+    LAST_ERROR.with(|e| {
+        if let Some(ref err) = e.replace(None) {
+            let msg = err.to_string();
+            let cause = err.backtrace();
+            CString::new(format!("{}\n{}", cause, msg)).unwrap().into_raw()
+        } else {
+            ptr::null()
+        }
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn err_last_message_free(ptr: *mut c_char) {
+    if ! ptr.is_null() {
+        drop(CString::from_raw(ptr))
+    }
 }
 
 pub unsafe fn set_panic_hook() {
