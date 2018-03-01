@@ -15,9 +15,6 @@ extern crate utils;
 extern crate pack_index;
 extern crate pdsc;
 
-use futures::prelude::*;
-use futures::Stream;
-use futures::stream::iter_ok;
 use hyper::{Body, Client};
 use hyper::client::Connect;
 use hyper_tls::HttpsConnector;
@@ -35,37 +32,12 @@ use utils::parse::FromElem;
 pub mod upgrade;
 mod redirect;
 mod vidx;
+mod download;
 mod dl_pdsc;
 mod dl_pack;
 
-use vidx::{download_vidx_list, flatmap_pdscs};
-use dl_pdsc::{download_pdsc_stream};
-use dl_pack::{download_pack_stream};
-
-/// Create a future of the update command.
-pub fn update_future<'a, C, I>(
-    config: &'a Config,
-    vidx_list: I,
-    client: &'a Client<C, Body>,
-    logger: &'a Logger,
-) -> impl Future<Item = Vec<PathBuf>, Error = Error> + 'a
-    where C: Connect,
-          I: IntoIterator<Item = String> + 'a,
-{
-    let parsed_vidx = download_vidx_list(vidx_list, client, logger);
-    let pdsc_list = parsed_vidx
-        .filter_map(move |vidx| match vidx {
-            Ok(v) => Some(flatmap_pdscs(v, client, logger)),
-            Err(_) => None,
-        })
-        .flatten();
-    let pdscs = download_pdsc_stream(config, pdsc_list, client, logger);
-    pdscs.filter_map(id).collect()
-}
-
-fn id<T>(slf: T) -> T {
-    slf
-}
+use dl_pdsc::{update_future};
+use dl_pack::{install_future};
 
 // This will "trick" the borrow checker into thinking that the lifetimes for
 // client and core are at least as big as the lifetime for pdscs, which they actually are
@@ -122,19 +94,6 @@ pub fn update_command<'a>(conf: &Config, _: &ArgMatches<'a>, logger: &Logger) ->
         }
     }
     Ok(())
-}
-
-pub fn install_future<'client,'a: 'client,  C, I: 'a,>(
-    config: &'a Config,
-    pdscs: I,
-    client: &'client Client<C, Body>,
-    logger: &'a Logger,
-) -> impl Future<Item = Vec<PathBuf>, Error = Error> + 'client
-    where C: Connect,
-          I: IntoIterator<Item = &'a Package>,
-{
-    let packs = download_pack_stream(config, iter_ok(pdscs), client, logger);
-    packs.filter_map(id).collect()
 }
 
 // This will "trick" the borrow checker into thinking that the lifetimes for
