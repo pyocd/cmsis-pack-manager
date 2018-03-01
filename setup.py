@@ -42,11 +42,10 @@ setup(
         'pytest-runner'],
     install_requires = [
         'appdirs>=1.4',
-        'beautifulsoup4>=4.4.1',
-        'fuzzywuzzy>=0.10.0',
-        'milksnake>=0.1.2'],
+        'milksnake>=0.1.2',
+        'pyyaml>=3.12'],
     tests_require = [
-        'hypothesis', 
+        'hypothesis',
         'jinja2',
         'mock',
         'pytest'],

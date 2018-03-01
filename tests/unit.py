@@ -7,7 +7,6 @@ from hypothesis import given, settings, example
 from hypothesis.strategies import booleans, text, lists, just, integers, tuples
 from hypothesis.strategies import dictionaries, fixed_dictionaries
 from jinja2 import Template
-from bs4 import BeautifulSoup
 
 import cmsis_pack_manager
 
@@ -16,9 +15,8 @@ import cmsis_pack_manager
        text(alphabet=ascii_lowercase, min_size=1),
        text(alphabet=ascii_lowercase, min_size=1))
 def test_pdsc_from_cache(data_path, vendor, pack, version):
-    @patch("cmsis_pack_manager.BeautifulSoup")
     @patch("cmsis_pack_manager.open", create=True)
-    def inner_test(_open, _bs):
+    def inner_test(_open):
         _open.return_value.__enter__.return_value = MagicMock
         c = cmsis_pack_manager.Cache(True, True, data_path=data_path)
         device = {'from_pack': {'vendor': vendor , 'pack': pack,
@@ -27,7 +25,6 @@ def test_pdsc_from_cache(data_path, vendor, pack, version):
         assert(vendor in _open.call_args[0][0])
         assert(pack in _open.call_args[0][0])
         assert(version in _open.call_args[0][0])
-        _bs.called_with(_open.return_value.__enter__.return_value, "html.parser")
     inner_test()
 
 @given(text(alphabet=ascii_lowercase + "/", min_size=1),
