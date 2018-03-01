@@ -1,9 +1,7 @@
-use std::fs::{create_dir_all, OpenOptions};
-use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use failure::Error;
-use futures::Stream;
+use futures::stream::iter_ok;
 use futures::prelude::*;
 use hyper::{Body, Client, Uri};
 use hyper::client::Connect;
@@ -12,81 +10,40 @@ use slog::Logger;
 use pdsc::Package;
 use pack_index::config::Config;
 
-use redirect::ClientRedirExt;
+use download::{IntoDownload, download_stream};
 
-fn make_uri(
-    &Package{
-        ref name,
-        ref vendor,
-        ref url,
-        ref releases,
-        ..
-    }: &Package
-) -> Result<Uri, Error> {
-    let version: &str = releases.latest_release().version.as_ref();
-    let uri = if url.ends_with('/') {
-        format!("{}{}.{}.{}.pack", url, vendor, name, version)
-    } else {
-        format!("{}/{}.{}.{}.pdsc", url, vendor, name, version)
-    }.parse()?;
-    Ok(uri)
-}
+impl<'a> IntoDownload for &'a Package {
+    fn into_uri(&self, _: &Config) -> Result<Uri, Error> {
+        let &Package{ref name, ref vendor, ref url, ref releases, ..} = *self;
+        let version: &str = releases.latest_release().version.as_ref();
+        let uri = if url.ends_with('/') {
+            format!("{}{}.{}.{}.pack", url, vendor, name, version)
+        } else {
+            format!("{}/{}.{}.{}.pdsc", url, vendor, name, version)
+        }.parse()?;
+        Ok(uri)
+    }
 
-fn make_fd(
-    config: &Config,
-    &Package{
-        ref name,
-        ref vendor,
-        ref releases,
-        ..
-    }: &Package,
-) -> PathBuf {
-    let version: &str = releases.latest_release().version.as_ref();
-    let mut filename = config.pack_store.clone();
-    filename.push(Path::new(vendor));
-    filename.push(Path::new(name));
-    filename.push(format!("{}.pack", version));
-    filename
-}
-
-fn download_pack<'b, 'a: 'b,  C: Connect>(
-    config: &'a Config,
-    pdsc: &'a Package,
-    client: &'b Client<C, Body>,
-    logger: &'a Logger,
-) -> impl Future<Item = Option<PathBuf>, Error = Error> + 'b {
-    async_block!{
-        let filename = make_fd(config, &pdsc);
-        if filename.exists() {
-            return Ok(None);
-        }
-        create_dir_all(filename.parent().unwrap())?;
-        let uri = make_uri(&pdsc)?;
-        let mut fd = OpenOptions::new()
-            .write(true)
-            .create(true)
-            .open(&filename)?;
-        let response = await!(client.redirectable(uri, logger))?;
-        #[async]
-        for bytes in response.body() {
-            fd.write_all(bytes.as_ref())?;
-        }
-        Ok(Some(filename))
+    fn into_fd(&self, config: &Config) -> PathBuf {
+        let &Package{ref name, ref vendor, ref releases, ..} = *self;
+        let version: &str = releases.latest_release().version.as_ref();
+        let mut filename = config.pack_store.clone();
+        filename.push(Path::new(vendor));
+        filename.push(Path::new(name));
+        filename.push(format!("{}.pack", version));
+        filename
     }
 }
 
-pub(crate) fn download_pack_stream<'a, 'b, F, C>(
+
+pub fn install_future<'client,'a: 'client,  C, I: 'a,>(
     config: &'a Config,
-    stream: F,
-    client: &'b Client<C, Body>,
+    pdscs: I,
+    client: &'client Client<C, Body>,
     logger: &'a Logger,
-) -> impl Stream<Item = Option<PathBuf>, Error = Error> + 'b
-    where
-    F: Stream<Item = &'a Package, Error = Error> + 'b,
-    C: Connect,
-    'a: 'b
+) -> impl Future<Item = Vec<PathBuf>, Error = Error> + 'client
+    where C: Connect,
+          I: IntoIterator<Item = &'a Package>,
 {
-    stream
-        .map(move |pdsc| download_pack(config, pdsc, client, logger))
-        .buffer_unordered(32)
+    download_stream(config, iter_ok(pdscs), client, logger).collect()
 }
