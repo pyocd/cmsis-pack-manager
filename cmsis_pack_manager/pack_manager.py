@@ -14,10 +14,12 @@
 # limitations under the License.
 
 import argparse
+import operator
 from os.path import basename, join, dirname, exists
 from os import makedirs
 from itertools import takewhile
-from fuzzywuzzy import process
+from functools import reduce
+import yaml
 from cmsis_pack_manager import Cache
 
 parser = argparse.ArgumentParser(description='A utility that keeps your cache of pack files up to date.')
@@ -65,35 +67,9 @@ def subcommand(name, *args, **kwargs):
         return command
     return subcommand
 
-def user_selection (message, options) :
-    print(message)
-    for choice, index in zip(options, range(len(options))) :
-        print("({}) {}".format(index, choice))
-    pick = None
-    while pick is None :
-        stdout.write("please select an integer from 0 to {} or \"all\"".format(len(options)-1))
-        input = raw_input()
-        try :
-            if input == "all" :
-                pick = options
-            else :
-                pick = [options[int(input)]]
-        except ValueError :
-            print("I did not understand your input")
-    return pick
-
-def fuzzy_find(matches, urls) :
-    choices = {}
-    for match in matches :
-        for key, value in process.extract(match, urls, limit=None) :
-            choices.setdefault(key, 0)
-            choices[key] += value
-    choices = sorted([(v, k) for k, v in choices.iteritems()], reverse=True)
-    if not choices : return []
-    elif len(choices) == 1 : return [choices[0][1]]
-    elif choices[0][0] > choices[1][0] : choices = choices[:1]
-    else : choices = list(takewhile(lambda t: t[0] == choices[0][0], choices))
-    return [v for k,v in choices]
+def fuzzy_find(matches, options, oper=operator.and_):
+    return reduce(oper, (set(filter(lambda x: match in x, options))
+                         for match in matches))
 
 @subcommand('cache',
             dict(name=['-e','--everything'], action="store_true",
@@ -121,31 +97,26 @@ def command_cache (cache, everything=False, descriptors=False, verbose=False, in
             help="Find a part and its description within the cache")
 def command_find_part (cache, matches, long=False, intersection=True,
                        print_aliases=True, print_parts=True) :
-    if long :
-        import pprint
-        pp = pprint.PrettyPrinter()
-    parts = cache.index
-    if intersection :
-        choices = fuzzy_find(matches, parts.keys())
-        aliases = fuzzy_find(matches, cache.aliases.keys())
-    else :
-        choices = sum([fuzzy_find([m], parts.keys()) for m in matches], [])
-        aliases = sum([fuzzy_find([m], cache.aliases.keys()) for m in matches], [])
+    op = operator.and_ if intersection else operator.or_
+    to_dump = {} if long else []
     if print_parts:
-        for part in choices :
-            print(part)
-            if long :
-                pp.pprint(cache.index[part])
+        for part in fuzzy_find(matches, cache.index.keys(), op):
+            if long:
+                to_dump.update({part: cache.index[part]})
+            else:
+                to_dump.append(part)
     if print_aliases:
-        for alias in aliases :
-            print(alias)
-            if long :
+        for alias in fuzzy_find(matches, cache.aliases.keys(), op):
+            if long:
                 if cache.aliases[alias]["mounted_devices"]:
                     part = cache.aliases[alias]["mounted_devices"][0]
                     try:
-                        pp.pprint(cache.index[part])
+                        to_dump.update({alias: cache.index[part]})
                     except KeyError:
-                        print("Could not find part: %s" % part)
+                        to_dump.update({alias: "Could not find part: %s" % part})
+            else:
+                to_dump.append(alias)
+    print(yaml.safe_dump(to_dump, default_flow_style=None if long else False))
 
 @subcommand('dump-parts',
             dict(name='out', help='Directory to dump to'),

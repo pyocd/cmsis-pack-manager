@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from bs4 import BeautifulSoup
 from os.path import join
 from json import load
 from zipfile import ZipFile
@@ -171,13 +170,12 @@ class Cache () :
         :param url: The URL of a PDSC file.
         :type url: str
         :return: A parsed representation of the PDSC file.
-        :rtype: BeautifulSoup
+        :rtype: Open file
         """
         from_pack = device['from_pack']
         dest = join(self.data_path, "{}.{}.{}.pdsc".format(
             from_pack['vendor'], from_pack['pack'], from_pack['version']))
-        with open(dest, "r") as fd :
-            return BeautifulSoup(fd, "html.parser")
+        return open(dest, "r")
 
     def pack_from_cache(self, device) :
         """Low level inteface for extracting a PACK file from the cache.
