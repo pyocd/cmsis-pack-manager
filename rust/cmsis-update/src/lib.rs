@@ -14,6 +14,7 @@ extern crate slog;
 extern crate utils;
 extern crate pack_index;
 extern crate pdsc;
+extern crate pbr;
 
 use hyper::{Body, Client};
 use hyper::client::Connect;
