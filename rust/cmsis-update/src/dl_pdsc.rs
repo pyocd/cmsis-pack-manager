@@ -9,7 +9,7 @@ use slog::Logger;
 use pack_index::{PdscRef};
 use pack_index::config::Config;
 
-use download::{IntoDownload, download_stream};
+use download::{IntoDownload, DownloadProgress, download_stream};
 use vidx::{download_vidx_list, flatmap_pdscs};
 
 impl IntoDownload for PdscRef {
@@ -33,14 +33,16 @@ impl IntoDownload for PdscRef {
 }
 
 /// Create a future of the update command.
-pub fn update_future<'a, C, I>(
+pub fn update_future<'a, C, I, P>(
     config: &'a Config,
     vidx_list: I,
     client: &'a Client<C, Body>,
     logger: &'a Logger,
+    progress: P
 ) -> impl Future<Item = Vec<PathBuf>, Error = Error> + 'a
     where C: Connect,
           I: IntoIterator<Item = String> + 'a,
+          P: DownloadProgress + 'a,
 {
     let parsed_vidx = download_vidx_list(vidx_list, client, logger);
     let pdsc_list = parsed_vidx
@@ -49,5 +51,5 @@ pub fn update_future<'a, C, I>(
             Err(_) => None,
         })
         .flatten();
-    download_stream(config, pdsc_list, client, logger).collect()
+    download_stream(config, pdsc_list, client, logger, progress).collect()
 }
