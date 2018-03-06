@@ -624,11 +624,12 @@ struct FromPack<'a> {
     vendor: &'a str,
     pack: &'a str,
     version: &'a str,
+    url: &'a str,
 }
 
 impl<'a> FromPack<'a> {
-    fn new(vendor: &'a str, pack: &'a str, version: &'a str) -> Self {
-        Self{vendor, pack, version}
+    fn new(vendor: &'a str, pack: &'a str, version: &'a str, url: &'a str) -> Self {
+        Self{vendor, pack, version, url}
     }
 }
 
@@ -772,7 +773,10 @@ impl Package {
     }
 
     fn make_dump_devices<'a>(&'a self) -> Vec<(&'a str, DumpDevice<'a>)> {
-        let from_pack = FromPack::new(&self.vendor, &self.name, &self.releases.latest_release().version);
+        let from_pack = FromPack::new(&self.vendor,
+                                      &self.name,
+                                      &self.releases.latest_release().version,
+                                      &self.url);
         self.devices.0
             .iter()
             .map(|(name, d)| (name.as_str(), DumpDevice::from_device(d, from_pack.clone())))
