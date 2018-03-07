@@ -3,10 +3,6 @@ extern crate utils;
 #[macro_use]
 extern crate slog;
 #[macro_use]
-extern crate custom_derive;
-#[macro_use]
-extern crate enum_derive;
-#[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
 extern crate failure;
@@ -186,7 +182,7 @@ impl FromElem for Board {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct Component {
     vendor: String,
     class: String,
@@ -447,4 +443,14 @@ pub fn dump_devices_command<'a>(
     let to_ret = dump_devices(&pdscs, args.value_of("devices"), args.value_of("boards"), l);
     debug!(l, "exiting");
     to_ret
+}
+
+pub fn dumps_components<'a, I>(pdscs: I) -> Result<String, FailError>
+    where I: IntoIterator<Item = &'a Package>,
+{
+    let components = pdscs
+        .into_iter()
+        .flat_map(|pdsc| pdsc.make_components().into_iter())
+        .collect::<Vec<_>>();
+    Ok(serde_json::to_string_pretty(&components)?)
 }
