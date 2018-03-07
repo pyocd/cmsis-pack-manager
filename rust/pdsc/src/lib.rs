@@ -444,3 +444,13 @@ pub fn dump_devices_command<'a>(
     debug!(l, "exiting");
     to_ret
 }
+
+pub fn dumps_components<'a, I>(pdscs: I) -> Result<String, FailError>
+    where I: IntoIterator<Item = &'a Package>,
+{
+    let components = pdscs
+        .into_iter()
+        .flat_map(|pdsc| pdsc.make_components().into_iter())
+        .collect::<Vec<_>>();
+    Ok(serde_json::to_string_pretty(&components)?)
+}
