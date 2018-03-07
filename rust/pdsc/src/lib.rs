@@ -3,10 +3,6 @@ extern crate utils;
 #[macro_use]
 extern crate slog;
 #[macro_use]
-extern crate custom_derive;
-#[macro_use]
-extern crate enum_derive;
-#[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
 extern crate failure;
@@ -186,7 +182,7 @@ impl FromElem for Board {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct Component {
     vendor: String,
     class: String,

@@ -1,39 +1,69 @@
+use std::str::FromStr;
 use std::path::PathBuf;
 
 use slog::Logger;
 use minidom::{Element, Error, ErrorKind};
 
-use utils::parse::{FromElem, assert_root_name, attr_map, child_text, attr_parse};
+use utils::parse::{FromElem, assert_root_name, attr_map, child_text, get_child_no_ns, attr_parse};
 
-custom_derive!{
-    #[allow(non_camel_case_types)]
-    #[derive(Debug, PartialEq, Eq, EnumFromStr, Clone)]
-    pub enum FileCategory{
-        doc,
-        header,
-        include,
-        library,
-        object,
-        source,
-        sourceC,
-        sourceCpp,
-        sourceAsm,
-        linkerScript,
-        utility,
-        image,
-        other,
+#[derive(Debug, PartialEq, Eq, Clone, Serialize)]
+pub enum FileCategory{
+    Doc,
+    Header,
+    Include,
+    Library,
+    Object,
+    Source,
+    SourceC,
+    SourceCpp,
+    SourceAsm,
+    LinkerScript,
+    Utility,
+    Image,
+    Other,
+}
+
+impl FromStr for FileCategory {
+    type Err = Error;
+    fn from_str(from: &str) -> Result<Self, Error> {
+        match from {
+            "doc" => Ok(FileCategory::Doc),
+            "header" => Ok(FileCategory::Header),
+            "include" => Ok(FileCategory::Include),
+            "library" => Ok(FileCategory::Library),
+            "object" => Ok(FileCategory::Object),
+            "source" => Ok(FileCategory::Source),
+            "sourceC" => Ok(FileCategory::SourceC),
+            "sourceCpp" => Ok(FileCategory::SourceCpp),
+            "sourceAsm" => Ok(FileCategory::SourceAsm),
+            "linkerScript" => Ok(FileCategory::LinkerScript),
+            "utility" => Ok(FileCategory::Utility),
+            "image" => Ok(FileCategory::Image),
+            "other" => Ok(FileCategory::Other),
+            unknown => Err(err_msg!("Unknown file catogory {}", unknown)),
+        }
     }
 }
 
-custom_derive!{
-    #[allow(non_camel_case_types)]
-    #[derive(Debug, PartialEq, Eq, EnumFromStr, Clone)]
-    pub enum FileAttribute{
-        config, template
+#[derive(Debug, PartialEq, Eq, Clone, Serialize)]
+pub enum FileAttribute{
+    Config,
+    Template,
+}
+
+impl FromStr for FileAttribute {
+    type Err = Error;
+    fn from_str(from: &str) -> Result<Self, Error> {
+        match from {
+            "config" => Ok(FileAttribute::Config),
+            "template" => Ok(FileAttribute::Template),
+            unknown => Err(err_msg!("Unknown file attribute {}", unknown)),
+        }
     }
 }
 
-#[derive(Debug, Clone)]
+
+#[derive(Debug, Clone, Serialize)]
 pub struct FileRef {
     pub path: PathBuf,
     category: FileCategory,
@@ -97,7 +127,7 @@ impl FromElem for ComponentBuilder {
         if let Some(s) = vendor.clone() {
             l = l.new(o!("SubGroup" => s));
         }
-        let files = e.get_child("files", "")
+        let files = get_child_no_ns(e, "files")
             .map(move |child| {
                 FileRef::vec_from_children(child.children(), &l)
             })
