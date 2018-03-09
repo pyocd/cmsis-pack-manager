@@ -1,4 +1,4 @@
-use std::fs::{create_dir_all, OpenOptions};
+use std::fs::{create_dir_all, rename, OpenOptions};
 use std::io::Write;
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -74,15 +74,17 @@ fn download_file<'b, 'a: 'b,  C: Connect, P: DownloadProgress + 'b>(
 ) -> impl Future<Item = PathBuf, Error = Error> + 'b {
     async_block!{
         let response = await!(client.redirectable(source, logger))?;
+        let temp = dest.with_extension("part");
         let mut fd = OpenOptions::new()
             .write(true)
             .create(true)
-            .open(&dest)?;
+            .open(&temp)?;
         #[async]
         for bytes in response.body() {
             fd.write_all(bytes.as_ref())?;
             spinner.progress(bytes.len());
         }
+        rename(&temp, &dest)?;
         spinner.complete();
         Ok(dest)
     }
