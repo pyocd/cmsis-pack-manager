@@ -30,7 +30,7 @@ mod condition;
 mod device;
 pub use component::{ComponentBuilders, FileRef};
 pub use condition::{Condition, Conditions};
-pub use device::{Device, Devices, Memories, Algorithm};
+pub use device::{Device, Devices, Memories, Algorithm, Processors};
 
 pub struct Release {
     pub version: String,
@@ -76,6 +76,7 @@ struct DumpDevice<'a> {
     name: &'a str,
     memories: Cow<'a, Memories>,
     algorithms: Cow<'a, Vec<Algorithm>>,
+    processor: Cow<'a, Processors>,
     from_pack: FromPack<'a>,
 }
 
@@ -104,6 +105,7 @@ impl<'a> DumpDevice<'a> {
             name: &dev.name,
             memories: Cow::Borrowed(&dev.memories),
             algorithms: Cow::Borrowed(&dev.algorithms),
+            processor: Cow::Borrowed(&dev.processor),
             from_pack: from_pack,
         }
     }
