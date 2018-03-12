@@ -77,72 +77,107 @@ impl FromStr for Core {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Processor {
     core: Core
 }
 
-impl Processor {
-    fn merge(self, _parent: &Self) -> Self {
-        self
-    }
+#[derive(Debug, Clone)]
+struct ProcessorBuilder {
+    core: Option<Core>
 }
 
-impl FromElem for Processor {
-    fn from_elem(e: &Element, _: &Logger) -> Result<Self, Error> {
+impl ProcessorBuilder {
+    fn merge(self, parent: &Self) -> Self {
+        ProcessorBuilder{
+            core: self.core.or_else(|| parent.core.clone())
+        }
+    }
+
+    fn build(self) -> Result<Processor, Error>{
         Ok(Processor{
-            core: attr_parse(e, "Dcore", "processor")?
+            core: self.core.ok_or_else(|| err_msg!("No Core found!"))?
         })
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+impl FromElem for ProcessorBuilder {
+    fn from_elem(e: &Element, _: &Logger) -> Result<Self, Error> {
+        Ok(ProcessorBuilder{
+            core: attr_parse(e, "Dcore", "processor").ok()
+        })
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum Processors {
     Symmetric(Processor),
     Asymmetric(BTreeMap<String, Processor>),
 }
 
-impl Processors{
+#[derive(Debug, Clone)]
+enum ProcessorsBuilder {
+    Symmetric(ProcessorBuilder),
+    Asymmetric(BTreeMap<String, ProcessorBuilder>),
+}
+
+impl ProcessorsBuilder{
     fn merge(self, parent: &Option<Self>) -> Result<Self, Error> {
         match self {
-            Processors::Symmetric(me) =>
+            ProcessorsBuilder::Symmetric(me) =>
                 match parent {
-                    &Some(Processors::Symmetric(ref single_core)) =>
-                        Ok(Processors::Symmetric(me.merge(single_core))),
-                    &Some(Processors::Asymmetric(_)) =>
+                    &Some(ProcessorsBuilder::Symmetric(ref single_core)) =>
+                        Ok(ProcessorsBuilder::Symmetric(me.merge(single_core))),
+                    &Some(ProcessorsBuilder::Asymmetric(_)) =>
                         Err(err_msg!("Tried to merge symmetric and asymmetric processors")),
-                    &None => Ok(Processors::Symmetric(me)),
+                    &None => Ok(ProcessorsBuilder::Symmetric(me)),
                 },
-            Processors::Asymmetric(mut me) =>
+            ProcessorsBuilder::Asymmetric(mut me) =>
                 match parent {
-                    &Some(Processors::Symmetric(_)) =>
+                    &Some(ProcessorsBuilder::Symmetric(_)) =>
                         Err(err_msg!("Tried to merge asymmetric and symmetric processors")),
-                    &Some(Processors::Asymmetric(ref par_map)) => {
+                    &Some(ProcessorsBuilder::Asymmetric(ref par_map)) => {
                         me.extend(par_map.iter().map(|(k, v)| (k.clone(), v.clone())));
-                        Ok(Processors::Asymmetric(me))
+                        Ok(ProcessorsBuilder::Asymmetric(me))
                     },
-                    &None => Ok(Processors::Asymmetric(me)),
+                    &None => Ok(ProcessorsBuilder::Asymmetric(me)),
                 },
         }
     }
 
     fn merge_into(&mut self, other: Self) {
         match self {
-            &mut Processors::Symmetric(_) => (),
-            &mut Processors::Asymmetric(ref mut me) =>
+            &mut ProcessorsBuilder::Symmetric(_) => (),
+            &mut ProcessorsBuilder::Asymmetric(ref mut me) =>
                 match other {
-                    Processors::Symmetric(_) => (),
-                    Processors::Asymmetric(more) => me.extend(more.into_iter()),
+                    ProcessorsBuilder::Symmetric(_) => (),
+                    ProcessorsBuilder::Asymmetric(more) => me.extend(more.into_iter()),
                 }
+        }
+    }
+
+    fn build(self) -> Result<Processors, Error> {
+        match self {
+            ProcessorsBuilder::Symmetric(prc) => prc.build().map(|p| Processors::Symmetric(p)),
+            ProcessorsBuilder::Asymmetric(map) => {
+                let new_map: Result<BTreeMap<String, Processor>, Error> =
+                    map.into_iter().map(|(name, prc)| match prc.build() {
+                        Ok(new_prc) => Ok((name, new_prc)),
+                        Err(e) => Err(e)
+                    }).collect();
+                Ok(Processors::Asymmetric(new_map?))
+            }
         }
     }
 }
 
-impl FromElem for Processors {
+impl FromElem for ProcessorsBuilder {
     fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
         Ok(match e.attr("Pname") {
-            Some(name) => Processors::Asymmetric(Some((name.to_string(), Processor::from_elem(e, l)?)).into_iter().collect()),
-            None => Processors::Symmetric(Processor::from_elem(e, l)?)
+            Some(name) => ProcessorsBuilder::Asymmetric(Some((name.to_string(), ProcessorBuilder::from_elem(e, l)?))
+                                                        .into_iter()
+                                                        .collect()),
+            None => ProcessorsBuilder::Symmetric(ProcessorBuilder::from_elem(e, l)?)
         })
     }
 }
@@ -257,7 +292,7 @@ struct DeviceBuilder<'dom> {
     name: Option<&'dom str>,
     algorithms: Vec<Algorithm>,
     memories: Memories,
-    processor: Option<Processors>,
+    processor: Option<ProcessorsBuilder>,
 }
 
 #[derive(Debug, Serialize)]
@@ -284,9 +319,10 @@ impl<'dom> DeviceBuilder<'dom> {
             err_msg!("Device found without a name")
         })?;
         Ok(Device {
-            processor: self.processor.ok_or_else(||{
-                err_msg!("Device {} found without a processor", name)
-            })?,
+            processor: match self.processor {
+                Some(pb) => pb.build()?,
+                None => return Err(err_msg!("Device found without a processor {}", name)),
+            },
             name,
             memories: self.memories,
             algorithms: self.algorithms,
@@ -306,7 +342,7 @@ impl<'dom> DeviceBuilder<'dom> {
         })
     }
 
-    fn add_processor(&mut self, processor: Processors) -> &mut Self {
+    fn add_processor(&mut self, processor: ProcessorsBuilder) -> &mut Self {
         match self.processor {
             None => self.processor = Some(processor),
             Some(ref mut origin) => origin.merge_into(processor),
