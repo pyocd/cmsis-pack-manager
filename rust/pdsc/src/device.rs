@@ -100,12 +100,31 @@ impl FromStr for FPU {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum MPU {
+    NotPresent,
+    Present,
+}
+
+impl FromStr for MPU {
+    type Err = Error;
+    fn from_str(from: &str) -> Result<Self, Error> {
+        match from {
+            "MPU" => Ok(MPU::Present),
+            "1" => Ok(MPU::Present),
+            "None" => Ok(MPU::NotPresent),
+            "0" => Ok(MPU::NotPresent),
+            unknown => Err(err_msg!("Unknown fpu {}", unknown)),
+        }
+    }
+}
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Processor {
     units: u8,
     core: Core,
     fpu: FPU,
+    mpu: MPU,
 }
 
 #[derive(Debug, Clone)]
@@ -113,6 +132,7 @@ struct ProcessorBuilder {
     core: Option<Core>,
     units: Option<u8>,
     fpu: Option<FPU>,
+    mpu: Option<MPU>,
 }
 
 impl ProcessorBuilder {
@@ -121,6 +141,7 @@ impl ProcessorBuilder {
             core: self.core.or_else(|| parent.core.clone()),
             units: self.units.or_else(|| parent.units.clone()),
             fpu: self.fpu.or_else(|| parent.fpu.clone()),
+            mpu: self.mpu.or_else(|| parent.mpu.clone()),
         }
     }
 
@@ -129,6 +150,7 @@ impl ProcessorBuilder {
             core: self.core.ok_or_else(|| err_msg!("No Core found!"))?,
             units: self.units.unwrap_or(1u8),
             fpu: self.fpu.unwrap_or(FPU::None),
+            mpu: self.mpu.unwrap_or(MPU::NotPresent),
         })
     }
 }
@@ -139,6 +161,7 @@ impl FromElem for ProcessorBuilder {
             core: attr_parse(e, "Dcore", "processor").ok(),
             units: attr_parse(e, "Punits", "processor").ok(),
             fpu: attr_parse(e, "Dfpu", "processor").ok(),
+            mpu: attr_parse(e, "Dmpu", "processor").ok(),
         })
     }
 }
