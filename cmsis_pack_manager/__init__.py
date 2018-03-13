@@ -13,7 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from os.path import join
+from os.path import join, dirname, exists
+from shutil import rmtree
 from json import load
 from zipfile import ZipFile
 import warnings
@@ -161,6 +162,14 @@ class Cache () :
         pdsc_index = self._call_rust_update()
         parsed_packs = self._call_rust_parse(pdsc_index)
         return parsed_packs
+
+    def cache_clean(self):
+        """Clean the entire cache."""
+        if exists(self.data_path):
+            rmtree(self.data_path)
+        json_path = dirname(self.index_path)
+        if exists(json_path):
+            rmtree(json_path)
 
     def pdsc_from_cache(self, device) :
         """Low level inteface for extracting a PDSC file from the cache.

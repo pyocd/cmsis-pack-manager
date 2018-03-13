@@ -73,21 +73,24 @@ def fuzzy_find(matches, options, oper=operator.and_):
                          for match in matches))
 
 @subcommand('cache',
-            dict(name=['-e','--everything'], action="store_true",
-                 help="Download everything possible"),
-            dict(name=['-d','--descriptors'], action="store_true",
-                 help="Download all descriptors"),
-            help="Cache PACK or PDSC files")
-def command_cache (cache, everything=False, descriptors=False, verbose=False, intersection=True) :
-    if everything :
+            dict(name="action", choices=["descriptors", "desc", "pdsc",
+                                         "everything", "every", "packs",
+                                         "clean", "rm"]))
+def command_cache (cache, action, verbose=False, intersection=True) :
+    if action in ("everything", "every", "packs"):
         cache.cache_everything()
         print("Packs Cached")
         return True
-    if descriptors :
+    elif action in ("descriptors", "desc", "pdsc"):
         cache.cache_descriptors()
         print("Descriptors Cached")
         return True
-    print("No action specified nothing to do")
+    elif action in ("clean", "rm"):
+        cache.cache_clean()
+        print("Cache cleaned")
+        return True
+    else:
+        print("No action specified nothing to do")
 
 @subcommand('find-part',
             dict(name='matches', nargs="+", help="Words to match to processors"),
