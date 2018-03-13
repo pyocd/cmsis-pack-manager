@@ -19,6 +19,7 @@ from os.path import basename, join, dirname, exists
 from os import makedirs
 from itertools import takewhile
 from functools import reduce
+from json import dump
 import yaml
 from cmsis_pack_manager import Cache
 
@@ -124,22 +125,21 @@ def command_find_part (cache, matches, long=False, intersection=True,
             help='Create a directory with an `index.json` describing the part and all of the associated flashing algorithms.'
 )
 def command_dump_parts (cache, out, parts, intersection=False) :
-    index = {}
-    if intersection :
-        for part in fuzzy_find(parts, cache.index):
-            index.update(cache.index[part])
-    else :
-        for part in parts :
-            index.update(dict(fuzzy_find([part], cache.index)))
-    for n, p in index.iteritems() :
-        try :
-            if not exists(join(out, dirname(p['algorithm']['file']))) :
-                makedirs(join(out, dirname(p['algorithm']['file'])))
-            with open(join(out, p['algorithm']['file']), "wb+") as fd :
-                fd.write(cache.get_flash_algorthim_binary(n).read())
+    op = operator.and_ if intersection else operator.or_
+    index = {part: cache.index[part] for part
+             in fuzzy_find(parts, cache.index, op)}
+    if not exists(out):
+        makedirs(out)
+    for n, p in index.items():
+        try:
+            for algo in p['algorithms']:
+                if not exists(join(out, dirname(algo['file_name']))):
+                    makedirs(join(out, dirname(algo['file_name'])))
+                with open(join(out, algo['file_name']), "wb+") as fd:
+                    fd.write(cache.pack_from_cache(p).open(algo['file_name']).read())
         except KeyError:
             print("[Warning] {} does not have an associated flashing algorithm".format(n))
-    with open(join(out, "index.json"), "wb+") as fd :
+    with open(join(out, "index.json"), "wb+") as fd:
         dump(index,fd)
 
 def get_argparse() :
