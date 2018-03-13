@@ -164,7 +164,7 @@ impl FromElem for Package {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Board {
     name: String,
     mounted_devices: Vec<String>,
@@ -374,11 +374,11 @@ pub fn dump_devices<'a, P: AsRef<Path>, I: IntoIterator<Item = &'a Package>>(
             if !devices.is_empty() {
                 let mut file_contents = Vec::new();
                 let mut old_devices: HashMap<&str, DumpDevice> = HashMap::new();
-                let mut all_devices = BTreeMap::new();
                 if let Ok(mut fd) = OpenOptions::new().read(true).open(to_file.as_ref()) {
                     fd.read_to_end(&mut file_contents)?;
                     old_devices = serde_json::from_slice(&file_contents).unwrap_or_default();
                 }
+                let mut all_devices = BTreeMap::new();
                 all_devices.extend(old_devices.iter());
                 all_devices.extend(devices.iter());
                 let mut options = OpenOptions::new();
@@ -401,12 +401,21 @@ pub fn dump_devices<'a, P: AsRef<Path>, I: IntoIterator<Item = &'a Package>>(
         .collect::<HashMap<_, _>>();
     match board_dest {
         Some(to_file) => {
+            let mut file_contents = Vec::new();
+            let mut old_boards: HashMap<String, Board> = HashMap::new();
+            if let Ok(mut fd) = OpenOptions::new().read(true).open(to_file.as_ref()) {
+                fd.read_to_end(&mut file_contents)?;
+                old_boards = serde_json::from_slice(&file_contents).unwrap_or_default();
+            }
+            let mut all_boards = BTreeMap::new();
+            all_boards.extend(old_boards.iter());
+            all_boards.extend(boards.iter());
             let mut options = OpenOptions::new();
             options.write(true);
             options.create(true);
             options.truncate(true);
             if let Ok(fd) = options.open(to_file.as_ref()) {
-                serde_json::to_writer_pretty(fd, &boards).unwrap();
+                serde_json::to_writer_pretty(fd, &all_boards).unwrap();
             } else {
                 println!("Could not open file {:?}", to_file.as_ref());
             }
