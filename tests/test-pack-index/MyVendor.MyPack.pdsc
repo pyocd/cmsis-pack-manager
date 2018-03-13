@@ -12,6 +12,7 @@
       <device Dname="MyDevice">
       </device>
       <processor Dcore="Cortex-M0+"/>
+      <algorithm name="flash/algo.FLM" start="0x0" size="0x1"/>
     </family>
   </devices>
   <boards>
