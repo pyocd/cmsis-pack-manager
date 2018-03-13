@@ -266,12 +266,40 @@ impl MemoryPermissions {
     }
 }
 
+enum NumberBool{
+    False,
+    True,
+}
+
+impl Into<bool> for NumberBool{
+    fn into(self) -> bool {
+        match self {
+            NumberBool::True => true,
+            NumberBool::False => false,
+        }
+    }
+}
+
+impl FromStr for NumberBool {
+    type Err = Error;
+    fn from_str(from: &str) -> Result<Self, Error> {
+        match from {
+            "true" => Ok(NumberBool::True),
+            "1" => Ok(NumberBool::True),
+            "false" => Ok(NumberBool::False),
+            "0" => Ok(NumberBool::False),
+            unknown => Err(err_msg!("unkown boolean found in merory startup {}", unknown)),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Memory {
     access: MemoryPermissions,
     start: u64,
     size: u64,
     startup: bool,
+    default: bool,
 }
 
 struct MemElem(String, Memory);
@@ -295,7 +323,12 @@ impl FromElem for MemElem {
             .ok_or_else(|| err_msg!("No name found for memory"))?;
         let start = attr_parse_hex(e, "start", "memory")?;
         let size = attr_parse_hex(e, "size", "memory")?;
-        let startup = attr_parse(e, "startup", "memory").unwrap_or_default();
+        let startup = attr_parse(e, "startup", "memory")
+            .map(|nb: NumberBool| nb.into())
+            .unwrap_or_default();
+        let default = attr_parse(e, "default", "memory")
+            .map(|nb: NumberBool| nb.into())
+            .unwrap_or_default();
         Ok(MemElem(
             name,
             Memory {
@@ -303,6 +336,7 @@ impl FromElem for MemElem {
                 start,
                 size,
                 startup,
+                default,
             },
         ))
     }
