@@ -24,14 +24,19 @@ def test_pull_pdscs():
     httpd_thread.setDaemon(True)
     httpd_thread.start()
 
+    json_path = tempfile.mkdtemp()
+    data_path = tempfile.mkdtemp()
     c = cmsis_pack_manager.Cache(
-        True, True, json_path=tempfile.mkdtemp(), data_path=tempfile.mkdtemp(),
+        True, True, json_path=json_path, data_path=data_path,
         vidx_list=join(dirname(__file__), 'test-pack-index', 'vendors.list'))
     c.cache_everything()
     assert("MyDevice" in c.index)
     assert("MyBoard" in c.aliases)
     assert("MyDevice" in c.aliases["MyBoard"]["mounted_devices"])
     assert(c.pack_from_cache(c.index["MyDevice"]).open("MyVendor.MyPack.pdsc"))
+    c = cmsis_pack_manager.Cache(
+        True, True, json_path=json_path, data_path=data_path,
+        vidx_list=join(dirname(__file__), 'test-pack-index', 'vendors.list'))
     c.cache_everything()
     httpd.shutdown()
     assert("MyDevice" in c.index)
