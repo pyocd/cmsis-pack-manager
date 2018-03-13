@@ -331,6 +331,8 @@ pub struct Algorithm {
     start: u64,
     size: u64,
     default: bool,
+    ram_start: Option<u64>,
+    ram_size: Option<u64>,
 }
 
 impl FromElem for Algorithm {
@@ -339,6 +341,8 @@ impl FromElem for Algorithm {
             file_name: attr_map(e, "name", "algorithm")?,
             start: attr_parse_hex(e, "start", "algorithm")?,
             size: attr_parse_hex(e, "size", "algorithm")?,
+            ram_start: attr_parse_hex(e, "RAMstart", "algorithm").ok(),
+            ram_size: attr_parse_hex(e, "RAMsize", "algorithm").ok(),
             default: attr_parse(e, "default", "algorithm").unwrap_or_default(),
         })
     }
