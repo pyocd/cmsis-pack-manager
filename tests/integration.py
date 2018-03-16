@@ -55,7 +55,7 @@ def test_pull_pdscs_cli():
 
     json_path = tempfile.mkdtemp()
     data_path = tempfile.mkdtemp()
-    sys.argv = ["pack-manager", "cache", "-e", "--data-path", data_path,
+    sys.argv = ["pack-manager", "cache", "everything", "--data-path", data_path,
                 "--json-path", json_path,
                 "--vidx-list", join(dirname(__file__), 'test-pack-index', 'vendors.list')]
     cmsis_pack_manager.pack_manager.main()
@@ -77,7 +77,7 @@ def test_dump_parts_cli():
 
     json_path = tempfile.mkdtemp()
     data_path = tempfile.mkdtemp()
-    sys.argv = ["pack-manager", "cache", "-e", "--data-path", data_path,
+    sys.argv = ["pack-manager", "cache", "packs", "--data-path", data_path,
                 "--json-path", json_path,
                 "--vidx-list", join(dirname(__file__), 'test-pack-index', 'vendors.list')]
     cmsis_pack_manager.pack_manager.main()
