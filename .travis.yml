@@ -32,4 +32,4 @@ deploy:
   acl: public_read
   on:
     repo: ARMmbed/cmsis-pack-manager
-    branch: s3-deploy
+    branch: master
