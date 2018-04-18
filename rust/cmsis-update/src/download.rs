@@ -65,11 +65,11 @@ impl<'a, W: Write + Send + 'a> DownloadProgress for &'a Mutex<ProgressBar<W>> {
     }
 }
 
-fn download_file<'b, 'a: 'b,  C: Connect, P: DownloadProgress + 'b>(
+fn download_file<'b,  C: Connect, P: DownloadProgress + 'b>(
     source: Uri,
     dest: PathBuf,
     client: &'b Client<C, Body>,
-    logger: &'a Logger,
+    logger: &'b Logger,
     spinner: P
 ) -> impl Future<Item = PathBuf, Error = Error> + 'b {
     async_block!{
@@ -96,23 +96,25 @@ pub(crate) fn download_stream<'b, 'a: 'b, F, C, P: 'b, DL: 'a>(
     client: &'b Client<C, Body>,
     logger: &'a Logger,
     progress: P
-) -> impl Stream<Item = PathBuf, Error = Error> + 'b
+) -> Box<Stream<Item = PathBuf, Error = Error> + 'b>
     where F: Stream<Item = DL, Error = Error> + 'b,
           C: Connect,
           DL: IntoDownload,
           P: DownloadProgress
 {
-    async_stream_block!(
-        let to_dl = await!(stream.collect())?;
-        let len = to_dl.iter().filter_map(|dl| should_download(config, dl)).count();
-        progress.size(len);
-        for from in to_dl {
-            if let Some(dest) = should_download(config, &from) {
-                let source = from.into_uri(config)?;
-                let new_prog = progress.for_file(&dest.to_string_lossy());
-                stream_yield!(download_file(source, dest, client, logger, new_prog))
+    Box::new(
+        async_stream_block!(
+            let to_dl = await!(stream.collect())?;
+            let len = to_dl.iter().filter_map(|dl| should_download(config, dl)).count();
+            progress.size(len);
+            for from in to_dl {
+                if let Some(dest) = should_download(config, &from) {
+                    let source = from.into_uri(config)?;
+                    let new_prog = progress.for_file(&dest.to_string_lossy());
+                    stream_yield!(download_file(source, dest, client, logger, new_prog))
+                }
             }
-        }
-        Ok(())
-    ).buffer_unordered(32)
+            Ok(())
+        ).buffer_unordered(32)
+    )
 }
