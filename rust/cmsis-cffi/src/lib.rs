@@ -1,5 +1,3 @@
-#![feature(conservative_impl_trait)]
-
 #[macro_use]
 extern crate slog;
 extern crate slog_term;
