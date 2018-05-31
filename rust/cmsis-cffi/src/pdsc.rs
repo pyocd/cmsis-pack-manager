@@ -4,7 +4,7 @@ use slog_async::Async;
 use std::borrow::Cow;
 use std::os::raw::c_char;
 use std::ffi::{CStr, CString};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use failure::err_msg;
 
@@ -50,6 +50,23 @@ pub struct ParsedPacks(Vec<Package>);
 impl ParsedPacks {
     pub fn iter(&self) -> impl Iterator<Item = &Package> {
         self.0.iter()
+    }
+}
+
+cffi!{
+    fn pack_from_path(ptr: *const c_char) -> Result<*mut UpdateReturn>{
+        if !ptr.is_null() {
+            let fname = unsafe { CStr::from_ptr(ptr) }.to_string_lossy();
+            let mut pathbuf = PathBuf::new();
+            pathbuf.push::<&str>(&fname);
+            if pathbuf.exists() {
+                Ok(Box::into_raw(Box::new(UpdateReturn::from_vec(vec![pathbuf]))))
+            } else {
+                Err(err_msg(format!("Could not find file {:?}", &pathbuf)))
+            }
+        } else {
+            Err(err_msg("Null passed into pack_from_path"))
+        }
     }
 }
 

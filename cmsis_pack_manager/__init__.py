@@ -215,3 +215,10 @@ class Cache () :
             if (zipinfo.filename.upper().endswith(".PDSC")):
                 return zipinfo.filename
         return None
+
+    def add_pack_from_path(self, path):
+        cpack_path = ffi.new("char[]", path.encode("utf-8")) if path else ffi.NULL
+        with _RaiseRust():
+            pack_files = ffi.gc(lib.pack_from_path(cpack_path),
+                                lib.update_pdsc_index_free)
+        return self._call_rust_parse(pack_files)
