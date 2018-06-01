@@ -145,6 +145,14 @@ def command_dump_parts (cache, out, parts, intersection=False) :
     with open(join(out, "index.json"), "wb+") as fd:
         dump(index,fd)
 
+@subcommand('add-packs',
+            dict(name='path', nargs='+', help='path to pdsc to add into the index'),
+            help='add contents of pdsc files into the index'
+)
+def command_add_packs(cache, path, intersection=False) :
+    for p in path:
+        cache.add_pack_from_path(p)
+
 def get_argparse() :
     return parser
 

@@ -12,6 +12,10 @@ use pi::config::ConfigBuilder;
 pub struct UpdateReturn(Vec<PathBuf>);
 
 impl UpdateReturn {
+    pub fn from_vec(inner: Vec<PathBuf>) -> Self {
+        UpdateReturn(inner)
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = &PathBuf> {
         self.0.iter()
     }

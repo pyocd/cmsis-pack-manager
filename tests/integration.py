@@ -66,6 +66,30 @@ def test_pull_pdscs_cli():
     assert("MyDevice" in c.aliases["MyBoard"]["mounted_devices"])
     assert(c.pack_from_cache(c.index["MyDevice"]).open("MyVendor.MyPack.pdsc"))
 
+def test_add_pack_from_path():
+    json_path = tempfile.mkdtemp()
+    data_path = tempfile.mkdtemp()
+    c = cmsis_pack_manager.Cache(
+        True, True, json_path=json_path, data_path=data_path)
+    c.add_pack_from_path(join(dirname(__file__), 'test-pack-index', 'MyVendor.MyPack.pdsc'))
+    assert("MyDevice" in c.index)
+    assert("MyBoard" in c.aliases)
+    assert("MyDevice" in c.aliases["MyBoard"]["mounted_devices"])
+
+def test_add_pack_from_path_cli():
+    json_path = tempfile.mkdtemp()
+    data_path = tempfile.mkdtemp()
+    sys.argv = ["pack-manager", "add-packs",
+                join(dirname(__file__), 'test-pack-index', 'MyVendor.MyPack.pdsc'),
+                "--data-path", data_path,
+                "--json-path", json_path,
+                "--vidx-list", join(dirname(__file__), 'test-pack-index', 'vendors.list')]
+    cmsis_pack_manager.pack_manager.main()
+    c = cmsis_pack_manager.Cache(True, True, json_path=json_path, data_path=data_path)
+    assert("MyDevice" in c.index)
+    assert("MyBoard" in c.aliases)
+    assert("MyDevice" in c.aliases["MyBoard"]["mounted_devices"])
+
 def test_dump_parts_cli():
     socketserver.TCPServer.allow_reuse_address = True
     PORT = 8001
