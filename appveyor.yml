@@ -22,7 +22,7 @@ deploy:
   access_key_id: AKIAJRSWHGVBJUV5HFZA
   secret_access_key:
     secure: Oeg8mQ7lfWYLBZ4Qx2saBO+I2/Oe1rPx4JFeB6JWdz/reCQ/RHWij6YZ5LWe8qen
-  region: us-east-1
+  region: us-west-1
   bucket: mbed-os/
   folder: builds/cmsis-pack-manager/
   artifact: dist\*
