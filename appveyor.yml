@@ -15,15 +15,12 @@ environment:
 
 build_script: appveyor.bat
 skip_branch_with_pr: true
-artifacts:
-  - path: dist\*
 deploy:
 - provider: S3
   access_key_id: AKIAJRSWHGVBJUV5HFZA
   secret_access_key:
     secure: Oeg8mQ7lfWYLBZ4Qx2saBO+I2/Oe1rPx4JFeB6JWdz/reCQ/RHWij6YZ5LWe8qen
-  region: us-west-1
-  bucket: mbed-os/
+  bucket: mbed-os
   folder: builds/cmsis-pack-manager/
   artifact: dist\*
   set_public: true
