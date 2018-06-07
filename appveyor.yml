@@ -22,6 +22,7 @@ skip_branch_with_pr: true
 deploy:
   name: mbed-os-s3
   provider: S3
+  region: eu-west-1
   access_key_id: AKIAJRSWHGVBJUV5HFZA
   secret_access_key:
     secure: Oeg8mQ7lfWYLBZ4Qx2saBO+I2/Oe1rPx4JFeB6JWdz/reCQ/RHWij6YZ5LWe8qen
