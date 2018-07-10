@@ -28,7 +28,7 @@ deploy:
     secure: ad4XAqhjXOD879rJesZtNTMmor8qqRbu8gvLkw2mh4mvpQjy37Mz8ciqVISDa467q7aHPw3vATAXOpKCpasuycSm3eyayYP0Zw/pDCnvhWg+Fe7n8LrA1JE9xuQMMyNfP5XG0Apqx+3atzlKP4jbIKTuM0QxJOkaW1UjFikPWSijQkL49219dVxHmMmshsjebQApWeFpfgS1FmuWNWFW9V9+gZjenfwqm3aS6bTCCGpKqUsgg1reS/ZtpkJDgRgcxp6UuFPdKmjn3kYWg7DJ884VEqMzWPnKur1yubAtFHAMhAHVXqZKg2Y7Lxk4ILz527OMIrq6FdOPPj7Bn0PODi3t/nW+7EdL+1DhvtzbKL9TzlQ+zw2ASa5i91OMCskH4Oty28cqmqB6mjBhu36Q8BLQ2kwGUqC8+W2d7Dozo862VqVLHUFx4E1v6stz0lABFx/wjPTnoOZXxLUZIxssnziwM8ItgrGIqbjg57PvLGnpOwf0VQhhsskmIXl88A8pxfrsvds5l3jq2FhBxSVu7VMukGmeiIcXTttCjoD7pdTbxH4Zp9ydvNNpTgVN+qVhf45BxZ5szKnFIirJ54yoVmnmVx8sm/ixzP0sHDV/UQPIPwejiCXUJwW2ds69cfaqYrsrKiwg0FVW5cS8y9UDA8pDe3bu980kaLBiSo2fwJA=
   bucket: mbed-os
   local-dir: dist
-  upload-dir: builds/cmsis-pack-manager
+  upload-dir: builds/cmsis-pack-manager/dist
   acl: public_read
   on:
     repo: ARMmbed/cmsis-pack-manager
