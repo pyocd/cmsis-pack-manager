@@ -1,4 +1,4 @@
-#![feature(proc_macro, generators, libc, proc_macro_non_items)]
+#![feature(generators, libc, proc_macro_non_items, use_extern_macros)]
 
 extern crate futures_await as futures;
 extern crate tokio_core;

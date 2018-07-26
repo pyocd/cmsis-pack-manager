@@ -1,4 +1,4 @@
-use futures::prelude::*;
+use futures::prelude::{await, async_block, Future};
 use hyper::{Error, Body, Client, Response, StatusCode, Uri};
 use hyper::client::Connect;
 use hyper::header::Location;

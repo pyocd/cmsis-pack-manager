@@ -5,7 +5,7 @@ use std::sync::Mutex;
 
 use failure::Error;
 use futures::Stream;
-use futures::prelude::*;
+use futures::prelude::{await, async_block, async_stream_block, stream_yield, Future};
 use hyper::{Body, Client, Uri};
 use hyper::client::Connect;
 use slog::Logger;

@@ -1,7 +1,7 @@
 use std::borrow::Borrow;
 
 use failure::Error;
-use futures::prelude::*;
+use futures::prelude::{await, async_block, Future};
 use futures::Stream;
 use futures::stream::{futures_unordered, iter_ok};
 use hyper::{self, Body, Chunk, Client, Response};
