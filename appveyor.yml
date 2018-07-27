@@ -31,4 +31,4 @@ deploy:
   artifact: wheel
   set_public: true
   on:
-    branch: master
+    appveyor_repo_tag: true
