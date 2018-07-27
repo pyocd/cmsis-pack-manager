@@ -17,31 +17,36 @@ from os.path import join, dirname, exists
 from shutil import rmtree
 from json import load
 from zipfile import ZipFile
-import warnings
 from appdirs import user_data_dir
 from ._native import ffi, lib
+
 
 class _RaiseRust(object):
     def __enter__(self):
         pass
 
     def __exit__(self, exc_type, exc_val, exe_tb):
-        maybe_err = ffi.gc(lib.err_get_last_message(), lib.err_last_message_free)
+        maybe_err = ffi.gc(lib.err_get_last_message(),
+                           lib.err_last_message_free)
         if maybe_err:
             raise Exception(ffi.string(maybe_err))
 
-class Cache () :
+
+class Cache (object):
     """ The Cache object is the only relevant API object at the moment
 
     Constructing the Cache object does not imply any caching.
     A user of the API must explicitly call caching functions.
 
-    :param silent: A boolean that, when True, significantly reduces the printing of this Object
+    :param silent: A boolean that, when True, significantly reduces the
+                   printing of this Object
     :type silent: bool
-    :param no_timeouts: A boolean that, when True, disables the default connection timeout and low speed timeout for downloading things.
+    :param no_timeouts: A boolean that, when True, disables the default
+                        connection timeout and low speed timeout for
+                        downloading things.
     :type no_timeouts: bool
     """
-    def __init__ (self, _, __, json_path=None, data_path=None, vidx_list=None) :
+    def __init__(self, _, __, json_path=None, data_path=None, vidx_list=None):
         default_path = user_data_dir('cmsis-pack-manager')
         json_path = default_path if not json_path else json_path
         self._index = {}
@@ -51,26 +56,30 @@ class Cache () :
         self.data_path = default_path if not data_path else data_path
         self.vidx_list = vidx_list
 
-    def get_flash_algorthim_binary(self, device_name, all=False) :
+    def get_flash_algorthim_binary(self, device_name, all=False):
         """Retrieve the flash algorithm file for a particular part.
 
-        Assumes that both the PDSC and the PACK file associated with that part are in the cache.
+        Assumes that both the PDSC and the PACK file associated with that part
+        are in the cache.
 
         :param device_name: The exact name of a device
         :param all: Return an iterator of all flash algos for this device
         :type device_name: str
-        :return: A file-like object that, when read, is the ELF file that describes the flashing algorithm
-        :return: A file-like object that, when read, is the ELF file that describes the flashing algorithm.
-                 When "all" is set to True then an iterator for file-like objects is returned
+        :return: A file-like object that, when read, is the ELF file that
+                 describes the flashing algorithm
+        :return: A file-like object that, when read, is the ELF file that
+                 describes the flashing algorithm.  When "all" is set to
+                 True then an iterator for file-like objects is returned
         :rtype: ZipExtFile or ZipExtFile iterator if all is True
         """
         device = self.index[device_name]
         pack = self.pack_from_cache(device)
-        algo_itr = (pack.open(algo['file_name']) for algo in device['algorithm'])
+        algo_itr = (pack.open(algo['file_name']) for algo
+                    in device['algorithm'])
         return algo_itr if all else algo_itr.next()
 
     @property
-    def index(self) :
+    def index(self):
         """An index of most of the important data in all cached PDSC files.
 
         :Example:
@@ -106,13 +115,13 @@ class Cache () :
          u'name': u'LPC1768'}
 
         """
-        if not self._index :
-            with open(self.index_path) as i :
+        if not self._index:
+            with open(self.index_path) as i:
                 self._index = load(i)
         return self._index
 
     @property
-    def aliases(self) :
+    def aliases(self):
         """An index of the boards in all CMSIS Pack Descriptions.
 
         :Example:
@@ -124,40 +133,61 @@ class Cache () :
          "mounted_devices": ["LPC1788"]}
         """
 
-        if not self._aliases :
-            with open(self.aliases_path) as i :
+        if not self._aliases:
+            with open(self.aliases_path) as i:
                 self._aliases = load(i)
         return self._aliases
 
-    def cache_everything(self) :
+    def cache_everything(self):
         """Cache every CMSIS Pack and generate an index.
 
-        .. note:: This process may use 5GB of drive space and take upwards of 2 minutes to complete.
+        .. note:: This process may use 5GB of drive space and take upwards of
+        2 minutes to complete.
         """
         parsed_packs = self.cache_descriptors()
-        cdata_path = ffi.new("char[]", self.data_path.encode("utf-8")) if self.data_path else ffi.NULL
+        if self.data_path:
+            cdata_path = ffi.new("char[]", self.data_path.encode("utf-8"))
+        else:
+            cdata_path = ffi.NULL
         lib.update_packs(cdata_path, parsed_packs)
 
     def _call_rust_update(self):
-        cdata_path = ffi.new("char[]", self.data_path.encode("utf-8")) if self.data_path else ffi.NULL
-        cvidx_path = ffi.new("char[]", self.vidx_list.encode("utf-8")) if self.vidx_list else ffi.NULL
+        if self.data_path:
+            cdata_path = ffi.new("char[]", self.data_path.encode("utf-8"))
+        else:
+            cdata_path = ffi.NULL
+        if self.vidx_list:
+            cvidx_path = ffi.new("char[]", self.vidx_list.encode("utf-8"))
+        else:
+            cvidx_path = ffi.NULL
         with _RaiseRust():
-            pdsc_index = ffi.gc(lib.update_pdsc_index(cdata_path, cvidx_path), lib.update_pdsc_index_free)
+            pdsc_index = ffi.gc(lib.update_pdsc_index(cdata_path, cvidx_path),
+                                lib.update_pdsc_index_free)
         return pdsc_index
 
     def _call_rust_parse(self, pdsc_index):
-        cindex_path = ffi.new("char[]", self.index_path.encode("utf-8")) if self.index_path else ffi.NULL
-        calias_path = ffi.new("char[]", self.aliases_path.encode("utf-8")) if self.aliases_path else ffi.NULL
+        if self.index_path:
+            cindex_path = ffi.new("char[]", self.index_path.encode("utf-8"))
+        else:
+            cindex_path = ffi.NULL
+        if self.aliases_path:
+            calias_path = ffi.new("char[]", self.aliases_path.encode("utf-8"))
+        else:
+            calias_path = ffi.NULL
         with _RaiseRust():
-            parsed_packs = ffi.gc(lib.parse_packs(pdsc_index), lib.parse_packs_free)
+            parsed_packs = ffi.gc(lib.parse_packs(pdsc_index),
+                                  lib.parse_packs_free)
         with _RaiseRust():
-            pdsc_index = lib.dump_pdsc_json(parsed_packs, cindex_path, calias_path)
+            pdsc_index = lib.dump_pdsc_json(
+                parsed_packs, cindex_path, calias_path
+            )
         return parsed_packs
 
-    def cache_descriptors(self) :
+    def cache_descriptors(self):
         """Cache all Pack Descriptions and generate an index of them.
 
-        .. note:: This process may use 14MB of drive space and take upwards of 10 seconds.
+        .. note:: This process may use 14MB of drive space and take upwards of
+        10 seconds.
         """
         pdsc_index = self._call_rust_update()
         parsed_packs = self._call_rust_parse(pdsc_index)
@@ -171,7 +201,7 @@ class Cache () :
         if exists(json_path):
             rmtree(json_path)
 
-    def pdsc_from_cache(self, device) :
+    def pdsc_from_cache(self, device):
         """Low level inteface for extracting a PDSC file from the cache.
 
         Assumes that the file specified is a PDSC file and is in the cache.
@@ -186,7 +216,7 @@ class Cache () :
             from_pack['vendor'], from_pack['pack'], from_pack['version']))
         return open(dest, "r")
 
-    def pack_from_cache(self, device) :
+    def pack_from_cache(self, device):
         """Low level inteface for extracting a PACK file from the cache.
 
         Assumes that the file specified is a PACK file and is in the cache.
@@ -217,7 +247,10 @@ class Cache () :
         return None
 
     def add_pack_from_path(self, path):
-        cpack_path = ffi.new("char[]", path.encode("utf-8")) if path else ffi.NULL
+        if path:
+            cpack_path = ffi.new("char[]", path.encode("utf-8"))
+        else:
+            cpack_path = ffi.NULL
         with _RaiseRust():
             pack_files = ffi.gc(lib.pack_from_path(cpack_path),
                                 lib.update_pdsc_index_free)

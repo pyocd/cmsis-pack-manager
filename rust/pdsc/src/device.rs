@@ -245,6 +245,10 @@ struct MemoryPermissions {
     read: bool,
     write: bool,
     execute: bool,
+    peripheral: bool,
+    secure: bool,
+    non_secure: bool,
+    non_secure_callable: bool,
 }
 
 impl MemoryPermissions {
@@ -253,12 +257,20 @@ impl MemoryPermissions {
             read: false,
             write: false,
             execute: false,
+            peripheral: false,
+            secure: false,
+            non_secure: false,
+            non_secure_callable: false,
         };
         for c in input.chars() {
             match c {
                 'r' => ret.read = true,
                 'w' => ret.write = true,
                 'x' => ret.execute = true,
+                'p' => ret.peripheral = true,
+                's' => ret.secure = true,
+                'n' => ret.non_secure = true,
+                'c' => ret.non_secure_callable = true,
                 _ => (),
             }
         }
@@ -306,15 +318,17 @@ struct MemElem(String, Memory);
 
 impl FromElem for MemElem {
     fn from_elem(e: &Element, _l: &Logger) -> Result<Self, Error> {
-        let access = e.attr("id")
-            .map(|memtype| if memtype.contains("ROM") {
-                "rx"
-            } else if memtype.contains("RAM") {
-                "rw"
-            } else {
-                ""
+        let access = e.attr("access")
+            .or_else(|| {
+                e.attr("id")
+                .map(|memtype| if memtype.contains("ROM") {
+                    "rx"
+                } else if memtype.contains("RAM") {
+                    "rw"
+                } else {
+                    ""
+                })
             })
-            .or_else(|| e.attr("access"))
             .map(|memtype| MemoryPermissions::from_str(memtype))
             .unwrap();
         let name = e.attr("id")
