@@ -13,19 +13,22 @@ environment:
       PYTHON: "C:\\Python27-x64"
       platform: x64
 
-build_script: appveyor.bat
-skip_branch_with_pr: true
 artifacts:
   - path: dist\*
+    name: wheel
+
+build_script: appveyor.bat
+skip_branch_with_pr: true
 deploy:
-- provider: S3
+  name: mbed-os-s3
+  provider: S3
+  region: eu-west-1
   access_key_id: AKIAJRSWHGVBJUV5HFZA
   secret_access_key:
     secure: Oeg8mQ7lfWYLBZ4Qx2saBO+I2/Oe1rPx4JFeB6JWdz/reCQ/RHWij6YZ5LWe8qen
-  region: us-west-1
-  bucket: mbed-os/
+  bucket: mbed-os
   folder: builds/cmsis-pack-manager/
-  artifact: dist\*
+  artifact: wheel
   set_public: true
   on:
     branch: master
