@@ -20,7 +20,7 @@ artifacts:
 build_script: appveyor.bat
 skip_branch_with_pr: true
 deploy:
-  name: mbed-os-s3
+- name: mbed-os-s3
   provider: S3
   region: eu-west-1
   access_key_id: AKIAJRSWHGVBJUV5HFZA
@@ -30,5 +30,11 @@ deploy:
   folder: builds/cmsis-pack-manager/
   artifact: wheel
   set_public: true
+  on:
+    appveyor_repo_tag: true
+- provider: GitHub
+  auth_token:
+      secure: ""
+  artifact: wheel
   on:
     appveyor_repo_tag: true

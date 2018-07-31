@@ -21,7 +21,7 @@ jobs:
 stages:
 - name: test
 deploy:
-  provider: s3
+- provider: s3
   access_key_id: AKIAJRSWHGVBJUV5HFZA
   skip_cleanup: true
   secret_access_key:
@@ -33,3 +33,11 @@ deploy:
   on:
     repo: ARMmbed/cmsis-pack-manager
     tags: true
+- provider: releases
+  api_key:
+      secure: ""
+  skip_cleanup: true
+  file_glob: true
+  file: dist/*.whl
+  on:
+      tags: true
