@@ -20,7 +20,7 @@ artifacts:
 build_script: appveyor.bat
 skip_branch_with_pr: true
 deploy:
-  name: mbed-os-s3
+- name: mbed-os-s3
   provider: S3
   region: eu-west-1
   access_key_id: AKIAJRSWHGVBJUV5HFZA
@@ -31,4 +31,10 @@ deploy:
   artifact: wheel
   set_public: true
   on:
-    branch: master
+    appveyor_repo_tag: true
+- provider: GitHub
+  auth_token:
+      secure: yTPYLNHd21XCtQvhmLhZ5DzpbS46I/ACIE47iWvW5NN9M1vU1MQ3PbdKN0AZMf7x
+  artifact: wheel
+  on:
+    appveyor_repo_tag: true
