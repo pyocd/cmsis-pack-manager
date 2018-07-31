@@ -34,7 +34,7 @@ deploy:
     appveyor_repo_tag: true
 - provider: GitHub
   auth_token:
-      secure: ""
+      secure: yTPYLNHd21XCtQvhmLhZ5DzpbS46I/ACIE47iWvW5NN9M1vU1MQ3PbdKN0AZMf7x
   artifact: wheel
   on:
     appveyor_repo_tag: true
