@@ -56,7 +56,7 @@ class Cache (object):
         self.data_path = default_path if not data_path else data_path
         self.vidx_list = vidx_list
 
-    def get_flash_algorthim_binary(self, device_name, all=False):
+    def get_flash_algorithm_binary(self, device_name, all=False):
         """Retrieve the flash algorithm file for a particular part.
 
         Assumes that both the PDSC and the PACK file associated with that part
@@ -74,8 +74,8 @@ class Cache (object):
         """
         device = self.index[device_name]
         pack = self.pack_from_cache(device)
-        algo_itr = (pack.open(algo['file_name']) for algo
-                    in device['algorithm'])
+        algo_itr = (pack.open(algo['file_name'].replace(u'\\', '/')) for algo
+                    in device['algorithms'])
         return algo_itr if all else algo_itr.next()
 
     @property
