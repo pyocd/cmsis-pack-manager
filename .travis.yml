@@ -1,21 +1,20 @@
 language: rust
 cache: cargo
+
+install:
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then docker pull $DOCKER_IMAGE; fi
+
 script:
-- |
-  cd rust
-  cargo test --release
-  cd ..
-  python2 --version
-  pip2 --version
-  pip2 install --user --upgrade pip setuptools wheel
-  python2 setup.py bdist_wheel
-  pip2 install --user pytest hypothesis mock jinja2
-  python2 setup.py test
-rust: nightly
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ./build-wheels.sh $TRAVIS_OS_NAME; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then docker run --rm -v `pwd`:/io $DOCKER_IMAGE /io/build-wheels.sh $TRAVIS_OS_NAME; fi
+
 jobs:
   include:
   - os: linux
     stage: test
+    services:
+      - docker
+    env: DOCKER_IMAGE=quay.io/pypa/manylinux1_x86_64
   - os: osx
     stage: test
 stages:
