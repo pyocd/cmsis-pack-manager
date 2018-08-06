@@ -6,65 +6,77 @@ try:
     import SocketServer as socketserver
 except ImportError:
     import socketserver
+import contextlib
+import os
 import sys
 import threading
-import urllib
 import tempfile
 from os.path import join, dirname, exists
 
 import cmsis_pack_manager
 import cmsis_pack_manager.pack_manager
 
-def test_pull_pdscs():
-    socketserver.TCPServer.allow_reuse_address = True
-    PORT = 8001
-    handler = http.SimpleHTTPRequestHandler
-    httpd = socketserver.TCPServer(("", PORT), handler)
-    httpd_thread = threading.Thread(target=httpd.serve_forever)
-    httpd_thread.setDaemon(True)
-    httpd_thread.start()
 
-    json_path = tempfile.mkdtemp()
-    data_path = tempfile.mkdtemp()
-    c = cmsis_pack_manager.Cache(
-        True, True, json_path=json_path, data_path=data_path,
-        vidx_list=join(dirname(__file__), 'test-pack-index', 'vendors.list'))
-    c.cache_everything()
-    assert("MyDevice" in c.index)
-    assert("MyBoard" in c.aliases)
-    assert("MyDevice" in c.aliases["MyBoard"]["mounted_devices"])
-    assert(c.pack_from_cache(c.index["MyDevice"]).open("MyVendor.MyPack.pdsc"))
-    c = cmsis_pack_manager.Cache(
-        True, True, json_path=json_path, data_path=data_path,
-        vidx_list=join(dirname(__file__), 'test-pack-index', 'vendors.list'))
-    c.cache_everything()
-    httpd.shutdown()
-    assert("MyDevice" in c.index)
-    assert("MyBoard" in c.aliases)
-    assert("MyDevice" in c.aliases["MyBoard"]["mounted_devices"])
-    assert(c.pack_from_cache(c.index["MyDevice"]).open("MyVendor.MyPack.pdsc"))
+MODULE_ROOT = join(dirname(__file__), "..")
+
+
+@contextlib.contextmanager
+def pushd(new_dir):
+    previous_dir = os.getcwd()
+    os.chdir(new_dir)
+    yield
+    os.chdir(previous_dir)
+
+
+@contextlib.contextmanager
+def cmsis_server():
+    with pushd(MODULE_ROOT):
+        print(os.getcwd())
+        socketserver.TCPServer.allow_reuse_address = True
+        PORT = 8001
+        handler = http.SimpleHTTPRequestHandler
+        httpd = socketserver.TCPServer(("", PORT), handler)
+        httpd_thread = threading.Thread(target=httpd.serve_forever)
+        httpd_thread.setDaemon(True)
+        httpd_thread.start()
+        yield
+        httpd.shutdown()
+
+
+def test_pull_pdscs():
+    with cmsis_server():
+        json_path = tempfile.mkdtemp()
+        data_path = tempfile.mkdtemp()
+        c = cmsis_pack_manager.Cache(
+            True, True, json_path=json_path, data_path=data_path,
+            vidx_list=join(dirname(__file__), 'test-pack-index', 'vendors.list'))
+        c.cache_everything()
+        assert("MyDevice" in c.index)
+        assert("MyBoard" in c.aliases)
+        assert("MyDevice" in c.aliases["MyBoard"]["mounted_devices"])
+        assert(c.pack_from_cache(c.index["MyDevice"]).open("MyVendor.MyPack.pdsc"))
+        c = cmsis_pack_manager.Cache(
+            True, True, json_path=json_path, data_path=data_path,
+            vidx_list=join(dirname(__file__), 'test-pack-index', 'vendors.list'))
+        c.cache_everything()
+        assert("MyDevice" in c.index)
+        assert("MyBoard" in c.aliases)
+        assert("MyDevice" in c.aliases["MyBoard"]["mounted_devices"])
+        assert(c.pack_from_cache(c.index["MyDevice"]).open("MyVendor.MyPack.pdsc"))
 
 def test_pull_pdscs_cli():
-    socketserver.TCPServer.allow_reuse_address = True
-    PORT = 8001
-    handler = http.SimpleHTTPRequestHandler
-    httpd = socketserver.TCPServer(("", PORT), handler)
-    httpd_thread = threading.Thread(target=httpd.serve_forever)
-    httpd_thread.setDaemon(True)
-    httpd_thread.start()
-
-    json_path = tempfile.mkdtemp()
-    data_path = tempfile.mkdtemp()
-    sys.argv = ["pack-manager", "cache", "everything", "--data-path", data_path,
-                "--json-path", json_path,
-                "--vidx-list", join(dirname(__file__), 'test-pack-index', 'vendors.list')]
-    cmsis_pack_manager.pack_manager.main()
-    httpd.shutdown()
-    c = cmsis_pack_manager.Cache(True, True, json_path=json_path, data_path=data_path)
-    assert("MyDevice" in c.index)
-    assert("MyBoard" in c.aliases)
-    assert("MyDevice" in c.aliases["MyBoard"]["mounted_devices"])
-    assert(c.pack_from_cache(c.index["MyDevice"]).open("MyVendor.MyPack.pdsc"))
+    with cmsis_server():
+        json_path = tempfile.mkdtemp()
+        data_path = tempfile.mkdtemp()
+        sys.argv = ["pack-manager", "cache", "everything", "--data-path", data_path,
+                    "--json-path", json_path,
+                    "--vidx-list", join(dirname(__file__), 'test-pack-index', 'vendors.list')]
+        cmsis_pack_manager.pack_manager.main()
+        c = cmsis_pack_manager.Cache(True, True, json_path=json_path, data_path=data_path)
+        assert("MyDevice" in c.index)
+        assert("MyBoard" in c.aliases)
+        assert("MyDevice" in c.aliases["MyBoard"]["mounted_devices"])
+        assert(c.pack_from_cache(c.index["MyDevice"]).open("MyVendor.MyPack.pdsc"))
 
 def test_add_pack_from_path():
     json_path = tempfile.mkdtemp()
@@ -91,30 +103,22 @@ def test_add_pack_from_path_cli():
     assert("MyDevice" in c.aliases["MyBoard"]["mounted_devices"])
 
 def test_dump_parts_cli():
-    socketserver.TCPServer.allow_reuse_address = True
-    PORT = 8001
-    handler = http.SimpleHTTPRequestHandler
-    httpd = socketserver.TCPServer(("", PORT), handler)
-    httpd_thread = threading.Thread(target=httpd.serve_forever)
-    httpd_thread.setDaemon(True)
-    httpd_thread.start()
-
-    json_path = tempfile.mkdtemp()
-    data_path = tempfile.mkdtemp()
-    sys.argv = ["pack-manager", "cache", "packs", "--data-path", data_path,
-                "--json-path", json_path,
-                "--vidx-list", join(dirname(__file__), 'test-pack-index', 'vendors.list')]
-    cmsis_pack_manager.pack_manager.main()
-    httpd.shutdown()
-    dump_path = tempfile.mkdtemp()
-    sys.argv = ["pack-manager", "dump-parts", dump_path, "Dev",
-                "--data-path", data_path,
-                "--json-path", json_path]
-    cmsis_pack_manager.pack_manager.main()
-    c = cmsis_pack_manager.Cache(True, True, json_path=json_path, data_path=data_path)
-    assert exists(join(dump_path, "index.json"))
-    for algo in c.index["MyDevice"]["algorithms"]:
-        assert exists(join(dump_path, algo["file_name"]))
+    with cmsis_server():
+        json_path = tempfile.mkdtemp()
+        data_path = tempfile.mkdtemp()
+        sys.argv = ["pack-manager", "cache", "packs", "--data-path", data_path,
+                    "--json-path", json_path,
+                    "--vidx-list", join(dirname(__file__), 'test-pack-index', 'vendors.list')]
+        cmsis_pack_manager.pack_manager.main()
+        dump_path = tempfile.mkdtemp()
+        sys.argv = ["pack-manager", "dump-parts", dump_path, "Dev",
+                    "--data-path", data_path,
+                    "--json-path", json_path]
+        cmsis_pack_manager.pack_manager.main()
+        c = cmsis_pack_manager.Cache(True, True, json_path=json_path, data_path=data_path)
+        assert exists(join(dump_path, "index.json"))
+        for algo in c.index["MyDevice"]["algorithms"]:
+            assert exists(join(dump_path, algo["file_name"]))
 
 
 def test_panic_handling():
