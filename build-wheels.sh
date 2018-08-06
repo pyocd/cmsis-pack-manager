@@ -20,8 +20,6 @@ function clean_project {
 RUST_CHANNEL=nightly
 
 if [[ $1 == "osx" ]]; then
-    brew update
-    brew install
     pip install --user -U pip setuptools wheel
     install_rust $RUST_CHANNEL
     pip wheel . -w ./dist
