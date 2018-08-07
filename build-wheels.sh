@@ -23,7 +23,7 @@ if [[ $1 == "osx" ]]; then
     pip install --user -U pip setuptools wheel
     install_rust $RUST_CHANNEL
     pip wheel . -w ./dist
-    pip install --user -U cffi pytest mock hpyothesis jinja2
+    pip install --user -U cffi pytest mock hypothesis jinja2
     pip install --user -v cmsis_pack_manager --no-index -f ./dist
     python -m pytest tests
 else
