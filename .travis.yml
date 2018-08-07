@@ -25,7 +25,8 @@ deploy:
   secret_access_key:
     secure: ad4XAqhjXOD879rJesZtNTMmor8qqRbu8gvLkw2mh4mvpQjy37Mz8ciqVISDa467q7aHPw3vATAXOpKCpasuycSm3eyayYP0Zw/pDCnvhWg+Fe7n8LrA1JE9xuQMMyNfP5XG0Apqx+3atzlKP4jbIKTuM0QxJOkaW1UjFikPWSijQkL49219dVxHmMmshsjebQApWeFpfgS1FmuWNWFW9V9+gZjenfwqm3aS6bTCCGpKqUsgg1reS/ZtpkJDgRgcxp6UuFPdKmjn3kYWg7DJ884VEqMzWPnKur1yubAtFHAMhAHVXqZKg2Y7Lxk4ILz527OMIrq6FdOPPj7Bn0PODi3t/nW+7EdL+1DhvtzbKL9TzlQ+zw2ASa5i91OMCskH4Oty28cqmqB6mjBhu36Q8BLQ2kwGUqC8+W2d7Dozo862VqVLHUFx4E1v6stz0lABFx/wjPTnoOZXxLUZIxssnziwM8ItgrGIqbjg57PvLGnpOwf0VQhhsskmIXl88A8pxfrsvds5l3jq2FhBxSVu7VMukGmeiIcXTttCjoD7pdTbxH4Zp9ydvNNpTgVN+qVhf45BxZ5szKnFIirJ54yoVmnmVx8sm/ixzP0sHDV/UQPIPwejiCXUJwW2ds69cfaqYrsrKiwg0FVW5cS8y9UDA8pDe3bu980kaLBiSo2fwJA=
   bucket: mbed-os
-  local-dir: dist
+  file_glob: true
+  file: dist/cmsis_pack_manager*.whl
   upload-dir: builds/cmsis-pack-manager/dist
   acl: public_read
   on:
@@ -36,6 +37,6 @@ deploy:
     secure: "F5JTPwVYlqz1ueve8O+LGvfF+eisz4b5hIrY5OFVgzYnG20aysdUUdBhzM1eyL3AlWAWnAwVAZmFZumExOYX31NtUGp7TkuSr4hGhC7OyUOuyWBFaCpQK+upZZbvlfXMsF9cn996mhqReef5/16pmEEejFHtt21vfVpM1CN8jG+sKMFUhfO44nel4oGZ78wWMbhBGHiyJEIEqegvXBgzuO4L5dS6nMz4DSx9X1DQjWaTikTBF+7IgIl/WogMUN6gM8QZRu3NRb2Yy+wpboW27Ml4qKQVL0ZMWUdBSroQb5WTTzbf8EOrKRSKGdhgOLj8R+i7Q6ZNhl3R1WlwVVTz7/vU6Ufph18uMQnfp44R/7mv1Eo07BdO6WTrd93+n6E6uG27UKtmQy9QpjcsILjWb9eFewslK0U1qFyVNk3AnHrskj0VxgqlYqEyrm7c0TlNIuaFyfDLw13mWJZRMWLLBFpMFp4c2aoYanZQEpmHWm/toTHXGN3v7kKjNdzavZxFrdTCuoSF7IvbhyH+8a8452P1Ho8Xqf4yloUw2M7c6qAVPdsd+Zn83fYMnbKFeyfUXfRFMp2PaUtdhNljlR3OUK8t7zhtCq8nlEwjJK6hD48V7Az8koyle4sqkGKbUa2UEU2ES22UHxyCa2FDNvayHVm+Rm0+Gi+JKyqDNidkJTo="
   skip_cleanup: true
   file_glob: true
-  file: dist/*.whl
+  file: dist/cmsis_pack_manager*.whl
   on:
       tags: true
