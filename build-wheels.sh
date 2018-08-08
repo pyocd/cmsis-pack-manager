@@ -20,12 +20,12 @@ function clean_project {
 RUST_CHANNEL=nightly
 
 if [[ $1 == "osx" ]]; then
-    pip install --user -U pip setuptools wheel
+    pip2 install --user -U pip setuptools wheel
     install_rust $RUST_CHANNEL
-    pip wheel . -w ./dist
-    pip install --user -U cffi pytest mock hypothesis jinja2
-    pip install --user -v cmsis_pack_manager --no-index -f ./dist
-    python -m pytest tests
+    pip2 wheel . -w ./dist
+    pip2 install --user -U cffi pytest mock hypothesis jinja2
+    pip2 install --user -v cmsis_pack_manager --no-index -f ./dist
+    python2 -m pytest tests
 else
     PYBIN=/opt/python/cp27-cp27m/bin
     # Clean build files
