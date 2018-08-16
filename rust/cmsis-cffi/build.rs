@@ -15,7 +15,7 @@ fn main() {
                 k.write_to_file("../target/cmsis.h");
             }
             Err(e) => {
-                println!("{}", e);
+                println!("warning={}", e);
             }
         }
         println!("cargo:rerun-if-changed=cmsis-cffi");
