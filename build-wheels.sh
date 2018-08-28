@@ -21,7 +21,6 @@ RUST_CHANNEL=nightly
 
 if [[ $1 == "osx" ]]; then
     pip2 install --user -U pip setuptools wheel milksnake
-    install_rust $RUST_CHANNEL
     python2 setup.py bdist_wheel
     pip2 install --user -U cffi pytest mock hypothesis jinja2
     pip2 install --user -v cmsis_pack_manager --no-index -f ./dist
