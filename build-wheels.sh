@@ -20,9 +20,11 @@ function clean_project {
 RUST_CHANNEL=nightly
 
 if [[ $1 == "osx" ]]; then
-    pip2 install --user -U pip setuptools wheel milksnake
+    pip2 install --user -U pip setuptools wheel
+    pip2 install --user -Ur setup_requirements.txt
     python2 setup.py bdist_wheel
-    pip2 install --user -U cffi pytest mock hypothesis jinja2
+    pip2 install --user -Ur requirements.txt
+    pip2 install --user -Ur test_requirements.txt
     pip2 install --user -v cmsis_pack_manager --no-index -f ./dist
     pushd tests
     python2 -m pytest
