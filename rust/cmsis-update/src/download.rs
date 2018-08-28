@@ -10,6 +10,7 @@ use hyper::{Body, Client, Uri};
 use hyper::client::Connect;
 use slog::Logger;
 use pbr::ProgressBar;
+use std::sync::Arc;
 
 use pack_index::config::Config;
 
@@ -70,7 +71,7 @@ fn download_file<'b,  C: Connect, P: DownloadProgress + 'b>(
     dest: PathBuf,
     client: &'b Client<C, Body>,
     logger: &'b Logger,
-    spinner: P
+    spinner: Arc<P>
 ) -> impl Future<Item = PathBuf, Error = Error> + 'b {
     async_block!{
         let response = await!(client.redirectable(source, logger))?;
@@ -94,7 +95,7 @@ pub(crate) fn download_stream<'b, 'a: 'b, F, C, P: 'b, DL: 'a>(
     config: &'a Config,
     stream: F,
     client: &'b Client<C, Body>,
-    logger: &'a Logger,
+    logger: &'b Logger,
     progress: P
 ) -> Box<Stream<Item = PathBuf, Error = Error> + 'b>
     where F: Stream<Item = DL, Error = Error> + 'b,
@@ -110,11 +111,18 @@ pub(crate) fn download_stream<'b, 'a: 'b, F, C, P: 'b, DL: 'a>(
             for from in to_dl {
                 if let Some(dest) = should_download(config, &from) {
                     let source = from.into_uri(config)?;
-                    let new_prog = progress.for_file(&dest.to_string_lossy());
-                    stream_yield!(download_file(source, dest, client, logger, new_prog))
+                    let new_prog = Arc::new(progress.for_file(&dest.to_string_lossy()));
+                    stream_yield!(download_file(source.clone(), dest, client, logger, new_prog.clone())
+                                  .map(Some)
+                                  .or_else(
+                                      move |e| {
+                                          slog_error!(logger, "download of {:?} failed: {}", source, e);
+                                          new_prog.complete();
+                                          Ok(None)
+                                      }))
                 }
             }
             Ok(())
-        ).buffer_unordered(32)
+        ).buffer_unordered(32).filter_map(|x| x)
     )
 }

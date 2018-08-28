@@ -1,0 +1,3 @@
+appdirs>=1.4
+milksnake>=0.1.2
+pyyaml>=3.12

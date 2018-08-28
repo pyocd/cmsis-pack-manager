@@ -3,7 +3,7 @@
 extern crate futures_await as futures;
 extern crate tokio_core;
 extern crate hyper;
-extern crate hyper_tls;
+extern crate hyper_rustls;
 extern crate minidom;
 extern crate clap;
 extern crate failure;
@@ -20,7 +20,7 @@ use std::sync::Mutex;
 
 use hyper::{Body, Client};
 use hyper::client::Connect;
-use hyper_tls::HttpsConnector;
+use hyper_rustls::HttpsConnector;
 use tokio_core::reactor::Core;
 use std::iter::Iterator;
 use std::path::{Path, PathBuf};
@@ -69,9 +69,9 @@ where
 {
     let mut core = Core::new().unwrap();
     let handle = core.handle();
-    let client = Client::configure()
+    let client: Client<HttpsConnector, _> = Client::configure()
         .keep_alive(true)
-        .connector(HttpsConnector::new(4, &handle).unwrap())
+        .connector(HttpsConnector::new(4, &handle))
         .build(&handle);
     let mut progress = ProgressBar::new(363);
     progress.show_speed = false;
@@ -138,9 +138,9 @@ pub fn install<'a, I: 'a>(
 {
     let mut core = Core::new().unwrap();
     let handle = core.handle();
-    let client = Client::configure()
+    let client: Client<HttpsConnector, _> = Client::configure()
         .keep_alive(true)
-        .connector(HttpsConnector::new(4, &handle).unwrap())
+        .connector(HttpsConnector::new(4, &handle))
         .build(&handle);
     let mut progress = ProgressBar::new(363);
     progress.show_speed = false;
