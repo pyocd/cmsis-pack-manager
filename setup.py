@@ -43,24 +43,23 @@ try:
 except CalledProcessError:
     version = "0.1.1"
 
+with open("requirements.txt") as inreq:
+    install_requires = list(inreq)
+with open("setup_requirements.txt") as setreq:
+    setup_requires = list(setreq)
+with open("test_requirements.txt") as testreq:
+    test_require = list(testreq)
+
+
 setup(
     name="cmsis-pack-manager",
     version=version,
     packages=["cmsis_pack_manager"],
     zip_safe=False,
     platforms='any',
-    setup_requires=[
-        'milksnake>=0.1.2',
-        'pytest-runner'],
-    install_requires=[
-        'appdirs>=1.4',
-        'milksnake>=0.1.2',
-        'pyyaml>=3.12'],
-    tests_require=[
-        'hypothesis',
-        'jinja2',
-        'mock',
-        'pytest'],
+    setup_requires=setup_requires,
+    install_requires=install_requires,
+    tests_require=test_require,
     entry_points={
         'console_scripts': [
             'pack-manager=cmsis_pack_manager.pack_manager:main'
