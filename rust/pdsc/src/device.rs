@@ -318,19 +318,18 @@ struct MemElem(String, Memory);
 
 impl FromElem for MemElem {
     fn from_elem(e: &Element, _l: &Logger) -> Result<Self, Error> {
-        let access = e.attr("access")
-            .or_else(|| {
-                e.attr("id")
-                .map(|memtype| if memtype.contains("ROM") {
+        let access = MemoryPermissions::from_str(
+            e.attr("access")
+            .unwrap_or_else(|| {
+                let memtype = e.attr("id").unwrap_or_default();
+                if memtype.contains("ROM") {
                     "rx"
                 } else if memtype.contains("RAM") {
                     "rw"
                 } else {
                     ""
-                })
-            })
-            .map(|memtype| MemoryPermissions::from_str(memtype))
-            .unwrap();
+                }
+            }));
         let name = e.attr("id")
             .or_else(|| e.attr("name"))
             .map(|s| s.to_string())
