@@ -78,6 +78,7 @@ struct DumpDevice<'a> {
     algorithms: Cow<'a, Vec<Algorithm>>,
     processor: Cow<'a, Processors>,
     from_pack: FromPack<'a>,
+    vendor: Option<&'a str>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -107,6 +108,7 @@ impl<'a> DumpDevice<'a> {
             algorithms: Cow::Borrowed(&dev.algorithms),
             processor: Cow::Borrowed(&dev.processor),
             from_pack: from_pack,
+            vendor: dev.vendor.as_ref().map(String::as_str),
         }
     }
 }

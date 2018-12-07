@@ -401,6 +401,7 @@ struct DeviceBuilder<'dom> {
     algorithms: Vec<Algorithm>,
     memories: Memories,
     processor: Option<ProcessorsBuilder>,
+    vendor: Option<&'dom str>
 }
 
 #[derive(Debug, Serialize)]
@@ -409,6 +410,7 @@ pub struct Device {
     pub memories: Memories,
     pub algorithms: Vec<Algorithm>,
     pub processor: Processors,
+    pub vendor: Option<String>,
 }
 
 impl<'dom> DeviceBuilder<'dom> {
@@ -416,6 +418,7 @@ impl<'dom> DeviceBuilder<'dom> {
         let memories = Memories(HashMap::new());
         DeviceBuilder {
             name: e.attr("Dname").or_else(|| e.attr("Dvariant")),
+            vendor: e.attr("Dvendor"),
             memories,
             algorithms: Vec::new(),
             processor: None,
@@ -434,6 +437,7 @@ impl<'dom> DeviceBuilder<'dom> {
             name,
             memories: self.memories,
             algorithms: self.algorithms,
+            vendor: self.vendor.map(str::to_string),
         })
     }
 
@@ -446,7 +450,8 @@ impl<'dom> DeviceBuilder<'dom> {
             processor: match self.processor {
                 Some(old_proc) => Some(old_proc.merge(&parent.processor)?),
                 None => parent.processor.clone(),
-            }
+            },
+            vendor: self.vendor.or(parent.vendor)
         })
     }
 
