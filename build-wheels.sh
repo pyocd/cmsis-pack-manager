@@ -5,6 +5,7 @@ function install_rust {
     curl https://sh.rustup.rs > /tmp/rustup.sh
     chmod +x /tmp/rustup.sh
     /tmp/rustup.sh -y --default-toolchain=$1
+    source ~/.cargo/env
 }
 
 function clean_project {
