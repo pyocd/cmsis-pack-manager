@@ -2,9 +2,9 @@
 set -e -x
 
 function install_rust {
-    curl https://static.rust-lang.org/rustup.sh > /tmp/rustup.sh
+    curl https://sh.rustup.rs > /tmp/rustup.sh
     chmod +x /tmp/rustup.sh
-    /tmp/rustup.sh -y --disable-sudo --channel=$1 --without=llvm-tools-preview
+    /tmp/rustup.sh -y --default-toolchain=$1
 }
 
 function clean_project {
