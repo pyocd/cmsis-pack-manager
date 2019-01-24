@@ -9,7 +9,7 @@ fn main() {
         let mut config: cbindgen::Config = Default::default();
         config.language = cbindgen::Language::C;
         config.parse = cbindgen::ParseConfig::default();
-        config.parse.expand = vec!["cmsis-cffi".to_string()];
+        config.parse.expand.crates = vec!["cmsis-cffi".to_string()];
         match cbindgen::generate_with_config(&crate_dir, config) {
             Ok(k) => {
                 k.write_to_file("../target/cmsis.h");

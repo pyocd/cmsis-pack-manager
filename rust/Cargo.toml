@@ -1,27 +1,34 @@
 [package]
+authors = ["Jimmy Brisson <theotherjimmy@gmail.com>"]
 name = "cmsis"
 version = "0.1.0"
-authors = ["Jimmy Brisson <theotherjimmy@gmail.com>"]
-
 [dependencies]
-slog = "^2"
-slog-term = "^2"
-slog-async = "^2"
+app_dirs = "1.2.1"
 clap = "2.19.0"
 failure = "0.1.1"
-app_dirs = "1.2.1"
-pdsc = { path = "pdsc" }
-pack-index = { path = "pack-index" }
-cmsis-update = { path = "cmsis-update" }
-cmsis-cffi = { path = "cmsis-cffi", optional = true }
+slog = "^2"
+slog-async = "^2"
+slog-term = "^2"
+
+[dependencies.cmsis-cffi]
+optional = true
+path = "cmsis-cffi"
+
+[dependencies.cmsis-update]
+path = "cmsis-update"
+
+[dependencies.pack-index]
+path = "pack-index"
+
+[dependencies.pdsc]
+path = "pdsc"
 
 [dev-dependencies]
 time = "*"
 
+[features]
+cffi = ["cmsis-cffi"]
 [profile.release]
 debug = true
 
 [workspace]
-
-[features]
-cffi = ["cmsis-cffi"]
