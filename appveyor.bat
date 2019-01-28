@@ -36,20 +36,13 @@ if %ERRORLEVEL% NEQ 0 (
   exit 1
 )
 
-set RUST_URL=https://static.rust-lang.org/dist/rust-%RUST%-%TARGET_ARCH%-pc-windows-msvc.msi
-echo Downloading %RUST_URL%...
-mkdir build
-powershell -Command "(New-Object Net.WebClient).DownloadFile('%RUST_URL%', 'build\rust-%RUST%-%TARGET_ARCH%-pc-windows-msvc.msi')"
+powershell -Command "(New-Object Net.WebClient).DownloadFile('http://win.rustup.rs', 'rustup-init.exe')"
 if %ERRORLEVEL% NEQ 0 (
-  echo ...downloading Rust failed.
+  echo ...downloading rustup-init failed.
   exit 1
 )
-
-start /wait msiexec /i build\rust-%RUST%-%TARGET_ARCH%-pc-windows-msvc.msi INSTALLDIR="%TARGET_PROGRAM_FILES%\Rust %RUST%" /quiet /qn /norestart
-if %ERRORLEVEL% NEQ 0 exit 1
-
-set PATH=%TARGET_PROGRAM_FILES%\Rust %RUST%\bin;%cd%\windows_build_tools;%PATH%
-set TARGET=nightly-%TARGET_ARCH%-pc-windows-msvc
+rustup-init -yv --default-toolchain %channel% --default-host %target%
+set PATH=%PATH%;%USERPROFILE%\.cargo\bin
 
 link /?
 cl /?
