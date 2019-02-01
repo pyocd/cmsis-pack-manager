@@ -20,4 +20,4 @@ pdsc = { path = "../pdsc" }
 utils = { path = "../utils" }
 
 [build-dependencies]
-cbindgen = "~0.5.0"
+cbindgen = "~0.6.0"

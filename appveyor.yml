@@ -5,11 +5,13 @@ clone_depth: 1
 environment:
   matrix:
     - TOOLCHAIN_VERSION: 14.0
-      RUST: nightly
+      channel: nightly-2018-11-07
+      target: i686-pc-windows-msvc
       PYTHON: "C:\\Python27"
       platform: Win32
     - TOOLCHAIN_VERSION: 14.0
-      RUST: nightly
+      channel: nightly-2018-11-07
+      target: x86_64-pc-windows-msvc
       PYTHON: "C:\\Python27-x64"
       platform: x64
 

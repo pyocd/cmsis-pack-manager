@@ -2,9 +2,10 @@
 set -e -x
 
 function install_rust {
-    curl https://static.rust-lang.org/rustup.sh > /tmp/rustup.sh
+    curl https://sh.rustup.rs > /tmp/rustup.sh
     chmod +x /tmp/rustup.sh
-    /tmp/rustup.sh -y --disable-sudo --channel=$1
+    /tmp/rustup.sh -y --default-toolchain=$1
+    source ~/.cargo/env
 }
 
 function clean_project {
@@ -17,7 +18,7 @@ function clean_project {
     popd
 }
 
-RUST_CHANNEL=nightly
+RUST_CHANNEL=nightly-2018-11-07
 
 if [[ $1 == "osx" ]]; then
     pip2 install --user -U pip setuptools wheel
@@ -58,7 +59,8 @@ else
     chmod -R a+rw /io/dist
 
     # Install packages and test with all Python versions
-    ${PYBIN}/python -m pip install cffi pytest mock hypothesis jinja2
+    ${PYBIN}/python -m pip install -r /io/requirements.txt
+    ${PYBIN}/python -m pip install -r /io/test_requirements.txt
     ${PYBIN}/python -m pip install cmsis_pack_manager --no-index -f /io/dist
     ${PYBIN}/python -m pytest /io/tests
 fi
