@@ -2,14 +2,12 @@ extern crate app_dirs;
 extern crate minidom;
 extern crate quick_xml;
 extern crate utils;
-extern crate smallstring;
 #[macro_use]
 extern crate slog;
 extern crate failure;
 
 pub mod config;
 
-use smallstring::SmallString;
 use minidom::{Element, Error};
 use slog::Logger;
 use utils::parse::{assert_root_name, attr_map, child_text, get_child_no_ns, FromElem};
@@ -17,9 +15,9 @@ use utils::parse::{assert_root_name, attr_map, child_text, get_child_no_ns, From
 #[derive(Debug, Clone)]
 pub struct PdscRef {
     pub url: String,
-    pub vendor: SmallString,
-    pub name: SmallString,
-    pub version: SmallString,
+    pub vendor: String,
+    pub name: String,
+    pub version: String,
     pub date: Option<String>,
     pub deprecated: Option<String>,
     pub replacement: Option<String>,
@@ -29,7 +27,7 @@ pub struct PdscRef {
 #[derive(Debug)]
 pub struct Pidx {
     pub url: String,
-    pub vendor: SmallString,
+    pub vendor: String,
     pub date: Option<String>,
 }
 
@@ -123,10 +121,10 @@ mod test {
         let log = Logger::root(Discard, o!());
         let good_string = "<pdsc vendor=\"Vendor\" url=\"Url\" name=\"Name\" version=\"1.2.3-alpha\">";
         let response = PdscRef::from_string(good_string, &log).unwrap();
-        assert_eq!(response.vendor, SmallString::from("Vendor"));
+        assert_eq!(response.vendor, String::from("Vendor"));
         assert_eq!(response.url, "Url");
-        assert_eq!(response.name, SmallString::from("Name"));
-        assert_eq!(response.version, SmallString::from("1.2.3-alpha"));
+        assert_eq!(response.name, String::from("Name"));
+        assert_eq!(response.version, String::from("1.2.3-alpha"));
         let good_string = "<pdsc vendor=\"Vendor\" url=\"Url\" name=\"Name\" version=\"1.2.3-alpha\"
                 date=\"A-Date\" deprecated=\"true\" replacement=\"Other\" size=\"8MB\">";
         let response = PdscRef::from_string(good_string, &log).unwrap();
@@ -161,12 +159,12 @@ mod test {
         let log = Logger::root(Discard, o!());
         let good_string = "<pidx vendor=\"Vendor\" url=\"Url\"/>";
         let response = Pidx::from_string(good_string, &log).unwrap();
-        assert_eq!(response.vendor, SmallString::from("Vendor"));
+        assert_eq!(response.vendor, String::from("Vendor"));
         assert_eq!(response.url, "Url");
 
         let good_string = "<pidx vendor=\"Vendor\" url=\"Url\" date=\"Fri Sep  1 11:21:06 CDT 2017\"/>";
         let response = Pidx::from_string(good_string, &log).unwrap();
-        assert_eq!(response.vendor, SmallString::from("Vendor"));
+        assert_eq!(response.vendor, String::from("Vendor"));
         assert_eq!(response.url, "Url");
         assert_eq!(
             response.date,
