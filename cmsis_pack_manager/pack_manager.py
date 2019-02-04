@@ -16,6 +16,7 @@ from __future__ import print_function, absolute_import
 
 import argparse
 import operator
+import sys
 from os.path import join, dirname, exists
 from os import makedirs
 from functools import reduce
@@ -200,5 +201,8 @@ def get_argparse():
 
 
 def main():
-    args = parser.parse_args()
-    args.command(args)
+    if (len(sys.argv) < 2):
+        parser.print_help()
+    else:
+        args = parser.parse_args()
+        args.command(args)
