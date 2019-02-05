@@ -119,7 +119,8 @@ CACHE_CHOICES_HELP = (
 
 @subcommand(
     'cache',
-    dict(name="action", choices=CACHE_CHOICES, help=CACHE_CHOICES_HELP)
+    dict(name="action", choices=CACHE_CHOICES, help=CACHE_CHOICES_HELP),
+    help="Download or remove pack and pack descriptions in the cache"
 )
 def command_cache(cache, action, verbose=False, intersection=True):
     if action in ("everything", "every", "packs"):
