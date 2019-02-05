@@ -21,16 +21,6 @@ pub(crate) trait IntoDownload {
     fn into_fd(&self, &Config) -> PathBuf;
 }
 
-fn should_download<'a, DL: IntoDownload>(config: &Config, from: &'a DL) -> Option<PathBuf> {
-    let dest = from.into_fd(config);
-    if dest.exists() {
-        None
-    } else {
-        dest.parent().map(create_dir_all);
-        Some(dest)
-    }
-}
-
 pub trait DownloadProgress: Sync {
     fn size(&self, files: usize);
     fn progress(&self, bytes: usize);
@@ -74,18 +64,21 @@ fn download_file<'b,  C: Connect, P: DownloadProgress + 'b>(
     spinner: Arc<P>
 ) -> impl Future<Item = PathBuf, Error = Error> + 'b {
     async_block!{
-        let response = await!(client.redirectable(source, logger))?;
-        let temp = dest.with_extension("part");
-        let mut fd = OpenOptions::new()
-            .write(true)
-            .create(true)
-            .open(&temp)?;
-        #[async]
-        for bytes in response.body() {
-            fd.write_all(bytes.as_ref())?;
-            spinner.progress(bytes.len());
+        if !dest.exists(){
+            dest.parent().map(create_dir_all);
+            let response = await!(client.redirectable(source, logger))?;
+            let temp = dest.with_extension("part");
+            let mut fd = OpenOptions::new()
+                .write(true)
+                .create(true)
+                .open(&temp)?;
+            #[async]
+            for bytes in response.body() {
+                fd.write_all(bytes.as_ref())?;
+                spinner.progress(bytes.len());
+            }
+            rename(&temp, &dest)?;
         }
-        rename(&temp, &dest)?;
         spinner.complete();
         Ok(dest)
     }
@@ -106,21 +99,20 @@ pub(crate) fn download_stream<'b, 'a: 'b, F, C, P: 'b, DL: 'a>(
     Box::new(
         async_stream_block!(
             let to_dl = await!(stream.collect())?;
-            let len = to_dl.iter().filter_map(|dl| should_download(config, dl)).count();
+            let len = to_dl.iter().count();
             progress.size(len);
             for from in to_dl {
-                if let Some(dest) = should_download(config, &from) {
-                    let source = from.into_uri(config)?;
-                    let new_prog = Arc::new(progress.for_file(&dest.to_string_lossy()));
-                    stream_yield!(download_file(source.clone(), dest, client, logger, new_prog.clone())
-                                  .map(Some)
-                                  .or_else(
-                                      move |e| {
-                                          slog_error!(logger, "download of {:?} failed: {}", source, e);
-                                          new_prog.complete();
-                                          Ok(None)
-                                      }))
-                }
+                let dest = from.into_fd(config);
+                let source = from.into_uri(config)?;
+                let new_prog = Arc::new(progress.for_file(&dest.to_string_lossy()));
+                stream_yield!(download_file(source.clone(), dest, client, logger, new_prog.clone())
+                              .map(Some)
+                              .or_else(
+                                  move |e| {
+                                      slog_error!(logger, "download of {:?} failed: {}", source, e);
+                                      new_prog.complete();
+                                      Ok(None)
+                                  }))
             }
             Ok(())
         ).buffer_unordered(32).filter_map(|x| x)
