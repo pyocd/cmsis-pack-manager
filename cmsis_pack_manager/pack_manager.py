@@ -103,10 +103,25 @@ def fuzzy_find(matches, options, oper=operator.and_):
                          for match in matches))
 
 
-@subcommand('cache',
-            dict(name="action", choices=["descriptors", "desc", "pdsc",
-                                         "everything", "every", "packs",
-                                         "clean", "rm"]))
+CACHE_CHOICES = [
+    "descriptors", "desc", "pdsc",
+    "everything", "every", "packs",
+    "clean", "rm"
+]
+
+CACHE_CHOICES_HELP = (
+    "Caching action; "
+    "descriptors, desc, pdsc: download only pack descriptors; "
+    "everything, every, packs: download packs and descriptors; "
+    "clean, rm: remove downloaded packs and descriptors"
+)
+
+
+@subcommand(
+    'cache',
+    dict(name="action", choices=CACHE_CHOICES, help=CACHE_CHOICES_HELP),
+    help="Download or remove pack and pack descriptions in the cache"
+)
 def command_cache(cache, action, verbose=False, intersection=True):
     if action in ("everything", "every", "packs"):
         cache.cache_everything()
