@@ -116,8 +116,11 @@ class Cache (object):
 
         """
         if not self._index:
-            with open(self.index_path) as i:
-                self._index = load(i)
+            try:
+                with open(self.index_path) as i:
+                    self._index = load(i)
+            except IOError:
+                return {}
         return self._index
 
     @property
@@ -134,8 +137,11 @@ class Cache (object):
         """
 
         if not self._aliases:
-            with open(self.aliases_path) as i:
-                self._aliases = load(i)
+            try:
+                with open(self.aliases_path) as i:
+                    self._aliases = load(i)
+            except IOError:
+                return {}
         return self._aliases
 
     def cache_everything(self):
