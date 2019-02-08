@@ -43,6 +43,18 @@ def cmsis_server():
         httpd.shutdown()
 
 
+def test_empyt_cache():
+    json_path = tempfile.mkdtemp()
+    data_path = tempfile.mkdtemp()
+    c = cmsis_pack_manager.Cache(
+        True, True, json_path=json_path, data_path=data_path,
+        vidx_list=join(dirname(__file__), 'test-pack-index', 'vendors.list'))
+    try:
+        c.index
+    except Exception:
+        assert(False, "Unexpected exception raised on an empyt cache")
+
+
 def test_pull_pdscs():
     with cmsis_server():
         json_path = tempfile.mkdtemp()
