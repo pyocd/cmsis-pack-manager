@@ -401,7 +401,9 @@ struct DeviceBuilder<'dom> {
     algorithms: Vec<Algorithm>,
     memories: Memories,
     processor: Option<ProcessorsBuilder>,
-    vendor: Option<&'dom str>
+    vendor: Option<&'dom str>,
+    family: Option<&'dom str>,
+    sub_family: Option<&'dom str>
 }
 
 #[derive(Debug, Serialize)]
@@ -411,23 +413,38 @@ pub struct Device {
     pub algorithms: Vec<Algorithm>,
     pub processor: Processors,
     pub vendor: Option<String>,
+    pub family: String,
+    pub sub_family: Option<String>,
 }
 
 impl<'dom> DeviceBuilder<'dom> {
     fn from_elem(e: &'dom Element) -> Self {
         let memories = Memories(HashMap::new());
+        let mut family = None;
+        let mut sub_family = None;
+        if e.name() == "family" {
+            family = e.attr("Dfamily");
+        }
+        if e.name() == "subFamily" {
+            sub_family = e.attr("DsubFamily");
+        }
         DeviceBuilder {
             name: e.attr("Dname").or_else(|| e.attr("Dvariant")),
             vendor: e.attr("Dvendor"),
             memories,
             algorithms: Vec::new(),
             processor: None,
+            family,
+            sub_family,
         }
     }
 
     fn build(self) -> Result<Device, Error> {
         let name = self.name.map(|s| s.into()).ok_or_else(|| {
             err_msg!("Device found without a name")
+        })?;
+        let family = self.family.map(|s| s.into()).ok_or_else(|| {
+            err_msg!("Device found without a family")
         })?;
         Ok(Device {
             processor: match self.processor {
@@ -438,6 +455,8 @@ impl<'dom> DeviceBuilder<'dom> {
             memories: self.memories,
             algorithms: self.algorithms,
             vendor: self.vendor.map(str::to_string),
+            family,
+            sub_family: self.sub_family.map(str::to_string),
         })
     }
 
@@ -451,7 +470,9 @@ impl<'dom> DeviceBuilder<'dom> {
                 Some(old_proc) => Some(old_proc.merge(&parent.processor)?),
                 None => parent.processor.clone(),
             },
-            vendor: self.vendor.or(parent.vendor)
+            vendor: self.vendor.or(parent.vendor),
+            family: self.family.or(parent.family),
+            sub_family: self.sub_family.or(parent.sub_family),
         })
     }
 
