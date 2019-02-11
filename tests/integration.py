@@ -26,7 +26,7 @@ def pushd(new_dir):
     os.chdir(new_dir)
     try:
         yield
-    except Exception:
+    finally:
         os.chdir(previous_dir)
 
 
@@ -43,7 +43,7 @@ def cmsis_server():
         httpd_thread.start()
         try:
             yield
-        except Exception:
+        finally:
             httpd.shutdown()
 
 
