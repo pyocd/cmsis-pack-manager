@@ -24,8 +24,10 @@ MODULE_ROOT = join(dirname(__file__), "..")
 def pushd(new_dir):
     previous_dir = os.getcwd()
     os.chdir(new_dir)
-    yield
-    os.chdir(previous_dir)
+    try:
+        yield
+    except Exception:
+        os.chdir(previous_dir)
 
 
 @contextlib.contextmanager
@@ -39,8 +41,10 @@ def cmsis_server():
         httpd_thread = threading.Thread(target=httpd.serve_forever)
         httpd_thread.setDaemon(True)
         httpd_thread.start()
-        yield
-        httpd.shutdown()
+        try:
+            yield
+        except Exception:
+            httpd.shutdown()
 
 
 def test_pull_pdscs():
