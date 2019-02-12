@@ -14,7 +14,7 @@
 # limitations under the License.
 
 from os import getenv
-from subprocess import check_output, CalledProcessError
+from subprocess import run, CalledProcessError
 from setuptools import setup
 from distutils.version import StrictVersion
 from os.path import join, dirname
@@ -36,10 +36,13 @@ def build_native(spec):
 
 try:
     # Use exact tag, when we're on a tag.
-    current_commit = check_output(["git", "log", "-n1", "--pretty=%h"]).strip()
-    cmd = ["git", "describe", "--exact-match", "--tags", current_commit]
-    exact_match = check_output(cmd).strip()
-    version = exact_match.strip("v")
+    current_commit = run(
+        [b"git", b"log", b"-n1", b"--pretty=%h"],
+        capture_output=True
+    ).stdout.strip()
+    cmd = [b"git", b"describe", b"--exact-match", b"--tags", current_commit]
+    exact_match = run(cmd, capture_output=True).stdout.strip()
+    version = exact_match.strip(b"v")
 except CalledProcessError:
     version = "0.1.1"
 
