@@ -50,7 +50,7 @@ rustc --version
 cargo --version
 
 cd rust
-cargo test %CARGO_MODE%
+cargo test --release
 if %ERRORLEVEL% NEQ 0 exit 1
 cd ..
 
