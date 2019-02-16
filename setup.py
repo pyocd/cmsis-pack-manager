@@ -14,7 +14,7 @@
 # limitations under the License.
 
 from os import getenv
-from subprocess import run, CalledProcessError
+import subprocess
 from setuptools import setup
 from distutils.version import StrictVersion
 from os.path import join, dirname
@@ -33,17 +33,25 @@ def build_native(spec):
         header_filename=lambda: build.find_header('cmsis.h', in_path='target')
     )
 
+def run(cmd):
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+    stdout, stderr = proc.communicate()
+    if proc.returncode != 0:
+        raise subprocess.CalledProcessError(
+            proc.returncode,
+            cmd,
+        )
+    else:
+        return stdout.strip()
 
 try:
     # Use exact tag, when we're on a tag.
-    current_commit = run(
-        [b"git", b"log", b"-n1", b"--pretty=%h"],
-        capture_output=True
-    ).stdout.strip()
-    cmd = [b"git", b"describe", b"--exact-match", b"--tags", current_commit]
-    exact_match = run(cmd, capture_output=True).stdout.strip()
-    version = exact_match.strip(b"v")
-except CalledProcessError:
+    current_commit = run(["git", "log", "-n1", "--pretty=%h"])
+    exact_match = run(
+        ["git", "describe", "--exact-match", "--tags", current_commit.decode("utf-8")]
+    )
+    version = exact_match.strip("v")
+except subprocess.CalledProcessError:
     version = "0.1.1"
 
 with open("requirements.txt") as inreq:
