@@ -8,7 +8,7 @@
     </release>
   </releases>
   <devices>
-    <family>
+    <family Dfamily="MyFamily">
       <device Dname="MyDevice">
       </device>
       <processor Dcore="Cortex-M0+"/>

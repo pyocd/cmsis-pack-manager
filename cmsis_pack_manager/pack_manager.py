@@ -191,14 +191,14 @@ def command_dump_parts(cache, out, parts, intersection=False):
             for algo in p['algorithms']:
                 if not exists(join(out, dirname(algo['file_name']))):
                     makedirs(join(out, dirname(algo['file_name'])))
-                with open(join(out, algo['file_name']), "wb+") as fd:
+                with open(join(out, algo['file_name']), "wb") as fd:
                     fd.write(cache.pack_from_cache(p)
                              .open(algo['file_name'])
                              .read())
         except KeyError:
             print("[Warning] {} does not have an associated flashing algorithm"
                   .format(n))
-    with open(join(out, "index.json"), "wb+") as fd:
+    with open(join(out, "index.json"), "w") as fd:
         dump(index, fd)
 
 

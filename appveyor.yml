@@ -7,12 +7,12 @@ environment:
     - TOOLCHAIN_VERSION: 14.0
       channel: nightly-2018-11-07
       target: i686-pc-windows-msvc
-      PYTHON: "C:\\Python27"
+      PYTHON: "C:\\Python37"
       platform: Win32
     - TOOLCHAIN_VERSION: 14.0
       channel: nightly-2018-11-07
       target: x86_64-pc-windows-msvc
-      PYTHON: "C:\\Python27-x64"
+      PYTHON: "C:\\Python37-x64"
       platform: x64
 
 artifacts:

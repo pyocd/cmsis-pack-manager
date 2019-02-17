@@ -79,6 +79,8 @@ struct DumpDevice<'a> {
     processor: Cow<'a, Processors>,
     from_pack: FromPack<'a>,
     vendor: Option<&'a str>,
+    family: &'a str,
+    sub_family: Option<&'a str>
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -109,6 +111,8 @@ impl<'a> DumpDevice<'a> {
             processor: Cow::Borrowed(&dev.processor),
             from_pack: from_pack,
             vendor: dev.vendor.as_ref().map(String::as_str),
+            family: &dev.family,
+            sub_family: dev.sub_family.as_ref().map(String::as_str),
         }
     }
 }

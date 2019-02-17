@@ -24,8 +24,10 @@ MODULE_ROOT = join(dirname(__file__), "..")
 def pushd(new_dir):
     previous_dir = os.getcwd()
     os.chdir(new_dir)
-    yield
-    os.chdir(previous_dir)
+    try:
+        yield
+    finally:
+        os.chdir(previous_dir)
 
 
 @contextlib.contextmanager
@@ -39,8 +41,10 @@ def cmsis_server():
         httpd_thread = threading.Thread(target=httpd.serve_forever)
         httpd_thread.setDaemon(True)
         httpd_thread.start()
-        yield
-        httpd.shutdown()
+        try:
+            yield
+        finally:
+            httpd.shutdown()
 
 
 def test_empyt_cache():
@@ -64,6 +68,7 @@ def test_pull_pdscs():
             vidx_list=join(dirname(__file__), 'test-pack-index', 'vendors.list'))
         c.cache_everything()
         assert("MyDevice" in c.index)
+        assert("MyFamily" == c.index["MyDevice"]["family"])
         assert("MyBoard" in c.aliases)
         assert("MyDevice" in c.aliases["MyBoard"]["mounted_devices"])
         assert(c.pack_from_cache(c.index["MyDevice"]).open("MyVendor.MyPack.pdsc"))
@@ -72,6 +77,7 @@ def test_pull_pdscs():
             vidx_list=join(dirname(__file__), 'test-pack-index', 'vendors.list'))
         c.cache_everything()
         assert("MyDevice" in c.index)
+        assert("MyFamily" == c.index["MyDevice"]["family"])
         assert("MyBoard" in c.aliases)
         assert("MyDevice" in c.aliases["MyBoard"]["mounted_devices"])
         assert(c.pack_from_cache(c.index["MyDevice"]).open("MyVendor.MyPack.pdsc"))
