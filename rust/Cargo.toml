@@ -32,5 +32,3 @@ cli = ["cmsis-cli"]
 debug = true
 
 [workspace]
-members = ["cmsis-cffi", "cmsis-cli", "cmsis-update", "pdsc", "pack-index"]
-default-members = ["cmsis-update", "pdsc", "pack-index"]
