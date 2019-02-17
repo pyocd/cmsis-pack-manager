@@ -597,7 +597,7 @@ fn parse_family<'dom>(e: &Element, l: &Logger) -> Result<Vec<Device>, Error> {
 }
 
 #[derive(Default, Serialize)]
-pub struct Devices(pub(crate) HashMap<String, Device>);
+pub struct Devices(pub HashMap<String, Device>);
 
 impl FromElem for Devices {
     fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
