@@ -2,17 +2,14 @@
 authors = ["Jimmy Brisson <theotherjimmy@gmail.com>"]
 name = "cmsis"
 version = "0.1.0"
-[dependencies]
-app_dirs = "1.2.1"
-clap = "2.19.0"
-failure = "0.1.1"
-slog = "^2"
-slog-async = "^2"
-slog-term = "^2"
 
 [dependencies.cmsis-cffi]
 optional = true
 path = "cmsis-cffi"
+
+[dependencies.cmsis-cli]
+optional = true
+path = "cmsis-cli"
 
 [dependencies.cmsis-update]
 path = "cmsis-update"
@@ -27,8 +24,13 @@ path = "pdsc"
 time = "*"
 
 [features]
+default = []
 cffi = ["cmsis-cffi"]
+cli = ["cmsis-cli"]
+
 [profile.release]
 debug = true
 
 [workspace]
+members = ["cmsis-cffi", "cmsis-cli", "cmsis-update", "pdsc", "pack-index"]
+default-members = ["cmsis-update", "pdsc", "pack-index"]

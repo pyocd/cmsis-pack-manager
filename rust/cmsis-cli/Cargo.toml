@@ -1,0 +1,20 @@
+[package]
+authors = ["Jimmy Brisson <theotherjimmy@gmail.com>"]
+name = "cmsis-cli"
+version = "0.1.0"
+[dependencies]
+app_dirs = "1.2.1"
+clap = "2.19.0"
+failure = "0.1.1"
+slog = "^2"
+slog-async = "^2"
+slog-term = "^2"
+
+[dependencies.cmsis-update]
+path = "../cmsis-update"
+
+[dependencies.pack-index]
+path = "../pack-index"
+
+[dependencies.pdsc]
+path = "../pdsc"
