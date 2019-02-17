@@ -8,7 +8,6 @@ extern crate serde_json;
 extern crate failure;
 
 extern crate pack_index;
-extern crate clap;
 extern crate minidom;
 
 use std::borrow::Cow;
@@ -17,12 +16,10 @@ use std::io::Read;
 use std::path::Path;
 use std::collections::{HashMap, BTreeMap};
 use minidom::{Element, Error, ErrorKind};
-use clap::{App, Arg, ArgMatches, SubCommand};
 use slog::Logger;
 
 use utils::parse::{assert_root_name, attr_map, child_text, get_child_no_ns, FromElem};
 use utils::ResultLogExt;
-use pack_index::config::Config;
 use failure::Error as FailError;
 
 mod component;
@@ -72,7 +69,7 @@ impl FromElem for Releases {
 
 
 #[derive(Debug, Serialize, Deserialize)]
-struct DumpDevice<'a> {
+pub struct DumpDevice<'a> {
     name: &'a str,
     memories: Cow<'a, Memories>,
     algorithms: Cow<'a, Vec<Algorithm>>,
@@ -125,8 +122,8 @@ pub struct Package {
     pub license: Option<String>,
     components: ComponentBuilders,
     pub releases: Releases,
-    conditions: Conditions,
-    devices: Devices,
+    pub conditions: Conditions,
+    pub devices: Devices,
     pub boards: Vec<Board>,
 }
 
@@ -192,26 +189,26 @@ impl FromElem for Board {
 
 #[derive(Debug, Serialize)]
 pub struct Component {
-    vendor: String,
-    class: String,
-    group: String,
-    sub_group: Option<String>,
-    variant: Option<String>,
-    version: String,
-    api_version: Option<String>,
-    condition: Option<String>,
-    max_instances: Option<u8>,
-    is_default: bool,
-    deprecated: bool,
-    description: String,
-    rte_addition: String,
-    files: Vec<FileRef>,
+    pub vendor: String,
+    pub class: String,
+    pub group: String,
+    pub sub_group: Option<String>,
+    pub variant: Option<String>,
+    pub version: String,
+    pub api_version: Option<String>,
+    pub condition: Option<String>,
+    pub max_instances: Option<u8>,
+    pub is_default: bool,
+    pub deprecated: bool,
+    pub description: String,
+    pub rte_addition: String,
+    pub files: Vec<FileRef>,
 }
 
 type Components = Vec<Component>;
 
 impl Package {
-    fn make_components(&self) -> Components {
+    pub fn make_components(&self) -> Components {
         self.components
             .0
             .clone()
@@ -239,7 +236,7 @@ impl Package {
             .collect()
     }
 
-    fn make_condition_lookup<'a>(&'a self, l: &Logger) -> HashMap<&'a str, &'a Condition> {
+    pub fn make_condition_lookup<'a>(&'a self, l: &Logger) -> HashMap<&'a str, &'a Condition> {
         let mut map = HashMap::with_capacity(self.conditions.0.iter().count());
         for cond in self.conditions.0.iter() {
             if let Some(dup) = map.insert(cond.id.as_str(), cond) {
@@ -249,7 +246,7 @@ impl Package {
         map
     }
 
-    fn make_dump_devices<'a>(&'a self) -> Vec<(&'a str, DumpDevice<'a>)> {
+    pub fn make_dump_devices<'a>(&'a self) -> Vec<(&'a str, DumpDevice<'a>)> {
         let from_pack = FromPack::new(
             &self.vendor,
             &self.name,
@@ -266,104 +263,6 @@ impl Package {
 
     }
 }
-
-pub fn check_args<'a, 'b>() -> App<'a, 'b> {
-    SubCommand::with_name("check")
-        .about(
-            "Check a project or pack for correct usage of the CMSIS standard",
-        )
-        .version("0.1.0")
-        .arg(
-            Arg::with_name("INPUT")
-                .help("Input file to check")
-                .required(true)
-                .index(1),
-        )
-}
-
-pub fn check_command<'a>(_: &Config, args: &ArgMatches<'a>, l: &Logger) -> Result<(), FailError> {
-    let filename = args.value_of("INPUT").unwrap();
-    match Package::from_path(Path::new(filename.clone()), &l) {
-        Ok(c) => {
-            info!(l, "Parsing succedded");
-            info!(l, "{} Valid Conditions", c.conditions.0.iter().count());
-            let cond_lookup = c.make_condition_lookup(l);
-            let mut num_components = 0;
-            let mut num_files = 0;
-            for &Component {
-                ref class,
-                ref group,
-                ref condition,
-                ref files,
-                ..
-            } in c.make_components().iter()
-            {
-                num_components += 1;
-                num_files += files.iter().count();
-                if let &Some(ref cond_name) = condition {
-                    if cond_lookup.get(cond_name.as_str()).is_none() {
-                        warn!(
-                            l,
-                            "Component {}::{} references an unknown condition '{}'",
-                            class,
-                            group,
-                            cond_name
-                        );
-                    }
-                }
-                for &FileRef {
-                    ref path,
-                    ref condition,
-                    ..
-                } in files.iter()
-                {
-                    if let &Some(ref cond_name) = condition {
-                        if cond_lookup.get(cond_name.as_str()).is_none() {
-                            warn!(
-                                l,
-                                "File {:?} Component {}::{} references an unknown condition '{}'",
-                                path,
-                                class,
-                                group,
-                                cond_name
-                            );
-                        }
-                    }
-                }
-            }
-            info!(l, "{} Valid Devices", c.devices.0.len());
-            info!(l, "{} Valid Software Components", num_components);
-            info!(l, "{} Valid Files References", num_files);
-        }
-        Err(e) => {
-            error!(l, "parsing {}: {}", filename, e);
-        }
-    }
-    debug!(l, "exiting");
-    Ok(())
-}
-
-pub fn dump_devices_args<'a, 'b>() -> App<'a, 'b> {
-    SubCommand::with_name("dump-devices")
-        .about("Dump devices as json")
-        .version("0.1.0")
-        .arg(
-            Arg::with_name("devices")
-                .short("d")
-                .takes_value(true)
-                .help("Dump JSON in the specified file"),
-        )
-        .arg(Arg::with_name("boards").short("b").takes_value(true).help(
-            "Dump JSON in the specified file",
-        ))
-        .arg(
-            Arg::with_name("INPUT")
-                .help("Input file to dump devices from")
-                .index(1),
-        )
-
-}
-
 pub fn dump_devices<'a, P: AsRef<Path>, I: IntoIterator<Item = &'a Package>>(
     pdscs: I,
     device_dest: Option<P>,
@@ -429,37 +328,6 @@ pub fn dump_devices<'a, P: AsRef<Path>, I: IntoIterator<Item = &'a Package>>(
         None => println!("{}", &serde_json::to_string_pretty(&devices).unwrap()),
     }
     Ok(())
-}
-
-pub fn dump_devices_command<'a>(
-    c: &Config,
-    args: &ArgMatches<'a>,
-    l: &Logger,
-) -> Result<(), FailError> {
-    let files = args.value_of("INPUT").map(|input| {
-        vec![Box::new(Path::new(input)).to_path_buf()]
-    });
-    let filenames = files
-        .or_else(|| {
-            c.pack_store.read_dir().ok().map(|rd| {
-                rd.flat_map(|dirent| dirent.into_iter().map(|p| p.path()))
-                    .collect()
-            })
-        })
-        .unwrap();
-    let pdscs = filenames
-        .into_iter()
-        .flat_map(|filename| match Package::from_path(&filename, &l) {
-            Ok(c) => Some(c),
-            Err(e) => {
-                error!(l, "parsing {:?}: {}", filename, e);
-                None
-            }
-        })
-        .collect::<Vec<Package>>();
-    let to_ret = dump_devices(&pdscs, args.value_of("devices"), args.value_of("boards"), l);
-    debug!(l, "exiting");
-    to_ret
 }
 
 pub fn dumps_components<'a, I>(pdscs: I) -> Result<String, FailError>

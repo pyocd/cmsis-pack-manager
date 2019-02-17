@@ -64,7 +64,7 @@ impl FromElem for Condition {
 }
 
 #[derive(Default)]
-pub struct Conditions(pub(crate) Vec<Condition>);
+pub struct Conditions(pub Vec<Condition>);
 
 impl FromElem for Conditions {
     fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {

@@ -1,11 +1,10 @@
-#![feature(generators, libc, proc_macro_hygiene, use_extern_macros)]
+#![feature(generators, libc, proc_macro_hygiene)]
 
 extern crate futures_await as futures;
 extern crate tokio_core;
 extern crate hyper;
 extern crate hyper_rustls;
 extern crate minidom;
-extern crate clap;
 extern crate failure;
 
 #[macro_use]
@@ -22,16 +21,13 @@ use hyper::{Body, Client};
 use hyper::client::Connect;
 use hyper_rustls::HttpsConnector;
 use tokio_core::reactor::Core;
-use std::iter::Iterator;
-use std::path::{Path, PathBuf};
-use clap::{App, Arg, ArgMatches, SubCommand};
+use std::path::PathBuf;
 use slog::Logger;
 use failure::Error;
 use pbr::ProgressBar;
 
 use pack_index::config::Config;
 use pdsc::Package;
-use utils::parse::FromElem;
 
 pub mod upgrade;
 mod redirect;
@@ -82,33 +78,6 @@ where
     update_inner(config, vidx_list, &mut core, &client, logger, &progress)
 }
 
-pub fn update_args<'a, 'b>() -> App<'a, 'b> {
-    SubCommand::with_name("update")
-        .about("Update CMSIS PDSC files for indexing")
-        .version("0.1.0")
-}
-
-pub fn update_command<'a>(conf: &Config, _: &ArgMatches<'a>, logger: &Logger) -> Result<(), Error> {
-    let vidx_list = conf.read_vidx_list(&logger);
-    for url in vidx_list.iter() {
-        info!(logger, "Updating registry from `{}`", url);
-    }
-    let updated = update(conf, vidx_list, logger)?;
-    let num_updated = updated.iter().map(|_| 1).sum::<u32>();
-    match num_updated {
-        0 => {
-            info!(logger, "Already up to date");
-        }
-        1 => {
-            info!(logger, "Updated 1 package");
-        }
-        _ => {
-            info!(logger, "Updated {} package", num_updated);
-        }
-    }
-    Ok(())
-}
-
 // This will "trick" the borrow checker into thinking that the lifetimes for
 // client and core are at least as big as the lifetime for pdscs, which they actually are
 fn install_inner<'client, 'a: 'client, C, I: 'a, P: 'client>(
@@ -149,42 +118,4 @@ pub fn install<'a, I: 'a>(
     progress.message("Downloading Packs ");
     let progress = Mutex::new(progress);
     install_inner(config, pdsc_list, &mut core, &client, logger, &progress)
-}
-
-pub fn install_args() -> App<'static, 'static> {
-    SubCommand::with_name("install")
-        .about("Install a CMSIS Pack file")
-        .version("0.1.0")
-        .arg(
-            Arg::with_name("PDSC")
-                .required(true)
-                .takes_value(true)
-                .index(1)
-                .multiple(true)
-        )
-}
-
-pub fn install_command<'a>(
-    conf: &Config,
-    args: &ArgMatches<'a>,
-    logger: &Logger
-) -> Result<(), Error> {
-    let pdsc_list: Vec<_> = args.values_of("PDSC")
-        .unwrap()
-        .filter_map(|input| Package::from_path(Path::new(input), logger).ok())
-        .collect();
-    let updated = install(conf, pdsc_list.iter(), logger)?;
-    let num_updated = updated.iter().map(|_| 1).sum::<u32>();
-    match num_updated {
-        0 => {
-            info!(logger, "Already up to date");
-        }
-        1 => {
-            info!(logger, "Updated 1 package");
-        }
-        _ => {
-            info!(logger, "Updated {} package", num_updated);
-        }
-    }
-    Ok(())
 }
