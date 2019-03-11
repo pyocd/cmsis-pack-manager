@@ -384,13 +384,16 @@ pub struct Algorithm {
 
 impl FromElem for Algorithm {
     fn from_elem(e: &Element, _l: &Logger) -> Result<Self, Error> {
+        let default = attr_parse(e, "default", "memory")
+            .map(|nb: NumberBool| nb.into())
+            .unwrap_or_default();
         Ok(Self {
             file_name: attr_map(e, "name", "algorithm")?,
             start: attr_parse_hex(e, "start", "algorithm")?,
             size: attr_parse_hex(e, "size", "algorithm")?,
             ram_start: attr_parse_hex(e, "RAMstart", "algorithm").ok(),
             ram_size: attr_parse_hex(e, "RAMsize", "algorithm").ok(),
-            default: attr_parse(e, "default", "algorithm").unwrap_or_default(),
+            default,
         })
     }
 }
