@@ -50,7 +50,7 @@ try:
     exact_match = run(
         ["git", "describe", "--exact-match", "--tags", current_commit.decode("utf-8")]
     )
-    version = exact_match.strip("v")
+    version = exact_match.decode("utf-8").strip("v")
 except subprocess.CalledProcessError:
     version = "0.1.1"
 
