@@ -12,7 +12,7 @@ thread_local! {
     pub static LAST_ERROR: RefCell<Option<Error>> = RefCell::new(None);
 }
 
-fn set_last_error(err: Error) {
+pub(crate) fn set_last_error(err: Error) {
     LAST_ERROR.with(|e| {
         *e.borrow_mut() = Some(err);
     });

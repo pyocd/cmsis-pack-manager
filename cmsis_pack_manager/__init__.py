@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from time import sleep
 from os.path import join, dirname, exists
 from shutil import rmtree
 from json import load
@@ -167,8 +168,10 @@ class Cache (object):
         else:
             cvidx_path = ffi.NULL
         with _RaiseRust():
-            pdsc_index = ffi.gc(lib.update_pdsc_index(cdata_path, cvidx_path),
-                                lib.update_pdsc_index_free)
+            poll_obj = lib.update_pdsc_index(cdata_path, cvidx_path)
+            while not lib.update_pdsc_poll(poll_obj):
+                sleep(1/60)
+            pdsc_index = lib.update_pdsc_result(poll_obj)
         return pdsc_index
 
     def _call_rust_parse(self, pdsc_index):
