@@ -7,7 +7,7 @@ use std::ptr::null_mut;
 use std::thread;
 use std::mem;
 use std::sync::Arc;
-use std::sync::mpsc::{channel, Receiver};
+/* use std::sync::mpsc::{channel, Receiver}; */
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use failure::{err_msg, Error};
