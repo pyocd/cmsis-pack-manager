@@ -198,11 +198,14 @@ class Cache (object):
                     )
                 if (
                     total_downloads and not self.silent
-                    and current_downloads > prev_downloads
+                    and current_downloads != prev_downloads
                 ):
-                    sys.stdout.write("({}/{})\r".format(
-                        current_downloads, total_downloads
-                    ))
+                    sys.stdout.write(
+                        "Downloading PDSC files({:03}/{:03})\r".format(
+                            current_downloads, total_downloads
+                        )
+                    )
+                    sys.stdout.flush()
             pdsc_index = lib.update_pdsc_result(poll_obj)
         return pdsc_index
 
