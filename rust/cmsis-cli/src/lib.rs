@@ -8,16 +8,52 @@ extern crate cmsis_update;
 extern crate utils;
 extern crate pack_index;
 extern crate pdsc;
+extern crate pbr;
 
 use std::path::Path;
+use std::sync::{Arc, Mutex};
+use std::io::Stdout;
 use slog::Logger;
 use failure::Error;
 use clap::{ArgMatches, App, Arg, SubCommand};
+use pbr::ProgressBar;
 
-use cmsis_update::{install, update};
+use cmsis_update::{install, update, DownloadProgress};
 use pack_index::config::Config;
 use pdsc::{dump_devices, Component, FileRef, Package};
 use utils::parse::FromElem;
+
+struct CliProgress(Arc<Mutex<ProgressBar<Stdout>>>);
+
+impl DownloadProgress for CliProgress {
+    fn size(&self, files: usize) {
+        if let Ok(mut inner) = self.0.lock() {
+            inner.total = files as u64;
+            inner.show_speed = false;
+            inner.show_bar = true;
+        }
+    }
+    fn progress(&self, _: usize) {}
+    fn complete(&self) {
+        if let Ok(mut inner) = self.0.lock() {
+            inner.inc();
+        }
+    }
+    fn for_file(&self, _: &str) -> Self {
+        CliProgress(self.0.clone())
+    }
+}
+
+impl CliProgress {
+    fn new() -> Self {
+        let mut progress = ProgressBar::new(363);
+        progress.show_speed = false;
+        progress.show_time_left = false;
+        progress.format("[#> ]");
+        progress.message("Downloading Packs ");
+        CliProgress(Arc::new(Mutex::new(progress)))
+    }
+}
 
 pub fn install_args() -> App<'static, 'static> {
     SubCommand::with_name("install")
@@ -41,7 +77,8 @@ pub fn install_command<'a>(
         .unwrap()
         .filter_map(|input| Package::from_path(Path::new(input), logger).ok())
         .collect();
-    let updated = install(conf, pdsc_list.iter(), logger)?;
+    let progress = CliProgress::new();
+    let updated = install(conf, pdsc_list.iter(), logger, progress)?;
     let num_updated = updated.iter().map(|_| 1).sum::<u32>();
     match num_updated {
         0 => {
@@ -68,7 +105,8 @@ pub fn update_command<'a>(conf: &Config, _: &ArgMatches<'a>, logger: &Logger) ->
     for url in vidx_list.iter() {
         info!(logger, "Updating registry from `{}`", url);
     }
-    let updated = update(conf, vidx_list, logger)?;
+    let progress = CliProgress::new();
+    let updated = update(conf, vidx_list, logger, progress)?;
     let num_updated = updated.iter().map(|_| 1).sum::<u32>();
     match num_updated {
         0 => {

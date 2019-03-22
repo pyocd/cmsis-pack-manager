@@ -13,7 +13,6 @@ extern crate slog;
 extern crate utils;
 extern crate pack_index;
 extern crate pdsc;
-extern crate pbr;
 
 use std::sync::Mutex;
 
@@ -24,7 +23,6 @@ use tokio_core::reactor::Core;
 use std::path::PathBuf;
 use slog::Logger;
 use failure::Error;
-use pbr::ProgressBar;
 
 use pack_index::config::Config;
 use pdsc::Package;
@@ -42,26 +40,27 @@ pub use download::DownloadProgress;
 
 // This will "trick" the borrow checker into thinking that the lifetimes for
 // client and core are at least as big as the lifetime for pdscs, which they actually are
-fn update_inner<C, I, P>(
-    config: &Config,
+fn update_inner<'a, C, I, P>(
+    config: &'a Config,
     vidx_list: I,
-    core: &mut Core,
-    client: &Client<C, Body>,
-    logger: &Logger,
+    core: &'a mut Core,
+    client: &'a Client<C, Body>,
+    logger: &'a Logger,
     progress: P,
 ) -> Result<Vec<PathBuf>, Error>
 where
     C: Connect,
     I: IntoIterator<Item = String>,
-    P: DownloadProgress,
+    P: DownloadProgress + 'a,
 {
     core.run(update_future(config, vidx_list, client, logger, progress))
 }
 
 /// Flatten a list of Vidx Urls into a list of updated CMSIS packs
-pub fn update<I>(config: &Config, vidx_list: I, logger: &Logger) -> Result<Vec<PathBuf>, Error>
+pub fn update<I, P>(config: &Config, vidx_list: I, logger: &Logger, progress: P) -> Result<Vec<PathBuf>, Error>
 where
     I: IntoIterator<Item = String>,
+    P: DownloadProgress,
 {
     let mut core = Core::new().unwrap();
     let handle = core.handle();
@@ -69,13 +68,7 @@ where
         .keep_alive(true)
         .connector(HttpsConnector::new(4, &handle))
         .build(&handle);
-    let mut progress = ProgressBar::new(363);
-    progress.show_speed = false;
-    progress.show_time_left = false;
-    progress.format("[#> ]");
-    progress.message("Downloading Descriptions ");
-    let progress = Mutex::new(progress);
-    update_inner(config, vidx_list, &mut core, &client, logger, &progress)
+    update_inner(config, vidx_list, &mut core, &client, logger, progress)
 }
 
 // This will "trick" the borrow checker into thinking that the lifetimes for
@@ -91,19 +84,21 @@ fn install_inner<'client, 'a: 'client, C, I: 'a, P: 'client>(
     where
     C: Connect,
     I: IntoIterator<Item = &'a Package>,
-    P: DownloadProgress
+    P: DownloadProgress + 'a
 {
     core.run(install_future(config, pdsc_list, client, logger, progress))
 }
 
 /// Flatten a list of Vidx Urls into a list of updated CMSIS packs
-pub fn install<'a, I: 'a>(
+pub fn install<'a, I: 'a, P>(
     config: &'a Config,
     pdsc_list: I,
-    logger: &'a Logger
+    logger: &'a Logger,
+    progress: P
 ) -> Result<Vec<PathBuf>, Error>
     where
     I: IntoIterator<Item = &'a Package>,
+    P: DownloadProgress + 'a,
 {
     let mut core = Core::new().unwrap();
     let handle = core.handle();
@@ -111,11 +106,5 @@ pub fn install<'a, I: 'a>(
         .keep_alive(true)
         .connector(HttpsConnector::new(4, &handle))
         .build(&handle);
-    let mut progress = ProgressBar::new(363);
-    progress.show_speed = false;
-    progress.show_time_left = false;
-    progress.format("[#> ]");
-    progress.message("Downloading Packs ");
-    let progress = Mutex::new(progress);
-    install_inner(config, pdsc_list, &mut core, &client, logger, &progress)
+    install_inner(config, pdsc_list, &mut core, &client, logger, progress)
 }

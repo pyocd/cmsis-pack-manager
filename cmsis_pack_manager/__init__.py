@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 from time import sleep
 from os.path import join, dirname, exists
 from shutil import rmtree
@@ -47,7 +48,14 @@ class Cache (object):
                         downloading things.
     :type no_timeouts: bool
     """
-    def __init__(self, _, __, json_path=None, data_path=None, vidx_list=None):
+    def __init__(
+            self,
+            silent,
+            __,
+            json_path=None,
+            data_path=None,
+            vidx_list=None
+    ):
         default_path = user_data_dir('cmsis-pack-manager')
         json_path = default_path if not json_path else json_path
         self._index = {}
@@ -56,6 +64,7 @@ class Cache (object):
         self.aliases_path = join(json_path, "aliases.json")
         self.data_path = default_path if not data_path else data_path
         self.vidx_list = vidx_list
+        self.silent = silent
 
     def get_flash_algorithm_binary(self, device_name, all=False):
         """Retrieve the flash algorithm file for a particular part.
@@ -169,8 +178,31 @@ class Cache (object):
             cvidx_path = ffi.NULL
         with _RaiseRust():
             poll_obj = lib.update_pdsc_index(cdata_path, cvidx_path)
+            total_downloads = None
+            current_downloads = 0
             while not lib.update_pdsc_poll(poll_obj):
+                prev_downloads = current_downloads
                 sleep(1/60)
+                message = ffi.gc(
+                    lib.update_pdsc_get_status(poll_obj),
+                    lib.update_pdsc_status_free
+                )
+                while message:
+                    if message.is_size:
+                        total_downloads = message.size
+                    else:
+                        current_downloads += 1
+                    message = ffi.gc(
+                        lib.update_pdsc_get_status(poll_obj),
+                        lib.update_pdsc_status_free
+                    )
+                if (
+                    total_downloads and not self.silent
+                    and current_downloads > prev_downloads
+                ):
+                    sys.stdout.write("({}/{})\r".format(
+                        current_downloads, total_downloads
+                    ))
             pdsc_index = lib.update_pdsc_result(poll_obj)
         return pdsc_index
 

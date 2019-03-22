@@ -33,6 +33,12 @@ pub struct DownloadUpdate{
 
 struct DownloadSender(Sender<DownloadUpdate>);
 
+impl DownloadSender {
+    fn from_sender(from: Sender<DownloadUpdate>) -> Self {
+        DownloadSender(from)
+    }
+}
+
 impl DownloadProgress for DownloadSender {
     fn size(&self, size: usize){
         let _ = self.0.send(DownloadUpdate{
@@ -108,7 +114,12 @@ cffi!{
                 let drain = slog_async::Async::new(drain).build().fuse();
                 let log = Logger::root(drain, o!());
                 let vidx_list = conf.read_vidx_list(&log);
-                let res = update(&conf, vidx_list, &log).map(UpdateReturn);
+                let res = update(
+                    &conf, 
+                    vidx_list, 
+                    &log, 
+                    DownloadSender::from_sender(send)
+                ).map(UpdateReturn);
                 threads_done_flag.store(true, Ordering::Release);
                 res
             })?;
@@ -167,6 +178,14 @@ pub extern "C" fn update_pdsc_get_status(ptr: *mut UpdatePoll) -> *mut DownloadU
         })
     } else {
         null_mut()
+    }
+}
+
+cffi!{
+    fn update_pdsc_status_free(ptr: *mut DownloadUpdate) {
+        if !ptr.is_null() {
+            drop(unsafe { Box::from_raw(ptr) })
+        }
     }
 }
 
