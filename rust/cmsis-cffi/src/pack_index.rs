@@ -1,5 +1,5 @@
 use slog::Logger;
-use std::borrow::BorrowMut;
+use std::borrow::{Borrow, BorrowMut};
 use std::os::raw::c_char;
 use std::ffi::{CStr, CString};
 use std::path::PathBuf;
@@ -7,12 +7,13 @@ use std::ptr::null_mut;
 use std::thread;
 use std::mem;
 use std::sync::Arc;
-/* use std::sync::mpsc::{channel, Receiver}; */
+use std::sync::mpsc::{channel, Sender, Receiver};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use failure::{err_msg, Error};
 
 use cmsis_update::update;
+use cmsis_update::DownloadProgress;
 use pi::config::ConfigBuilder;
 use utils::set_last_error;
 
@@ -21,7 +22,39 @@ pub struct UpdateReturn(Vec<PathBuf>);
 pub struct RunningUpdateContext {
     pub(crate) thread_handle: thread::JoinHandle<Result<UpdateReturn, Error>>,
     pub(crate) done_flag: Arc<AtomicBool>,
-    /* pub(crate) result_stream: Receiver<Result<Option<T>> /* TODO: Fill in type */>, */
+    pub(crate) result_stream: Receiver<DownloadUpdate>,
+}
+
+#[repr(C)]
+pub struct DownloadUpdate{
+    pub is_size: bool,
+    pub size: usize,
+}
+
+struct DownloadSender(Sender<DownloadUpdate>);
+
+impl DownloadProgress for DownloadSender {
+    fn size(&self, size: usize){
+        let _ = self.0.send(DownloadUpdate{
+            is_size: true,
+            size
+        });
+    }
+
+    fn progress(&self, _: usize) {
+        /* not implemented */
+    }
+
+    fn complete(&self) {
+        let _ = self.0.send(DownloadUpdate{
+            is_size: false,
+            size: 0
+        });
+    }
+
+    fn for_file(&self, _: &str) -> Self {
+        DownloadSender(self.0.clone())
+    }
 }
 
 /* Turns out that this enum is not UnwindSafe, so you may not call panic_unwind
@@ -61,7 +94,7 @@ cffi!{
             conf_bld
         };
         let conf = conf_bld.build()?;
-        /* let (send, recv) = channel(); */
+        let (send, recv) = channel();
         let done_flag = Arc::new(AtomicBool::new(false));
         let threads_done_flag = done_flag.clone();
         let thread = thread::Builder::new()
@@ -75,7 +108,6 @@ cffi!{
                 let drain = slog_async::Async::new(drain).build().fuse();
                 let log = Logger::root(drain, o!());
                 let vidx_list = conf.read_vidx_list(&log);
-                println!("{:?}", vidx_list);
                 let res = update(&conf, vidx_list, &log).map(UpdateReturn);
                 threads_done_flag.store(true, Ordering::Release);
                 res
@@ -83,7 +115,7 @@ cffi!{
         Ok(Box::into_raw(Box::new(UpdatePoll::Running(RunningUpdateContext{
             thread_handle: thread,
             done_flag,
-            /* result_stream: recv, */
+            result_stream: recv,
         }))))
     }
 }
@@ -114,6 +146,27 @@ pub extern "C" fn update_pdsc_poll(ptr: *mut UpdatePoll) -> bool {
         })
     } else {
         false
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn update_pdsc_get_status(ptr: *mut UpdatePoll) -> *mut DownloadUpdate {
+    if !ptr.is_null() {
+        with_from_raw!(let boxed = ptr,{
+            match boxed.borrow() {
+                &UpdatePoll::Complete(_) => null_mut(),
+                &UpdatePoll::Drained => null_mut(),
+                &UpdatePoll::Running(ref cont) => {
+                    let response = cont.result_stream.try_recv();
+                    match response {
+                        Ok(inner) => Box::into_raw(Box::new(inner)),
+                        Err(_) => null_mut()
+                    }
+                }
+            }
+        })
+    } else {
+        null_mut()
     }
 }
 

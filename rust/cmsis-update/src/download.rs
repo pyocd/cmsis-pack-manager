@@ -21,7 +21,7 @@ pub(crate) trait IntoDownload {
     fn into_fd(&self, &Config) -> PathBuf;
 }
 
-pub trait DownloadProgress: Sync {
+pub trait DownloadProgress: Send {
     fn size(&self, files: usize);
     fn progress(&self, bytes: usize);
     fn complete(&self);

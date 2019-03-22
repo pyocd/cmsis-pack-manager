@@ -38,7 +38,7 @@ mod dl_pack;
 
 use dl_pdsc::{update_future};
 use dl_pack::{install_future};
-use download::DownloadProgress;
+pub use download::DownloadProgress;
 
 // This will "trick" the borrow checker into thinking that the lifetimes for
 // client and core are at least as big as the lifetime for pdscs, which they actually are
