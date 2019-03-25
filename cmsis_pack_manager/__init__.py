@@ -15,6 +15,7 @@
 
 import sys
 import time
+import collections
 from os.path import join, dirname, exists
 from shutil import rmtree
 from json import load
@@ -32,6 +33,20 @@ class _RaiseRust(object):
                            lib.err_last_message_free)
         if maybe_err:
             raise Exception(ffi.string(maybe_err))
+
+
+class CmsisPackRef(collections.namedtuple(
+        "CmsisPackRef",
+        "vendor, pack, version"
+)):
+    def get_pdsc_name(self):
+        return "{}.{}.{}.pdsc".format(self.vendor, self.pack, self.version)
+
+    def get_pack_name(self):
+        return join(self.vendor, self.pack, "{}.pack".format(self.version))
+
+    def __str__(self):
+        return "{}::{}::{}".format(self.vendor, self.pack, self.version)
 
 
 class Cache (object):
@@ -161,6 +176,39 @@ class Cache (object):
         2 minutes to complete.
         """
         parsed_packs = self.cache_descriptors()
+        self._call_rust_update_packs(parsed_packs)
+
+    def packs_for_devices(self, devices):
+        """Create a list of all CMSIS Packs required to support the
+        list of devices
+
+        :return:
+        A list of CmsisPackRef objects
+        """
+        to_ret = {}
+        for dev in devices:
+            pack_ref = CmsisPackRef(
+                dev["from_pack"]["vendor"],
+                dev["from_pack"]["pack"],
+                dev["from_pack"]["version"],
+            )
+            to_ret[pack_ref] = True
+        return list(to_ret.keys())
+
+    def download_pack_list(self, pack_list):
+        pdsc_index = ffi.gc(
+            lib.update_pdsc_index_new(),
+            lib.update_pdsc_index_free
+        )
+        for pack_ref in pack_list:
+            pdsc_path = join(self.data_path, pack_ref.get_pdsc_name())
+            cpdsc_path = ffi.new("char[]", pdsc_path)
+            with _RaiseRust():
+                lib.update_pdsc_index_push(pdsc_index, cpdsc_path)
+        parsed_packs = self._call_rust_parse(pdsc_index)
+        self._call_rust_update_packs(parsed_packs)
+
+    def _call_rust_update_packs(self, parsed_packs):
         if self.data_path:
             cdata_path = ffi.new("char[]", self.data_path.encode("utf-8"))
         else:

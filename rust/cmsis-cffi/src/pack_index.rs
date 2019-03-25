@@ -214,6 +214,11 @@ pub extern "C" fn update_pdsc_result(ptr: *mut UpdatePoll) -> *mut UpdateReturn 
     }
 }
 
+#[no_mangle]
+pub extern "C" fn update_pdsc_index_new() -> *mut UpdateReturn {
+    Box::into_raw(Box::new(UpdateReturn(Vec::new())))
+}
+
 cffi!{
     fn update_pdsc_index_next(ptr: *mut UpdateReturn) -> Result<*const c_char> {
         if !ptr.is_null() {
@@ -231,6 +236,19 @@ cffi!{
             })
         } else {
             Err(err_msg("update pdsc index next called with null"))
+        }
+    }
+}
+
+cffi!{
+    fn update_pdsc_index_push(ptr: *mut UpdateReturn, cstr: *mut c_char) -> Result<()> {
+        if !ptr.is_null() && !cstr.is_null() {
+            with_from_raw!(let mut boxed = ptr, {
+                let pstore = unsafe { CStr::from_ptr(cstr) }.to_string_lossy();
+                Ok(boxed.0.push(pstore.into_owned().into()))
+            })
+        } else {
+            Err(err_msg("update pdsc index push called with null"))
         }
     }
 }
