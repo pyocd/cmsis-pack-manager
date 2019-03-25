@@ -106,6 +106,7 @@ def fuzzy_find(matches, options, oper=operator.and_):
 CACHE_CHOICES = [
     "descriptors", "desc", "pdsc",
     "everything", "every", "packs",
+    "devices", "devs",
     "clean", "rm"
 ]
 
@@ -113,6 +114,7 @@ CACHE_CHOICES_HELP = (
     "Caching action; "
     "descriptors, desc, pdsc: download only pack descriptors; "
     "everything, every, packs: download packs and descriptors; "
+    "devices, devs: download the packs for the listed devices; "
     "clean, rm: remove downloaded packs and descriptors"
 )
 
@@ -120,9 +122,10 @@ CACHE_CHOICES_HELP = (
 @subcommand(
     'cache',
     dict(name="action", choices=CACHE_CHOICES, help=CACHE_CHOICES_HELP),
+    dict(name="devices", nargs="*"),
     help="Download or remove pack and pack descriptions in the cache"
 )
-def command_cache(cache, action, verbose=False, intersection=True):
+def command_cache(cache, action, devices, verbose=False, intersection=True):
     if action in ("everything", "every", "packs"):
         cache.cache_everything()
         print("Packs Cached")
@@ -135,6 +138,15 @@ def command_cache(cache, action, verbose=False, intersection=True):
         cache.cache_clean()
         print("Cache cleaned")
         return True
+    elif action in ("devices", "devs"):
+        cache.cache_descriptors()
+        devices = [cache.index[dev] for dev in devices]
+        packs = cache.packs_for_devices(devices)
+        print("Downloading Packs: ")
+        for pack in packs:
+            print("  {}".format(pack))
+        raw_input("Press Control-C to quit; Press Enter to continue")
+        cache.download_pack_list(packs)
     else:
         print("No action specified nothing to do")
 
