@@ -14,7 +14,7 @@
 # limitations under the License.
 
 import sys
-from time import sleep
+import time
 from os.path import join, dirname, exists
 from shutil import rmtree
 from json import load
@@ -167,7 +167,17 @@ class Cache (object):
             cdata_path = ffi.NULL
         lib.update_packs(cdata_path, parsed_packs)
 
-    def _call_rust_update(self):
+    def _verbose_on_tick_fn(self, total, current):
+        if total:
+            total = "{:03}".format(total)
+        else:
+            total = "???"
+        sys.stdout.write(
+            "Downloading descriptors ({:03}/{})\r".format(current, total)
+        )
+        sys.stdout.flush()
+
+    def _call_rust_update(self, on_tick_fn):
         if self.data_path:
             cdata_path = ffi.new("char[]", self.data_path.encode("utf-8"))
         else:
@@ -182,7 +192,7 @@ class Cache (object):
             current_downloads = 0
             while not lib.update_pdsc_poll(poll_obj):
                 prev_downloads = current_downloads
-                sleep(1/60)
+                time.sleep(1/2)
                 message = ffi.gc(
                     lib.update_pdsc_get_status(poll_obj),
                     lib.update_pdsc_status_free
@@ -196,16 +206,8 @@ class Cache (object):
                         lib.update_pdsc_get_status(poll_obj),
                         lib.update_pdsc_status_free
                     )
-                if (
-                    total_downloads and not self.silent
-                    and current_downloads != prev_downloads
-                ):
-                    sys.stdout.write(
-                        "Downloading PDSC files({:03}/{:03})\r".format(
-                            current_downloads, total_downloads
-                        )
-                    )
-                    sys.stdout.flush()
+                if on_tick_fn and current_downloads != prev_downloads:
+                    on_tick_fn(total_downloads, current_downloads)
             pdsc_index = lib.update_pdsc_result(poll_obj)
         return pdsc_index
 
@@ -233,7 +235,8 @@ class Cache (object):
         .. note:: This process may use 14MB of drive space and take upwards of
         10 seconds.
         """
-        pdsc_index = self._call_rust_update()
+        progress_fn = None if self.silent else self._verbose_on_tick_fn
+        pdsc_index = self._call_rust_update(progress_fn)
         parsed_packs = self._call_rust_parse(pdsc_index)
         return parsed_packs
 
