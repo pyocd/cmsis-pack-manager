@@ -28,7 +28,8 @@ cffi!{
             };
             let conf = conf_bld.build()?;
             with_from_raw!(let packs = parsed_packs, {
-                install(&conf, packs.iter(), &log).map(|_| ())
+                /* TODO: () used here to drop all messagses. THIS IS VERY BAD */
+                install(&conf, packs.iter(), &log, ()).map(|_| ())
             })
         } else {
             Err(err_msg("update packs received a Null pointer"))

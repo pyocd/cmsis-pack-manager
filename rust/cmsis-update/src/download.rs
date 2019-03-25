@@ -9,7 +9,6 @@ use futures::prelude::{await, async_block, async_stream_block, stream_yield, Fut
 use hyper::{Body, Client, Uri};
 use hyper::client::Connect;
 use slog::Logger;
-use pbr::ProgressBar;
 use std::sync::Arc;
 
 use pack_index::config::Config;
@@ -21,7 +20,7 @@ pub(crate) trait IntoDownload {
     fn into_fd(&self, &Config) -> PathBuf;
 }
 
-pub trait DownloadProgress: Sync {
+pub trait DownloadProgress: Send {
     fn size(&self, files: usize);
     fn progress(&self, bytes: usize);
     fn complete(&self);
@@ -34,25 +33,6 @@ impl DownloadProgress for () {
     fn complete(&self) {}
     fn for_file(&self, _: &str) -> Self {
         ()
-    }
-}
-
-impl<'a, W: Write + Send + 'a> DownloadProgress for &'a Mutex<ProgressBar<W>> {
-    fn size(&self, files: usize) {
-        if let Ok(mut inner) = self.lock() {
-            inner.total = files as u64;
-            inner.show_speed = false;
-            inner.show_bar = true;
-        }
-    }
-    fn progress(&self, _: usize) {}
-    fn complete(&self) {
-        if let Ok(mut inner) = self.lock() {
-            inner.inc();
-        }
-    }
-    fn for_file(&self, _: &str) -> Self {
-        self.clone()
     }
 }
 
