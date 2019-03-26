@@ -14,8 +14,6 @@ extern crate utils;
 extern crate pack_index;
 extern crate pdsc;
 
-use std::sync::Mutex;
-
 use hyper::{Body, Client};
 use hyper::client::Connect;
 use hyper_rustls::HttpsConnector;

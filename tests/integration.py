@@ -82,6 +82,18 @@ def test_pull_pdscs():
         assert("MyDevice" in c.aliases["MyBoard"]["mounted_devices"])
         assert(c.pack_from_cache(c.index["MyDevice"]).open("MyVendor.MyPack.pdsc"))
 
+def test_install_pack():
+    with cmsis_server():
+        json_path = tempfile.mkdtemp()
+        data_path = tempfile.mkdtemp()
+        c = cmsis_pack_manager.Cache(
+            True, True, json_path=json_path, data_path=data_path,
+            vidx_list=join(dirname(__file__), 'test-pack-index', 'vendors.list'))
+        c.cache_descriptors()
+        packs = c.packs_for_devices([c.index["MyDevice"]])
+        c.download_pack_list(packs)
+        assert(c.pack_from_cache(c.index["MyDevice"]).open("MyVendor.MyPack.pdsc"))
+
 def test_pull_pdscs_cli():
     with cmsis_server():
         json_path = tempfile.mkdtemp()
