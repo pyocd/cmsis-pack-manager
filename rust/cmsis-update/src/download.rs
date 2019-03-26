@@ -1,7 +1,6 @@
 use std::fs::{create_dir_all, rename, OpenOptions};
 use std::io::Write;
 use std::path::PathBuf;
-use std::sync::Mutex;
 
 use failure::Error;
 use futures::Stream;
