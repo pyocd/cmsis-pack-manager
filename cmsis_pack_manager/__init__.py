@@ -202,7 +202,7 @@ class Cache (object):
         )
         for pack_ref in pack_list:
             pdsc_path = join(self.data_path, pack_ref.get_pdsc_name())
-            cpdsc_path = ffi.new("char[]", pdsc_path)
+            cpdsc_path = ffi.new("char[]", pdsc_path.encode("utf-8"))
             with _RaiseRust():
                 lib.update_pdsc_index_push(pdsc_index, cpdsc_path)
         parsed_packs = self._call_rust_parse(pdsc_index)
