@@ -46,10 +46,7 @@ pub fn update_future<'a, C, I, P>(
 {
     let parsed_vidx = download_vidx_list(vidx_list, client, logger);
     let pdsc_list = parsed_vidx
-        .filter_map(move |vidx| match vidx {
-            Ok(v) => Some(flatmap_pdscs(v, client, logger)),
-            Err(_) => None,
-        })
+        .filter_map(move |vidx| vidx.map(|v| flatmap_pdscs(v, client, logger)))
         .flatten();
     download_stream(config, pdsc_list, client, logger, progress).collect()
 }
