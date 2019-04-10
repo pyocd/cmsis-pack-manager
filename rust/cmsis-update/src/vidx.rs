@@ -35,7 +35,7 @@ pub(crate) fn download_vidx_list<'a, C, I>(
     list: I,
     client: &'a Client<C, Body>,
     logger: &'a Logger,
-) -> impl Stream<Item = Result<Vidx, minidom::Error>, Error = hyper::Error> + 'a
+) -> impl Stream<Item = Option<Vidx>, Error = hyper::Error> + 'a
 where
     C: Connect,
     I: IntoIterator + 'a,
@@ -43,7 +43,23 @@ where
 {
     futures_unordered(
         list.into_iter()
-            .map(|vidx_ref| download_vidx(client, vidx_ref, logger)),
+            .map(|vidx_ref| {
+                let string = vidx_ref.into();
+                download_vidx(client, string.clone(), logger).then(move |r| {
+                    let logger = logger.new(o!("uri" => string));
+                    match r {
+                        Ok(Ok(r)) => Ok(Some(r)),
+                        Ok(Err(e)) => {
+                            error!(logger, "{}", e);
+                            Ok(None)
+                        },
+                        Err(e) => {
+                            error!(logger, "{}", e);
+                            Ok(None)
+                        },
+                    }
+                })
+            }),
     )
 }
 
@@ -70,10 +86,7 @@ pub(crate) fn flatmap_pdscs<'a, C>(
 {
     let pidx_urls = vendor_index.into_iter().map(into_uri);
     let job = download_vidx_list(pidx_urls, client, logger)
-        .filter_map(|vidx| match vidx {
-            Ok(v) => Some(iter_ok(v.pdsc_index.into_iter())),
-            Err(_) => None,
-        })
+        .filter_map(|vidx| vidx.map(|v| iter_ok(v.pdsc_index.into_iter())))
         .flatten();
     iter_ok(pdsc_index.into_iter()).chain(job)
 }

@@ -25,6 +25,7 @@ impl<C: Connect> ClientRedirExt<C> for Client<C, Body> {
             let mut urls = Vec::new();
             loop {
                 urls.push(uri.clone());
+                debug!(logger, "Starting GET of {}", uri);
                 let res = await!(self.get(uri))?;
                 match res.status() {
                     StatusCode::MovedPermanently |
