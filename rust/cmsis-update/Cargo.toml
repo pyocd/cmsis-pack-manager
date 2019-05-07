@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["Jimmy Brisson <theotherjimmy@gmail.com>"]
 
 [dependencies]
+futures = "=0.1.25"
 futures-await = "0.1.1"
 futures-await-async-macro = "0.1.4"
 hyper = "0.11.21"
@@ -14,6 +15,7 @@ slog-term = "^2"
 slog-async = "^2"
 tokio-core = "0.1.17"
 failure = "0.1.1"
+rustc-demangle = "=0.1.13"
 
 utils = { path = "../utils" }
 pack-index = { path = "../pack-index" }
