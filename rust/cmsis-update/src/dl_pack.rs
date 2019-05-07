@@ -19,7 +19,7 @@ impl<'a> IntoDownload for &'a Package {
         let uri = if url.ends_with('/') {
             format!("{}{}.{}.{}.pack", url, vendor, name, version)
         } else {
-            format!("{}/{}.{}.{}.pdsc", url, vendor, name, version)
+            format!("{}/{}.{}.{}.pack", url, vendor, name, version)
         }.parse()?;
         Ok(uri)
     }
