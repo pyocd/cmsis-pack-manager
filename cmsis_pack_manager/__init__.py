@@ -260,6 +260,12 @@ class Cache (object):
         return pdsc_index
 
     def _call_rust_parse(self, pdsc_index):
+        with _RaiseRust():
+            parsed_packs = ffi.gc(lib.parse_packs(pdsc_index),
+                                  lib.parse_packs_free)
+        return parsed_packs
+
+    def _call_rust_dump(self, parsed_packs):
         if self.index_path:
             cindex_path = ffi.new("char[]", self.index_path.encode("utf-8"))
         else:
@@ -269,12 +275,7 @@ class Cache (object):
         else:
             calias_path = ffi.NULL
         with _RaiseRust():
-            parsed_packs = ffi.gc(lib.parse_packs(pdsc_index),
-                                  lib.parse_packs_free)
-        with _RaiseRust():
-            pdsc_index = lib.dump_pdsc_json(
-                parsed_packs, cindex_path, calias_path
-            )
+            lib.dump_pdsc_json(parsed_packs, cindex_path, calias_path)
         return parsed_packs
 
     def cache_descriptors(self):
@@ -286,6 +287,7 @@ class Cache (object):
         progress_fn = None if self.silent else self._verbose_on_tick_fn
         pdsc_index = self._call_rust_update(progress_fn)
         parsed_packs = self._call_rust_parse(pdsc_index)
+        self._call_rust_dump(parsed_packs)
         return parsed_packs
 
     def cache_clean(self):
@@ -349,4 +351,6 @@ class Cache (object):
         with _RaiseRust():
             pack_files = ffi.gc(lib.pack_from_path(cpack_path),
                                 lib.update_pdsc_index_free)
-        return self._call_rust_parse(pack_files)
+        parsed_packs = self._call_rust_parse(pack_files)
+        self._call_rust_dump(parsed_packs)
+        return parsed_packs
