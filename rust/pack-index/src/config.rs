@@ -89,8 +89,7 @@ impl Config {
             Err(_) => {
                 warn!(l, "Failed to open vendor index list read only. Recreating.");
                 let new_content = vec![
-                    String::from("http://www.keil.com/pack/keil.vidx"),
-                    String::from("http://www.keil.com/pack/keil.pidx"),
+                    String::from("http://www.keil.com/pack/index.pidx"),
                 ];
                 match self.vidx_list.parent() {
                     Some(par) => {
