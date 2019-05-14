@@ -45,7 +45,7 @@ cffi!{
     }
 }
 
-pub struct ParsedPacks(Vec<Package>);
+pub struct ParsedPacks(pub(crate) Vec<Package>);
 
 impl ParsedPacks {
     pub fn iter(&self) -> impl Iterator<Item = &Package> {

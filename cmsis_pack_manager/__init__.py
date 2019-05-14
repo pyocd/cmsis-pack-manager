@@ -176,7 +176,8 @@ class Cache (object):
         2 minutes to complete.
         """
         parsed_packs = self.cache_descriptors()
-        self._call_rust_update_packs(parsed_packs)
+        progress_fn = None if self.silent else self._verbose_on_tick_fn
+        self._call_rust_update_packs(parsed_packs, progress_fn)
 
     def packs_for_devices(self, devices):
         """Create a list of all CMSIS Packs required to support the
@@ -206,14 +207,17 @@ class Cache (object):
             with _RaiseRust():
                 lib.update_pdsc_index_push(pdsc_index, cpdsc_path)
         parsed_packs = self._call_rust_parse(pdsc_index)
-        self._call_rust_update_packs(parsed_packs)
+        progress_fn = None if self.silent else self._verbose_on_tick_fn
+        self._call_rust_update_packs(parsed_packs, progress_fn)
 
-    def _call_rust_update_packs(self, parsed_packs):
+    def _call_rust_update_packs(self, parsed_packs, on_tick_fn):
         if self.data_path:
             cdata_path = ffi.new("char[]", self.data_path.encode("utf-8"))
         else:
             cdata_path = ffi.NULL
-        lib.update_packs(cdata_path, parsed_packs)
+        with _RaiseRust():
+            poll_obj = lib.update_packs(cdata_path, parsed_packs)
+        return self._poll_rust_update(poll_obj, on_tick_fn)
 
     def _verbose_on_tick_fn(self, total, current):
         if total:
@@ -236,6 +240,10 @@ class Cache (object):
             cvidx_path = ffi.NULL
         with _RaiseRust():
             poll_obj = lib.update_pdsc_index(cdata_path, cvidx_path)
+        return self._poll_rust_update(poll_obj, on_tick_fn)
+
+    def _poll_rust_update(self, poll_obj, on_tick_fn):
+        with _RaiseRust():
             total_downloads = None
             current_downloads = 0
             while not lib.update_pdsc_poll(poll_obj):
@@ -256,7 +264,9 @@ class Cache (object):
                     )
                 if on_tick_fn and current_downloads != prev_downloads:
                     on_tick_fn(total_downloads, current_downloads)
-            pdsc_index = lib.update_pdsc_result(poll_obj)
+            pdsc_index = ffi.gc(
+                lib.update_pdsc_result(poll_obj), lib.update_pdsc_index_free
+            )
         return pdsc_index
 
     def _call_rust_parse(self, pdsc_index):

@@ -17,7 +17,7 @@ use cmsis_update::DownloadProgress;
 use pi::config::ConfigBuilder;
 use utils::set_last_error;
 
-pub struct UpdateReturn(Vec<PathBuf>);
+pub struct UpdateReturn(pub(crate) Vec<PathBuf>);
 
 pub struct RunningUpdateContext {
     pub(crate) thread_handle: thread::JoinHandle<Result<UpdateReturn, Error>>,
@@ -31,10 +31,10 @@ pub struct DownloadUpdate{
     pub size: usize,
 }
 
-struct DownloadSender(Sender<DownloadUpdate>);
+pub(crate) struct DownloadSender(Sender<DownloadUpdate>);
 
 impl DownloadSender {
-    fn from_sender(from: Sender<DownloadUpdate>) -> Self {
+    pub(crate) fn from_sender(from: Sender<DownloadUpdate>) -> Self {
         DownloadSender(from)
     }
 }
