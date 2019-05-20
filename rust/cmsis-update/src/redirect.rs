@@ -1,8 +1,17 @@
-use futures::prelude::{await, async_block, Future};
+use futures::prelude::Future;
+use futures::{Async, Poll};
 use hyper::{Error, Body, Client, Response, StatusCode, Uri};
-use hyper::client::Connect;
+use hyper::client::{Connect, FutureResponse};
 use hyper::header::Location;
 use slog::Logger;
+
+pub(crate) struct RedirectingFuture<'a, C: Connect> {
+    client: &'a Client<C, Body>,
+    uri: Uri,
+    logger: &'a Logger,
+    //history: Vec<Uri>,
+    cur_get: FutureResponse,
+}
 
 pub(crate) trait ClientRedirExt<C>
 where
@@ -12,21 +21,34 @@ where
         &'a self,
         uri: Uri,
         logger: &'a Logger,
-    ) -> Box<Future<Item = Response, Error = Error> + 'a>;
+    ) -> Box<RedirectingFuture<'a, C>>;
 }
 
 impl<C: Connect> ClientRedirExt<C> for Client<C, Body> {
     fn redirectable<'a>(
         &'a self,
-        mut uri: Uri,
+        uri: Uri,
         logger: &'a Logger,
-    ) -> Box<Future<Item = Response, Error = Error> + 'a> {
-        Box::new(async_block!{
-            let mut urls = Vec::new();
-            loop {
-                urls.push(uri.clone());
-                debug!(logger, "Starting GET of {}", uri);
-                let res = await!(self.get(uri))?;
+    ) -> Box<RedirectingFuture<'a, C>> {
+        Box::new(RedirectingFuture{
+            client: self,
+            uri: uri.clone(),
+            logger,
+            //history: Vec::new(),
+            cur_get: self.get(uri),
+        })
+    }
+}
+
+impl<'a, C: Connect> Future for RedirectingFuture<'a, C> {
+    type Item=Response;
+    type Error=Error;
+    fn poll(&mut self) -> Poll<Response, Error>{
+        loop {
+            debug!(self.logger, "Starting GET of {}", self.uri);
+            match self.cur_get.poll()? {
+                Async::NotReady => return Ok(Async::NotReady),
+                Async::Ready(res) =>
                 match res.status() {
                     StatusCode::MovedPermanently |
                     StatusCode::Found |
@@ -37,21 +59,21 @@ impl<C: Connect> ClientRedirExt<C> for Client<C, Body> {
                             .get::<Location>()
                             .unwrap_or(&Location::new(""))
                             .parse()?;
-                        if let Some(ref old_uri) = urls.last() {
-                            if new_uri.authority().is_none() {
-                                if let Some(authority) = old_uri.authority() {
-                                    new_uri = format!("{}{}", authority, old_uri).parse()?
-                                }
+                        if new_uri.authority().is_none() {
+                            if let Some(authority) = self.uri.authority() {
+                                new_uri = format!("{}{}", authority, self.uri).parse()?
                             }
-                            debug!(logger, "Redirecting from {} to {}", old_uri, new_uri);
                         }
-                        uri = new_uri;
+                        debug!(self.logger, "Redirecting from {} to {}", self.uri, new_uri);
+                        self.uri = new_uri;
+                        //self.history.push(new_uri.clone());
+                        self.cur_get = self.client.get(self.uri.clone());
                     }
                     _ => {
-                        return Ok(res);
+                        return Ok(Async::Ready(res));
                     }
                 }
             }
-        })
+        }
     }
 }
