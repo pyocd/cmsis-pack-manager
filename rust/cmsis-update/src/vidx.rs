@@ -1,9 +1,10 @@
 use std::borrow::Borrow;
 
 use failure::Error;
-use futures::prelude::{await, async_block, Future};
+use futures::prelude::Future;
 use futures::Stream;
 use futures::stream::{futures_unordered, iter_ok};
+use futures::future::result;
 use hyper::{self, Body, Chunk, Client, Response};
 use hyper::client::Connect;
 use minidom;
@@ -20,15 +21,16 @@ fn download_vidx<'a, C: Connect, I: Into<String>>(
     logger: &'a Logger,
 ) -> impl Future<Item = Result<Vidx, minidom::Error>, Error = hyper::Error> + 'a {
     let vidx = vidx_ref.into();
-    async_block!{
-        let uri = vidx.parse()?;
-        let body = await!(
+    result(vidx.parse())
+        .from_err()
+        .and_then(move |uri| {
             client.redirectable(uri, logger)
-                .map(Response::body)
-                .flatten_stream()
-                .concat2())?;
-        Ok(parse_vidx(body, logger))
-    }
+            .map(Response::body)
+            .flatten_stream()
+            .concat2()
+        })
+        .from_err()
+        .map(move |body| parse_vidx(body, logger))
 }
 
 pub(crate) fn download_vidx_list<'a, C, I>(

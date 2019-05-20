@@ -4,7 +4,9 @@ use std::path::PathBuf;
 
 use failure::Error;
 use futures::Stream;
-use futures::prelude::{await, async_block, async_stream_block, stream_yield, Future};
+use futures::prelude::Future;
+use futures::future::{ok, result};
+use futures::stream::iter_ok;
 use hyper::{Body, Client, Uri};
 use hyper::client::Connect;
 use slog::Logger;
@@ -41,25 +43,31 @@ fn download_file<'b,  C: Connect, P: DownloadProgress + 'b>(
     client: &'b Client<C, Body>,
     logger: &'b Logger,
     spinner: Arc<P>
-) -> impl Future<Item = PathBuf, Error = Error> + 'b {
-    async_block!{
-        if !dest.exists(){
-            dest.parent().map(create_dir_all);
-            let response = await!(client.redirectable(source, logger))?;
-            let temp = dest.with_extension("part");
-            let mut fd = OpenOptions::new()
-                .write(true)
-                .create(true)
-                .open(&temp)?;
-            #[async]
-            for bytes in response.body() {
-                fd.write_all(bytes.as_ref())?;
-                spinner.progress(bytes.len());
-            }
-            rename(&temp, &dest)?;
-        }
-        spinner.complete();
-        Ok(dest)
+) -> Box<Future<Item=(), Error=Error> + 'b> {
+    if !dest.exists() {
+        dest.parent().map(create_dir_all);
+        Box::new(client.redirectable(source, logger)
+             .from_err()
+             .and_then(move |res| {
+                let temp = dest.with_extension("part");
+                let fdf = result(OpenOptions::new()
+                    .write(true)
+                    .create(true)
+                    .open(&temp));
+                fdf.from_err().and_then(move |mut fd| {
+                    res.body().for_each(move |bytes| {
+                        spinner.progress(bytes.len());
+                        fd.write_all(bytes.as_ref())?;
+                        Ok(())
+                    }).then(move |_| {
+                        rename(&temp, &dest)?;
+                        Ok(())
+                    })
+                })
+            })
+        )
+    } else {
+        Box::new(ok(()))
     }
 }
 
@@ -75,25 +83,27 @@ pub(crate) fn download_stream<'b, 'a: 'b, F, C, P: 'b, DL: 'a>(
           DL: IntoDownload,
           P: DownloadProgress
 {
-    Box::new(
-        async_stream_block!(
-            let to_dl = await!(stream.collect())?;
-            let len = to_dl.iter().count();
+    let streaming_pathbuffs = 
+        stream.collect().map(move |to_dl|{
+            let len = to_dl.len();
             progress.size(len);
-            for from in to_dl {
+            iter_ok(to_dl).map(move |from| {
                 let dest = from.into_fd(config);
-                let source = from.into_uri(config)?;
+                let source = from.into_uri(config);
                 let new_prog = Arc::new(progress.for_file(&dest.to_string_lossy()));
-                stream_yield!(download_file(source.clone(), dest, client, logger, new_prog.clone())
-                              .map(Some)
-                              .or_else(
-                                  move |e| {
-                                      slog_error!(logger, "download of {:?} failed: {}", source, e);
-                                      new_prog.complete();
-                                      Ok(None)
-                                  }))
-            }
-            Ok(())
-        ).buffer_unordered(32).filter_map(|x| x)
-    )
+                result(source).and_then(move |source| download_file(
+                    source.clone(), dest.clone(), client, logger, new_prog.clone()
+                    ).then(move |res| {
+                        new_prog.complete();
+                        match res {
+                            Ok(_) => Ok(Some(dest)),
+                            Err(e) => {
+                                slog_error!(logger, "download of {:?} failed: {}", source, e);
+                                Ok(None)
+                            }
+                        }
+                    }))
+            })
+        }).flatten_stream();
+    Box::new(streaming_pathbuffs.buffer_unordered(32).filter_map(|x| x))
 }

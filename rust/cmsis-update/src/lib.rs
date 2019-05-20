@@ -1,6 +1,6 @@
 #![feature(generators, libc, proc_macro_hygiene)]
 
-extern crate futures_await as futures;
+extern crate futures;
 extern crate tokio_core;
 extern crate hyper;
 extern crate hyper_rustls;
