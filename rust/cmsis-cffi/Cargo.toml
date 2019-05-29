@@ -2,7 +2,6 @@
 name = "cmsis-cffi"
 version = "0.1.0"
 authors = ["Jimmy Brisson <theotherjimmy@gmail.com>"]
-build = "build.rs"
 
 [lib]
 name = "cmsis_cffi"
@@ -18,6 +17,3 @@ cmsis-update = { path = "../cmsis-update" }
 pack-index = { path = "../pack-index" }
 pdsc = { path = "../pdsc" }
 utils = { path = "../utils" }
-
-[build-dependencies]
-cbindgen = "~0.6.0"

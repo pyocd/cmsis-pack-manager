@@ -30,7 +30,7 @@ def build_native(spec):
         module_path='cmsis_pack_manager._native',
         dylib=lambda: build.find_dylib('cmsis_cffi',
                                        in_path='target/release/deps'),
-        header_filename=lambda: build.find_header('cmsis.h', in_path='target')
+        header_filename=lambda: build.find_header('cmsis.h', in_path='cmsis-cffi')
     )
 
 def run(cmd):
