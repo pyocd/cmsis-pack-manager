@@ -18,7 +18,7 @@ function clean_project {
     popd
 }
 
-RUST_CHANNEL=nightly-2018-11-07
+RUST_CHANNEL=stable
 
 if [[ $1 == "osx" ]]; then
     pip2 install --user -U pip setuptools wheel

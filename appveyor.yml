@@ -5,12 +5,12 @@ clone_depth: 1
 environment:
   matrix:
     - TOOLCHAIN_VERSION: 14.0
-      channel: nightly-2018-11-07
+      channel: stable
       target: i686-pc-windows-msvc
       PYTHON: "C:\\Python37"
       platform: Win32
     - TOOLCHAIN_VERSION: 14.0
-      channel: nightly-2018-11-07
+      channel: stable
       target: x86_64-pc-windows-msvc
       PYTHON: "C:\\Python37-x64"
       platform: x64

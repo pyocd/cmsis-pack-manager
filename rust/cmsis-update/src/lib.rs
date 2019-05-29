@@ -1,5 +1,3 @@
-#![feature(generators, libc, proc_macro_hygiene)]
-
 extern crate futures;
 extern crate tokio_core;
 extern crate hyper;
