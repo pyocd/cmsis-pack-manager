@@ -20,7 +20,6 @@ use std::path::PathBuf;
 use slog::Logger;
 use failure::Error;
 
-use pack_index::config::Config;
 use pdsc::Package;
 
 mod redirect;
@@ -32,11 +31,13 @@ mod dl_pack;
 use dl_pdsc::{update_future};
 use dl_pack::{install_future};
 pub use download::DownloadProgress;
+pub use download::DownloadConfig;
+
 
 // This will "trick" the borrow checker into thinking that the lifetimes for
 // client and core are at least as big as the lifetime for pdscs, which they actually are
-fn update_inner<'a, C, I, P>(
-    config: &'a Config,
+fn update_inner<'a, C, I, P, D>(
+    config: &'a D,
     vidx_list: I,
     core: &'a mut Core,
     client: &'a Client<C, Body>,
@@ -47,15 +48,17 @@ where
     C: Connect,
     I: IntoIterator<Item = String>,
     P: DownloadProgress + 'a,
+    D: DownloadConfig,
 {
     core.run(update_future(config, vidx_list, client, logger, progress))
 }
 
 /// Flatten a list of Vidx Urls into a list of updated CMSIS packs
-pub fn update<I, P>(config: &Config, vidx_list: I, logger: &Logger, progress: P) -> Result<Vec<PathBuf>, Error>
+pub fn update<I, P, D>(config: &D, vidx_list: I, logger: &Logger, progress: P) -> Result<Vec<PathBuf>, Error>
 where
     I: IntoIterator<Item = String>,
     P: DownloadProgress,
+    D: DownloadConfig,
 {
     let mut core = Core::new().unwrap();
     let handle = core.handle();
@@ -68,8 +71,8 @@ where
 
 // This will "trick" the borrow checker into thinking that the lifetimes for
 // client and core are at least as big as the lifetime for pdscs, which they actually are
-fn install_inner<'client, 'a: 'client, C, I: 'a, P: 'client>(
-    config: &'a Config,
+fn install_inner<'client, 'a: 'client, C, I: 'a, P: 'client, D>(
+    config: &'a D,
     pdsc_list: I,
     core: &mut Core,
     client: &'client Client<C, Body>,
@@ -79,14 +82,15 @@ fn install_inner<'client, 'a: 'client, C, I: 'a, P: 'client>(
     where
     C: Connect,
     I: IntoIterator<Item = &'a Package>,
-    P: DownloadProgress + 'a
+    P: DownloadProgress + 'a,
+    D: DownloadConfig,
 {
     core.run(install_future(config, pdsc_list, client, logger, progress))
 }
 
 /// Flatten a list of Vidx Urls into a list of updated CMSIS packs
-pub fn install<'a, I: 'a, P>(
-    config: &'a Config,
+pub fn install<'a, I: 'a, P, D>(
+    config: &'a D,
     pdsc_list: I,
     logger: &'a Logger,
     progress: P
@@ -94,6 +98,7 @@ pub fn install<'a, I: 'a, P>(
     where
     I: IntoIterator<Item = &'a Package>,
     P: DownloadProgress + 'a,
+    D: DownloadConfig,
 {
     let mut core = Core::new().unwrap();
     let handle = core.handle();

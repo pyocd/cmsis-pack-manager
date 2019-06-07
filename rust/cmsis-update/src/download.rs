@@ -12,13 +12,15 @@ use hyper::client::Connect;
 use slog::Logger;
 use std::sync::Arc;
 
-use pack_index::config::Config;
-
 use redirect::ClientRedirExt;
 
+pub trait DownloadConfig {
+    fn pack_store(&self) -> PathBuf;
+}
+
 pub(crate) trait IntoDownload {
-    fn into_uri(&self, &Config) -> Result<Uri, Error>;
-    fn into_fd(&self, &Config) -> PathBuf;
+    fn into_uri(&self) -> Result<Uri, Error>;
+    fn into_fd<D: DownloadConfig>(&self, &D) -> PathBuf;
 }
 
 pub trait DownloadProgress: Send {
@@ -71,8 +73,8 @@ fn download_file<'b,  C: Connect, P: DownloadProgress + 'b>(
     }
 }
 
-pub(crate) fn download_stream<'b, 'a: 'b, F, C, P: 'b, DL: 'a>(
-    config: &'a Config,
+pub(crate) fn download_stream<'b, F, C, P: 'b, DL: 'b, D>(
+    config: &'b D,
     stream: F,
     client: &'b Client<C, Body>,
     logger: &'b Logger,
@@ -81,7 +83,8 @@ pub(crate) fn download_stream<'b, 'a: 'b, F, C, P: 'b, DL: 'a>(
     where F: Stream<Item = DL, Error = Error> + 'b,
           C: Connect,
           DL: IntoDownload,
-          P: DownloadProgress
+          P: DownloadProgress,
+          D: DownloadConfig,
 {
     let streaming_pathbuffs = 
         stream.collect().map(move |to_dl|{
@@ -89,7 +92,7 @@ pub(crate) fn download_stream<'b, 'a: 'b, F, C, P: 'b, DL: 'a>(
             progress.size(len);
             iter_ok(to_dl).map(move |from| {
                 let dest = from.into_fd(config);
-                let source = from.into_uri(config);
+                let source = from.into_uri();
                 let new_prog = Arc::new(progress.for_file(&dest.to_string_lossy()));
                 result(source).and_then(move |source| download_file(
                     source.clone(), dest.clone(), client, logger, new_prog.clone()
