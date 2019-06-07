@@ -29,6 +29,7 @@ macro_rules! with_from_raw {
 #[macro_use]
 pub mod utils;
 
+pub mod config;
 pub mod pack_index;
 pub mod pdsc;
 pub mod pack;

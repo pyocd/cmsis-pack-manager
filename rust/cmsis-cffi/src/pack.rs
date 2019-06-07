@@ -9,7 +9,7 @@ use std::thread;
 use failure::err_msg;
 
 use cmsis_update::install;
-use pi::config::ConfigBuilder;
+use config::ConfigBuilder;
 
 use pdsc::ParsedPacks;
 use pack_index::{DownloadSender, UpdatePoll, RunningUpdateContext, UpdateReturn};

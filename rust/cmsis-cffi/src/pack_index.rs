@@ -14,7 +14,7 @@ use failure::{err_msg, Error};
 
 use cmsis_update::update;
 use cmsis_update::DownloadProgress;
-use pi::config::ConfigBuilder;
+use config::ConfigBuilder;
 use utils::set_last_error;
 
 pub struct UpdateReturn(pub(crate) Vec<PathBuf>);
