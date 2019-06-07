@@ -1,12 +1,8 @@
-extern crate app_dirs;
 extern crate minidom;
 extern crate quick_xml;
 extern crate utils;
-#[macro_use]
 extern crate slog;
 extern crate failure;
-
-pub mod config;
 
 use minidom::{Element, Error};
 use slog::Logger;
