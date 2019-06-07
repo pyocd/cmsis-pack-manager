@@ -9,8 +9,8 @@ extern crate pdsc;
 extern crate failure;
 extern crate cmsis_cli;
 
-use pack_index::config::Config;
 use cmsis_cli::{
+    Config,
     update_args,
     update_command,
     install_args,
