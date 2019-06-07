@@ -6,73 +6,35 @@ use app_dirs::{app_root, AppDataType, AppInfo};
 use slog::Logger;
 use failure::Error;
 
+use cmsis_update::DownloadConfig;
+
 pub struct Config {
     pub pack_store: PathBuf,
     pub vidx_list: PathBuf,
 }
 
-pub struct ConfigBuilder {
-    pack_store: Option<PathBuf>,
-    vidx_list: Option<PathBuf>,
-}
-
-impl ConfigBuilder {
-    pub fn new() -> Self {
-        Self {
-            pack_store: None,
-            vidx_list: None,
-        }
-    }
-
-    pub fn with_pack_store<T: Into<PathBuf>>(self, ps: T) -> Self {
-        Self {
-            pack_store: Some(ps.into()),
-            ..self
-        }
-    }
-
-    pub fn with_vidx_list<T: Into<PathBuf>>(self, vl: T) -> Self {
-        Self {
-            vidx_list: Some(vl.into()),
-            ..self
-        }
-    }
-
-    pub fn build(self) -> Result<Config, Error> {
-        let app_info = AppInfo {
-            name: "cmsis",
-            author: "Arm",
-        };
-        let pack_store = match self.pack_store {
-            Some(ps) => {
-                if !(&ps).exists() {
-                    create_dir_all(&ps)?;
-                }
-                ps
-            }
-            None => app_root(AppDataType::UserData, &app_info)?,
-        };
-        let vidx_list = match self.vidx_list {
-            Some(vl) => {
-                let _ = OpenOptions::new().read(true).open(&vl)?;
-                vl
-            }
-            None => {
-                let mut vl = app_root(AppDataType::UserConfig, &app_info)?;
-                vl.push("vendors.list");
-                vl
-            }
-        };
-        Ok(Config {
-            pack_store,
-            vidx_list,
-        })
+impl DownloadConfig for Config {
+    fn pack_store(&self) -> PathBuf {
+        self.pack_store.clone() 
     }
 }
 
 impl Config {
     pub fn new() -> Result<Config, Error> {
-        ConfigBuilder::new().build()
+        let app_info = AppInfo {
+            name: "cmsis",
+            author: "Arm",
+        };
+        let pack_store = app_root(AppDataType::UserData, &app_info)?;
+        let vidx_list = {
+            let mut vl = app_root(AppDataType::UserConfig, &app_info)?;
+            vl.push("vendors.list");
+            vl
+        };
+        Ok(Config {
+            pack_store,
+            vidx_list,
+        })
     }
 
     pub fn read_vidx_list(&self, l: &Logger) -> Vec<String> {

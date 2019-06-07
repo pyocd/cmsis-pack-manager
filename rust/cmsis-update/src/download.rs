@@ -1,6 +1,6 @@
 use std::fs::{create_dir_all, rename, OpenOptions};
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{PathBuf, Path};
 
 use failure::Error;
 use futures::Stream;
@@ -10,15 +10,62 @@ use futures::stream::iter_ok;
 use hyper::{Body, Client, Uri};
 use hyper::client::Connect;
 use slog::Logger;
-use std::sync::Arc;
 
-use pack_index::config::Config;
+use pdsc::Package;
+use pack_index::PdscRef;
 
 use redirect::ClientRedirExt;
 
-pub(crate) trait IntoDownload {
-    fn into_uri(&self, &Config) -> Result<Uri, Error>;
-    fn into_fd(&self, &Config) -> PathBuf;
+pub trait DownloadConfig {
+    fn pack_store(&self) -> PathBuf;
+}
+
+pub trait IntoDownload {
+    fn into_uri(&self) -> Result<Uri, Error>;
+    fn into_fd<D: DownloadConfig>(&self, &D) -> PathBuf;
+}
+
+impl IntoDownload for PdscRef {
+    fn into_uri(&self) -> Result<Uri, Error> {
+        let &PdscRef {ref url, ref vendor, ref name, ..} = self;
+        let uri = if url.ends_with('/') {
+            format!("{}{}.{}.pdsc", url, vendor, name)
+        } else {
+            format!("{}/{}.{}.pdsc", url, vendor, name)
+        }.parse()?;
+        Ok(uri)
+    }
+
+    fn into_fd<D: DownloadConfig>(&self, config: &D) -> PathBuf {
+        let &PdscRef {ref vendor, ref name, ref version, ..} = self;
+        let mut filename = config.pack_store();
+        let pdscname = format!("{}.{}.{}.pdsc", vendor, name, version);
+        filename.push(pdscname);
+        filename
+    }
+}
+
+impl<'a> IntoDownload for &'a Package {
+    fn into_uri(&self) -> Result<Uri, Error> {
+        let &Package{ref name, ref vendor, ref url, ref releases, ..} = *self;
+        let version: &str = releases.latest_release().version.as_ref();
+        let uri = if url.ends_with('/') {
+            format!("{}{}.{}.{}.pack", url, vendor, name, version)
+        } else {
+            format!("{}/{}.{}.{}.pack", url, vendor, name, version)
+        }.parse()?;
+        Ok(uri)
+    }
+
+    fn into_fd<D: DownloadConfig>(&self, config: &D) -> PathBuf {
+        let &Package{ref name, ref vendor, ref releases, ..} = *self;
+        let version: &str = releases.latest_release().version.as_ref();
+        let mut filename = config.pack_store();
+        filename.push(Path::new(vendor));
+        filename.push(Path::new(name));
+        filename.push(format!("{}.pack", version));
+        filename
+    }
 }
 
 pub trait DownloadProgress: Send {
@@ -37,73 +84,89 @@ impl DownloadProgress for () {
     }
 }
 
-fn download_file<'b,  C: Connect, P: DownloadProgress + 'b>(
-    source: Uri,
-    dest: PathBuf,
-    client: &'b Client<C, Body>,
-    logger: &'b Logger,
-    spinner: Arc<P>
-) -> Box<Future<Item=(), Error=Error> + 'b> {
-    if !dest.exists() {
-        dest.parent().map(create_dir_all);
-        Box::new(client.redirectable(source, logger)
-             .from_err()
-             .and_then(move |res| {
-                let temp = dest.with_extension("part");
-                let fdf = result(OpenOptions::new()
-                    .write(true)
-                    .create(true)
-                    .open(&temp));
-                fdf.from_err().and_then(move |mut fd| {
-                    res.body().for_each(move |bytes| {
-                        spinner.progress(bytes.len());
-                        fd.write_all(bytes.as_ref())?;
-                        Ok(())
-                    }).then(move |_| {
-                        rename(&temp, &dest)?;
-                        Ok(())
-                    })
-                })
-            })
-        )
-    } else {
-        Box::new(ok(()))
-    }
+pub struct DownloadContext<'a, Conf, Prog, Con>
+where Conf: DownloadConfig,
+      Prog: DownloadProgress + 'a,
+      Con: Connect,
+{
+    config: &'a Conf,
+    prog:  Prog,
+    client: &'a Client<Con, Body>,
+    log: &'a Logger,
 }
 
-pub(crate) fn download_stream<'b, 'a: 'b, F, C, P: 'b, DL: 'a>(
-    config: &'a Config,
-    stream: F,
-    client: &'b Client<C, Body>,
-    logger: &'b Logger,
-    progress: P
-) -> Box<Stream<Item = PathBuf, Error = Error> + 'b>
-    where F: Stream<Item = DL, Error = Error> + 'b,
-          C: Connect,
-          DL: IntoDownload,
-          P: DownloadProgress
+impl<'a, Conf, Prog, Con> DownloadContext<'a, Conf, Prog, Con>
+where Conf: DownloadConfig,
+      Prog: DownloadProgress + 'a,
+      Con: Connect,
 {
-    let streaming_pathbuffs = 
-        stream.collect().map(move |to_dl|{
-            let len = to_dl.len();
-            progress.size(len);
-            iter_ok(to_dl).map(move |from| {
-                let dest = from.into_fd(config);
-                let source = from.into_uri(config);
-                let new_prog = Arc::new(progress.for_file(&dest.to_string_lossy()));
-                result(source).and_then(move |source| download_file(
-                    source.clone(), dest.clone(), client, logger, new_prog.clone()
-                    ).then(move |res| {
-                        new_prog.complete();
-                        match res {
-                            Ok(_) => Ok(Some(dest)),
-                            Err(e) => {
-                                slog_error!(logger, "download of {:?} failed: {}", source, e);
-                                Ok(None)
+    pub fn new(config: &'a Conf, prog: Prog, client: &'a Client<Con, Body>, log: &'a Logger) -> Self {
+        DownloadContext {
+            config,
+            prog,
+            client,
+            log
+        }
+    }
+
+    fn download_file(
+        &'a self,
+        source: Uri,
+        dest: PathBuf,
+    ) -> Box<Future<Item=(), Error=Error> + 'a> {
+        if !dest.exists() {
+            dest.parent().map(create_dir_all);
+            Box::new(self.client.redirectable(source, self.log)
+                 .from_err()
+                 .and_then(move |res| {
+                    let temp = dest.with_extension("part");
+                    let fdf = result(OpenOptions::new()
+                        .write(true)
+                        .create(true)
+                        .open(&temp));
+                    fdf.from_err().and_then(move |mut fd| {
+                        res.body().for_each(move |bytes| {
+                            self.prog.progress(bytes.len());
+                            fd.write_all(bytes.as_ref())?;
+                            Ok(())
+                        }).then(move |_| {
+                            rename(&temp, &dest)?;
+                            Ok(())
+                        })
+                    })
+                })
+            )
+        } else {
+            Box::new(ok(()))
+        }
+    }
+
+    pub fn download_stream<F, DL>(&'a self, stream: F) -> Box<Stream<Item = PathBuf, Error = Error> + 'a>
+    where F: Stream<Item = DL, Error = Error> + 'a,
+          DL: IntoDownload + 'a,
+    {
+        let streaming_pathbuffs = 
+            stream.collect().map(move |to_dl|{
+                let len = to_dl.len();
+                self.prog.size(len);
+                iter_ok(to_dl).map(move |from| {
+                    let dest = from.into_fd(self.config);
+                    let source = from.into_uri();
+                    result(source).and_then(move |source| self.download_file(
+                        source.clone(), dest.clone()
+                        ).then(move |res| {
+                            self.prog.complete();
+                            match res {
+                                Ok(_) => Ok(Some(dest)),
+                                Err(e) => {
+                                    slog_error!(self.log, "download of {:?} failed: {}", source, e);
+                                    Ok(None)
+                                }
                             }
-                        }
-                    }))
-            })
-        }).flatten_stream();
-    Box::new(streaming_pathbuffs.buffer_unordered(32).filter_map(|x| x))
+                        }))
+                })
+            }).flatten_stream();
+        Box::new(streaming_pathbuffs.buffer_unordered(32).filter_map(|x| x))
+    }
+
 }

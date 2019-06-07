@@ -14,7 +14,7 @@ use failure::{err_msg, Error};
 
 use cmsis_update::update;
 use cmsis_update::DownloadProgress;
-use pi::config::ConfigBuilder;
+use config::{ConfigBuilder, read_vidx_list, DEFAULT_VIDX_LIST};
 use utils::set_last_error;
 
 pub struct UpdateReturn(pub(crate) Vec<PathBuf>);
@@ -93,11 +93,18 @@ cffi!{
         } else {
             conf_bld
         };
-        let conf_bld = if !vidx_list.is_null() {
+        extern crate slog_term;
+        extern crate slog_async;
+        use slog::Drain;
+        let decorator = slog_term::TermDecorator::new().build();
+        let drain = slog_term::FullFormat::new(decorator).build().fuse();
+        let drain = slog_async::Async::new(drain).build().fuse();
+        let log = Logger::root(drain, o!());
+        let vidx_list = if !vidx_list.is_null() {
             let vlist = unsafe { CStr::from_ptr(vidx_list) }.to_string_lossy();
-            conf_bld.with_vidx_list(vlist.into_owned())
+            read_vidx_list(vlist.as_ref().as_ref(), &log)
         } else {
-            conf_bld
+            DEFAULT_VIDX_LIST.iter().map(|s| String::from(*s)).collect()
         };
         let conf = conf_bld.build()?;
         let (send, recv) = channel();
@@ -106,14 +113,6 @@ cffi!{
         let thread = thread::Builder::new()
             .name("update".to_string())
             .spawn(move || {
-                extern crate slog_term;
-                extern crate slog_async;
-                use slog::Drain;
-                let decorator = slog_term::TermDecorator::new().build();
-                let drain = slog_term::FullFormat::new(decorator).build().fuse();
-                let drain = slog_async::Async::new(drain).build().fuse();
-                let log = Logger::root(drain, o!());
-                let vidx_list = conf.read_vidx_list(&log);
                 let res = update(
                     &conf, 
                     vidx_list, 

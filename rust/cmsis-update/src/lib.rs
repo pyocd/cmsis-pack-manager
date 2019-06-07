@@ -12,51 +12,30 @@ extern crate utils;
 extern crate pack_index;
 extern crate pdsc;
 
-use hyper::{Body, Client};
-use hyper::client::Connect;
+use hyper::Client;
 use hyper_rustls::HttpsConnector;
 use tokio_core::reactor::Core;
 use std::path::PathBuf;
 use slog::Logger;
 use failure::Error;
+use futures::stream::iter_ok;
+use futures::Stream;
 
-use pack_index::config::Config;
 use pdsc::Package;
 
-pub mod upgrade;
 mod redirect;
 mod vidx;
 mod download;
-mod dl_pdsc;
-mod dl_pack;
 
-use dl_pdsc::{update_future};
-use dl_pack::{install_future};
-pub use download::DownloadProgress;
-
-// This will "trick" the borrow checker into thinking that the lifetimes for
-// client and core are at least as big as the lifetime for pdscs, which they actually are
-fn update_inner<'a, C, I, P>(
-    config: &'a Config,
-    vidx_list: I,
-    core: &'a mut Core,
-    client: &'a Client<C, Body>,
-    logger: &'a Logger,
-    progress: P,
-) -> Result<Vec<PathBuf>, Error>
-where
-    C: Connect,
-    I: IntoIterator<Item = String>,
-    P: DownloadProgress + 'a,
-{
-    core.run(update_future(config, vidx_list, client, logger, progress))
-}
+use vidx::{download_vidx_list, flatmap_pdscs};
+pub use download::{DownloadConfig, DownloadContext, DownloadProgress};
 
 /// Flatten a list of Vidx Urls into a list of updated CMSIS packs
-pub fn update<I, P>(config: &Config, vidx_list: I, logger: &Logger, progress: P) -> Result<Vec<PathBuf>, Error>
+pub fn update<I, P, D>(config: &D, vidx_list: I, logger: &Logger, progress: P) -> Result<Vec<PathBuf>, Error>
 where
     I: IntoIterator<Item = String>,
     P: DownloadProgress,
+    D: DownloadConfig,
 {
     let mut core = Core::new().unwrap();
     let handle = core.handle();
@@ -64,30 +43,20 @@ where
         .keep_alive(true)
         .connector(HttpsConnector::new(4, &handle))
         .build(&handle);
-    update_inner(config, vidx_list, &mut core, &client, logger, progress)
-}
-
-// This will "trick" the borrow checker into thinking that the lifetimes for
-// client and core are at least as big as the lifetime for pdscs, which they actually are
-fn install_inner<'client, 'a: 'client, C, I: 'a, P: 'client>(
-    config: &'a Config,
-    pdsc_list: I,
-    core: &mut Core,
-    client: &'client Client<C, Body>,
-    logger: &'a Logger,
-    progress: P
-) -> Result<Vec<PathBuf>, Error>
-    where
-    C: Connect,
-    I: IntoIterator<Item = &'a Package>,
-    P: DownloadProgress + 'a
-{
-    core.run(install_future(config, pdsc_list, client, logger, progress))
+    let dl_cntx = DownloadContext::new(config, progress, &client, logger);
+    let fut = {
+        let parsed_vidx = download_vidx_list(vidx_list, &client, logger);
+        let pdsc_list = parsed_vidx
+            .filter_map(|vidx| vidx.map(|v| flatmap_pdscs(v, &client, logger)))
+            .flatten();
+        dl_cntx.download_stream(pdsc_list).collect()
+    };
+    core.run(fut)
 }
 
 /// Flatten a list of Vidx Urls into a list of updated CMSIS packs
-pub fn install<'a, I: 'a, P>(
-    config: &'a Config,
+pub fn install<'a, I: 'a, P, D>(
+    config: &'a D,
     pdsc_list: I,
     logger: &'a Logger,
     progress: P
@@ -95,6 +64,7 @@ pub fn install<'a, I: 'a, P>(
     where
     I: IntoIterator<Item = &'a Package>,
     P: DownloadProgress + 'a,
+    D: DownloadConfig,
 {
     let mut core = Core::new().unwrap();
     let handle = core.handle();
@@ -102,5 +72,9 @@ pub fn install<'a, I: 'a, P>(
         .keep_alive(true)
         .connector(HttpsConnector::new(4, &handle))
         .build(&handle);
-    install_inner(config, pdsc_list, &mut core, &client, logger, progress)
+    let dl_cntx = DownloadContext::new(config, progress, &client, logger);
+    let fut = {
+        dl_cntx.download_stream(iter_ok(pdsc_list)).collect()
+    };
+    core.run(fut)
 }

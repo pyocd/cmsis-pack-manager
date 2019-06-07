@@ -56,7 +56,7 @@ def test_empyt_cache():
     try:
         c.index
     except Exception:
-        assert(False, "Unexpected exception raised on an empyt cache")
+        assert False, "Unexpected exception raised on an empty cache"
 
 
 def test_pull_pdscs():

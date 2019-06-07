@@ -1,3 +1,4 @@
+extern crate app_dirs;
 extern crate clap;
 extern crate failure;
 
@@ -19,9 +20,12 @@ use clap::{ArgMatches, App, Arg, SubCommand};
 use pbr::ProgressBar;
 
 use cmsis_update::{install, update, DownloadProgress};
-use pack_index::config::Config;
 use pdsc::{dump_devices, Component, FileRef, Package};
 use utils::parse::FromElem;
+
+mod config;
+
+pub use config::Config;
 
 struct CliProgress(Arc<Mutex<ProgressBar<Stdout>>>);
 

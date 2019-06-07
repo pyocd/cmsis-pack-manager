@@ -8,5 +8,4 @@ minidom = "0.5.0"
 quick-xml = "0.7.3"
 slog = "^2"
 failure = "0.1.1"
-app_dirs = "1.2.1"
 utils = { path = "../utils" }
