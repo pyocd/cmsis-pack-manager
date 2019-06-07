@@ -23,7 +23,6 @@ use failure::Error;
 use pack_index::config::Config;
 use pdsc::Package;
 
-pub mod upgrade;
 mod redirect;
 mod vidx;
 mod download;
