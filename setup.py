@@ -44,15 +44,6 @@ def run(cmd):
     else:
         return stdout.strip()
 
-try:
-    # Use exact tag, when we're on a tag.
-    current_commit = run(["git", "log", "-n1", "--pretty=%h"])
-    exact_match = run(
-        ["git", "describe", "--exact-match", "--tags", current_commit.decode("utf-8")]
-    )
-    version = exact_match.decode("utf-8").strip("v")
-except subprocess.CalledProcessError:
-    version = "0.1.1"
 
 with open("requirements.txt") as inreq:
     install_requires = list(inreq)
@@ -61,10 +52,12 @@ with open("setup_requirements.txt") as setreq:
 with open("test_requirements.txt") as testreq:
     test_require = list(testreq)
 
-
 setup(
     name="cmsis-pack-manager",
-    version=version,
+    use_scm_version={
+        'local_scheme': 'dirty-tag',
+        'write_to': 'cmsis_pack_manager/_version.py',
+    },
     packages=["cmsis_pack_manager"],
     zip_safe=False,
     platforms='any',

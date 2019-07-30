@@ -4,6 +4,7 @@
 /rust/*/target/
 /build
 /dist
+/cmsis_pack_manager/_version.py
 **/_native.py
 **/_native__lib.so
 **/_native__ffi.py
