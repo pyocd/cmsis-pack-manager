@@ -51,8 +51,15 @@ try:
         ["git", "describe", "--exact-match", "--tags", current_commit.decode("utf-8")]
     )
     version = exact_match.decode("utf-8").strip("v")
+    with open("version.txt", "w") as vfile:
+        vfile.write(version)
 except subprocess.CalledProcessError:
-    version = "0.1.1"
+    try:
+        with open("version.txt", "r") as vfile:
+            version = vfile.read()
+            print("Found version in version.txt")
+    except IOError:
+        version = "0.1.1"
 
 with open("requirements.txt") as inreq:
     install_requires = list(inreq)
