@@ -1,4 +1,0 @@
-include *.txt
-recursive-include rust *.toml *.rs *.h
-prune rust/target
-prune rust/*/target
