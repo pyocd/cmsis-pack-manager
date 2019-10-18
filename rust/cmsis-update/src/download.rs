@@ -150,7 +150,7 @@ where
         &'a self,
         source: Url,
         dest: PathBuf,
-    ) -> Box<Future<Item = (), Error = Error> + 'a> {
+    ) -> Box<dyn Future<Item = (), Error = Error> + 'a> {
         if !dest.exists() {
             dest.parent().map(create_dir_all);
             Box::new(
@@ -185,7 +185,7 @@ where
     pub fn download_stream<F, DL>(
         &'a self,
         stream: F,
-    ) -> Box<Stream<Item = PathBuf, Error = Error> + 'a>
+    ) -> Box<dyn Stream<Item = PathBuf, Error = Error> + 'a>
     where
         F: Stream<Item = DL, Error = Error> + 'a,
         DL: IntoDownload + 'a,

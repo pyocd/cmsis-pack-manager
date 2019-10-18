@@ -222,7 +222,7 @@ impl FromElem for Bundle {
 fn child_to_component_iter(
     e: &Element,
     l: &Logger,
-) -> Result<Box<Iterator<Item = ComponentBuilder>>, Error> {
+) -> Result<Box<dyn Iterator<Item = ComponentBuilder>>, Error> {
     match e.name() {
         "bundle" => {
             let bundle = Bundle::from_elem(e, l)?;
