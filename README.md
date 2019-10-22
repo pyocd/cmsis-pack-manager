@@ -11,3 +11,19 @@ The last step of CI uploads binary wheels to [this S3 bucket.](http://mbed-os.s3
 # DOCS!
 
 They live here: https://armmbed.github.io/cmsis-pack-manager/
+
+# Building
+
+To build cmsis-pack-manager locally, Install a stable rust compiler.
+See https://rustup.rs/ for details on installing `rustup`, the rust
+toolchain updater. Afterwards, run `rustup update stable` to get the
+most recent stable rust toolchain and build system.
+
+After installing the rust toolchain and downloading a stable compiler,
+run `python2 setup.py bdist_wheel` from the root of this repo to
+generate a binary wheel (`.whl` file) in the same way as we release.
+
+For testing purposes, there is a CLI written in Rust within the rust
+workspace as the package `cmsis-cli`. For example From the `rust`
+directory, `cargo run -p cmsis-cli -- update` builds this testing
+CLI and runs the update command, for example.
