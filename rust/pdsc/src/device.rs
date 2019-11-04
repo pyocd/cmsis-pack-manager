@@ -374,12 +374,12 @@ fn merge_memories(lhs: Memories, rhs: &Memories) -> Memories {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Algorithm {
-    file_name: PathBuf,
-    start: u64,
-    size: u64,
-    default: bool,
-    ram_start: Option<u64>,
-    ram_size: Option<u64>,
+    pub file_name: PathBuf,
+    pub start: u64,
+    pub size: u64,
+    pub default: bool,
+    pub ram_start: Option<u64>,
+    pub ram_size: Option<u64>,
 }
 
 impl FromElem for Algorithm {
