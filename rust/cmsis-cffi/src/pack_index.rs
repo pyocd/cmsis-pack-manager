@@ -1,3 +1,5 @@
+#![allow(clippy::missing_safety_doc)]
+
 use slog::{Logger, o};
 use std::borrow::{Borrow, BorrowMut};
 use std::os::raw::c_char;
@@ -86,7 +88,7 @@ cffi!{
         pack_store: *const c_char,
         vidx_list: *const c_char,
     ) -> Result<*mut UpdatePoll> {
-        let conf_bld = ConfigBuilder::new();
+        let conf_bld = ConfigBuilder::default();
         let conf_bld = if !pack_store.is_null() {
             let pstore = unsafe { CStr::from_ptr(pack_store) }.to_string_lossy();
             conf_bld.with_pack_store(pstore.into_owned())
@@ -132,7 +134,7 @@ cffi!{
 
 
 #[no_mangle]
-pub extern "C" fn update_pdsc_poll(ptr: *mut UpdatePoll) -> bool {
+pub unsafe extern "C" fn update_pdsc_poll(ptr: *mut UpdatePoll) -> bool {
     if !ptr.is_null() {
         with_from_raw!(let mut boxed = ptr,{
             let (ret, next_state) = match mem::replace(boxed.borrow_mut(), UpdatePoll::Drained) {
@@ -160,13 +162,13 @@ pub extern "C" fn update_pdsc_poll(ptr: *mut UpdatePoll) -> bool {
 }
 
 #[no_mangle]
-pub extern "C" fn update_pdsc_get_status(ptr: *mut UpdatePoll) -> *mut DownloadUpdate {
+pub unsafe extern "C" fn update_pdsc_get_status(ptr: *mut UpdatePoll) -> *mut DownloadUpdate {
     if !ptr.is_null() {
         with_from_raw!(let boxed = ptr,{
             match boxed.borrow() {
-                &UpdatePoll::Complete(_) => null_mut(),
-                &UpdatePoll::Drained => null_mut(),
-                &UpdatePoll::Running(ref cont) => {
+                UpdatePoll::Complete(_) => null_mut(),
+                UpdatePoll::Drained => null_mut(),
+                UpdatePoll::Running(ref cont) => {
                     let response = cont.result_stream.try_recv();
                     match response {
                         Ok(inner) => Box::into_raw(Box::new(inner)),
@@ -189,7 +191,7 @@ cffi!{
 }
 
 #[no_mangle]
-pub extern "C" fn update_pdsc_result(ptr: *mut UpdatePoll) -> *mut UpdateReturn {
+pub unsafe extern "C" fn update_pdsc_result(ptr: *mut UpdatePoll) -> *mut UpdateReturn {
     if !ptr.is_null() {
         with_from_raw!(let mut boxed = ptr,{
             let (ret, next_state) = match mem::replace(boxed.borrow_mut(), UpdatePoll::Drained) {
@@ -244,7 +246,8 @@ cffi!{
         if !ptr.is_null() && !cstr.is_null() {
             with_from_raw!(let mut boxed = ptr, {
                 let pstore = unsafe { CStr::from_ptr(cstr) }.to_string_lossy();
-                Ok(boxed.0.push(pstore.into_owned().into()))
+                boxed.0.push(pstore.into_owned().into());
+                Ok(())
             })
         } else {
             Err(err_msg("update pdsc index push called with null"))

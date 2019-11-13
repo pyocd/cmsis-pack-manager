@@ -139,7 +139,7 @@ impl ProcessorBuilder {
     fn merge(self, parent: &Self) -> Self {
         ProcessorBuilder{
             core: self.core.or_else(|| parent.core.clone()),
-            units: self.units.or_else(|| parent.units.clone()),
+            units: self.units.or_else(|| parent.units),
             fpu: self.fpu.or_else(|| parent.fpu.clone()),
             mpu: self.mpu.or_else(|| parent.mpu.clone()),
         }
@@ -183,29 +183,29 @@ impl ProcessorsBuilder{
         match self {
             ProcessorsBuilder::Symmetric(me) =>
                 match parent {
-                    &Some(ProcessorsBuilder::Symmetric(ref single_core)) =>
+                    Some(ProcessorsBuilder::Symmetric(ref single_core)) =>
                         Ok(ProcessorsBuilder::Symmetric(me.merge(single_core))),
-                    &Some(ProcessorsBuilder::Asymmetric(_)) =>
+                    Some(ProcessorsBuilder::Asymmetric(_)) =>
                         Err(err_msg!("Tried to merge symmetric and asymmetric processors")),
-                    &None => Ok(ProcessorsBuilder::Symmetric(me)),
+                    None => Ok(ProcessorsBuilder::Symmetric(me)),
                 },
             ProcessorsBuilder::Asymmetric(mut me) =>
                 match parent {
-                    &Some(ProcessorsBuilder::Symmetric(_)) =>
+                    Some(ProcessorsBuilder::Symmetric(_)) =>
                         Err(err_msg!("Tried to merge asymmetric and symmetric processors")),
-                    &Some(ProcessorsBuilder::Asymmetric(ref par_map)) => {
+                    Some(ProcessorsBuilder::Asymmetric(ref par_map)) => {
                         me.extend(par_map.iter().map(|(k, v)| (k.clone(), v.clone())));
                         Ok(ProcessorsBuilder::Asymmetric(me))
                     },
-                    &None => Ok(ProcessorsBuilder::Asymmetric(me)),
+                    None => Ok(ProcessorsBuilder::Asymmetric(me)),
                 },
         }
     }
 
     fn merge_into(&mut self, other: Self) {
         match self {
-            &mut ProcessorsBuilder::Symmetric(_) => (),
-            &mut ProcessorsBuilder::Asymmetric(ref mut me) =>
+            ProcessorsBuilder::Symmetric(_) => (),
+            ProcessorsBuilder::Asymmetric(ref mut me) =>
                 match other {
                     ProcessorsBuilder::Symmetric(_) => (),
                     ProcessorsBuilder::Asymmetric(more) => me.extend(more.into_iter()),
@@ -215,7 +215,7 @@ impl ProcessorsBuilder{
 
     fn build(self) -> Result<Processors, Error> {
         match self {
-            ProcessorsBuilder::Symmetric(prc) => prc.build().map(|p| Processors::Symmetric(p)),
+            ProcessorsBuilder::Symmetric(prc) => prc.build().map(Processors::Symmetric),
             ProcessorsBuilder::Asymmetric(map) => {
                 let new_map: Result<BTreeMap<String, Processor>, Error> =
                     map.into_iter().map(|(name, prc)| match prc.build() {
@@ -569,7 +569,7 @@ fn parse_sub_family<'dom>(e: &'dom Element, l: &Logger) -> Vec<DeviceBuilder<'do
         .collect()
 }
 
-fn parse_family<'dom>(e: &Element, l: &Logger) -> Result<Vec<Device>, Error> {
+fn parse_family(e: &Element, l: &Logger) -> Result<Vec<Device>, Error> {
     let mut family_device = DeviceBuilder::from_elem(e);
     let all_devices = e.children()
         .flat_map(|child| match child.name() {

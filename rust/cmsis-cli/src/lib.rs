@@ -183,7 +183,7 @@ pub fn check_args<'a, 'b>() -> App<'a, 'b> {
 
 pub fn check_command<'a>(_: &Config, args: &ArgMatches<'a>, l: &Logger) -> Result<(), Error> {
     let filename = args.value_of("INPUT").unwrap();
-    match Package::from_path(Path::new(filename.clone()), &l) {
+    match Package::from_path(Path::new(filename), &l) {
         Ok(c) => {
             info!(l, "Parsing succedded");
             info!(l, "{} Valid Conditions", c.conditions.0.iter().count());

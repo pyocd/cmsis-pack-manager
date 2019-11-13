@@ -47,7 +47,7 @@ impl FromElem for Releases {
         let to_ret: Vec<_> = e.children()
             .flat_map(|c| Release::from_elem(c, l).ok_warn(l))
             .collect();
-        if to_ret.len() == 0usize {
+        if to_ret.is_empty() {
             Err(err_msg!("There must be at least one release!"))
         } else {
             Ok(Releases(to_ret))
@@ -94,7 +94,7 @@ impl<'a> DumpDevice<'a> {
             memories: Cow::Borrowed(&dev.memories),
             algorithms: Cow::Borrowed(&dev.algorithms),
             processor: Cow::Borrowed(&dev.processor),
-            from_pack: from_pack,
+            from_pack,
             vendor: dev.vendor.as_ref().map(String::as_str),
             family: &dev.family,
             sub_family: dev.sub_family.as_ref().map(String::as_str),

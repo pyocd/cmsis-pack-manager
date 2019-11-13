@@ -1,5 +1,5 @@
 use minidom::{Element, Error};
-use slog::{Logger, o};
+use slog::{Logger};
 use crate::utils::prelude::*;
 
 #[derive(Debug, Clone)]

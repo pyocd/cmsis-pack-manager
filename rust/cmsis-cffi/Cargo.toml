@@ -13,5 +13,7 @@ slog = "^2"
 slog-term = "^2"
 slog-async = "^2"
 failure = "0.1.1"
-
 cmsis-pack = { version = "0.1.0", path = "../cmsis-pack" }
+
+[build-dependencies]
+cbindgen = "0.9.1"
