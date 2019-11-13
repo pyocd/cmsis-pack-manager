@@ -37,7 +37,7 @@ pub fn attr_parse_hex<'a>(
         .and_then(|st| {
             if st.starts_with("0x") {
                 u64::from_str_radix(&st[2..], 16).map_err(|e| err_msg!("{}", e))
-            } else if st.starts_with("0") {
+            } else if st.starts_with('0') {
                 u64::from_str_radix(&st[1..], 8).map_err(|e| err_msg!("{}", e))
             } else {
                 u64::from_str_radix(st, 10).map_err(|e| err_msg!("{}", e))

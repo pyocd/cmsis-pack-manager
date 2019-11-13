@@ -7,7 +7,7 @@ use cmsis_pack::cmsis_update::DownloadConfig;
 use slog::{Logger, error, warn};
 use failure::{Error, err_msg};
 
-pub const DEFAULT_VIDX_LIST: [&'static str; 1] = [
+pub const DEFAULT_VIDX_LIST: [&str; 1] = [
     "http://www.keil.com/pack/index.pidx",
 ];
 
@@ -26,16 +26,9 @@ impl DownloadConfig for Config {
 }
 
 impl ConfigBuilder {
-    pub fn new() -> Self {
-        Self {
-            pack_store: None,
-        }
-    }
-
     pub fn with_pack_store<T: Into<PathBuf>>(self, ps: T) -> Self {
         Self {
             pack_store: Some(ps.into()),
-            ..self
         }
     }
 
@@ -52,9 +45,17 @@ impl ConfigBuilder {
     }
 }
 
+impl Default for ConfigBuilder {
+    fn default() -> Self {
+        Self {
+            pack_store: None,
+        }
+    }
+}
+
 impl Config {
     pub fn new() -> Result<Config, Error> {
-        ConfigBuilder::new().build()
+        ConfigBuilder::default().build()
     }
 }
 

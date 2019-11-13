@@ -111,9 +111,7 @@ impl DownloadProgress for () {
     fn size(&self, _: usize) {}
     fn progress(&self, _: usize) {}
     fn complete(&self) {}
-    fn for_file(&self, _: &str) -> Self {
-        ()
-    }
+    fn for_file(&self, _: &str) -> Self {}
 }
 
 pub struct DownloadContext<'a, Conf, Prog>

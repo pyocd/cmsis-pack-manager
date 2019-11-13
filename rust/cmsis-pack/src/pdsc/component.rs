@@ -233,10 +233,10 @@ fn child_to_component_iter(
             let component = ComponentBuilder::from_elem(e, l)?;
             Ok(Box::new(Some(component).into_iter()))
         }
-        _ => Err(Error::from_kind(ErrorKind::Msg(String::from(format!(
+        _ => Err(Error::from_kind(ErrorKind::Msg(format!(
             "element of name {} is not allowed as a descendant of components",
             e.name()
-        ))))),
+        )))),
     }
 }
 
