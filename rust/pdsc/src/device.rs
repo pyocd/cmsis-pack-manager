@@ -382,13 +382,16 @@ pub struct Algorithm {
     pub ram_size: Option<u64>,
 }
 
+
 impl FromElem for Algorithm {
     fn from_elem(e: &Element, _l: &Logger) -> Result<Self, Error> {
         let default = attr_parse(e, "default", "memory")
             .map(|nb: NumberBool| nb.into())
             .unwrap_or_default();
+
+        let file_name: &str = attr_map(e, "name", "algorithm")?;
         Ok(Self {
-            file_name: attr_map(e, "name", "algorithm")?,
+            file_name: file_name.replace("\\", "/").into(),
             start: attr_parse_hex(e, "start", "algorithm")?,
             size: attr_parse_hex(e, "size", "algorithm")?,
             ram_start: attr_parse_hex(e, "RAMstart", "algorithm").ok(),
