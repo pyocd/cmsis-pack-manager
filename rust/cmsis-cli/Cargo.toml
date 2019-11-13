@@ -4,6 +4,14 @@ name = "cmsis-cli"
 version = "0.1.0"
 edition = "2018"
 
+[lib]
+name = "cmsis_cli"
+path = "src/lib.rs"
+
+[[bin]]
+name = "cmsis-cli"
+path = "src/main.rs"
+
 [dependencies]
 app_dirs = "1.2.1"
 clap = "2.19.0"
@@ -13,14 +21,4 @@ slog-async = "^2"
 slog-term = "^2"
 pbr = "^1.0.0"
 
-[dependencies.cmsis-update]
-path = "../cmsis-update"
-
-[dependencies.pack-index]
-path = "../pack-index"
-
-[dependencies.pdsc]
-path = "../pdsc"
-
-[dependencies.utils]
-path = "../utils"
+cmsis-pack = { version = "0.1.0", path = "../cmsis-pack" }

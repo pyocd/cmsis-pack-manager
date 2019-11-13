@@ -1,4 +1,4 @@
-use slog::Logger;
+use slog::{o, Logger};
 use std::os::raw::c_char;
 use std::ffi::CStr;
 use std::sync::Arc;
@@ -8,11 +8,11 @@ use std::thread;
 
 use failure::err_msg;
 
-use cmsis_update::install;
-use config::ConfigBuilder;
+use cmsis_pack::cmsis_update::install;
+use crate::config::ConfigBuilder;
 
-use pdsc::ParsedPacks;
-use pack_index::{DownloadSender, UpdatePoll, RunningUpdateContext, UpdateReturn};
+use crate::pdsc::ParsedPacks;
+use crate::pack_index::{DownloadSender, UpdatePoll, RunningUpdateContext, UpdateReturn};
 
 cffi!{
     fn update_packs(

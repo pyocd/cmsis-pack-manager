@@ -1,10 +1,11 @@
 use std::str::FromStr;
 use std::path::PathBuf;
 
-use slog::Logger;
+use slog::{Logger, o, warn, error};
 use minidom::{Element, Error, ErrorKind};
+use serde::Serialize;
 
-use utils::parse::{FromElem, assert_root_name, attr_map, child_text, get_child_no_ns, attr_parse};
+use crate::utils::prelude::*;
 
 #[derive(Debug, PartialEq, Eq, Clone, Serialize)]
 pub enum FileCategory{

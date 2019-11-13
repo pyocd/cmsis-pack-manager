@@ -1,15 +1,16 @@
-extern crate minidom;
-extern crate quick_xml;
-#[macro_use]
-extern crate slog;
+pub(crate) mod parse;
+pub(crate) mod prelude;
+
+pub use parse::FromElem;
+
+use std::fmt::Display;
+use slog::{Logger, warn, error};
 
 pub trait ResultLogExt<T, E> {
     fn ok_warn(self, log: &Logger) -> Option<T>;
     fn ok_error(self, log: &Logger) -> Option<T>;
 }
 
-use std::fmt::Display;
-use slog::Logger;
 impl<T, E> ResultLogExt<T, E> for Result<T, E>
     where
     E: Display,
@@ -33,5 +34,3 @@ impl<T, E> ResultLogExt<T, E> for Result<T, E>
         }
     }
 }
-
-pub mod parse;

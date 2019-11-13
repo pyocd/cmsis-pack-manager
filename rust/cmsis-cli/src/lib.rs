@@ -7,9 +7,9 @@ use clap::{ArgMatches, App, Arg, SubCommand};
 use pbr::ProgressBar;
 use slog::{debug, info, warn, error};
 
-use cmsis_update::{install, update, DownloadProgress};
-use pdsc::{dump_devices, Component, FileRef, Package};
-use utils::parse::FromElem;
+use cmsis_pack::cmsis_update::{install, update, DownloadProgress};
+use cmsis_pack::pdsc::{dump_devices, Component, FileRef, Package};
+use cmsis_pack::utils::FromElem;
 
 mod config;
 

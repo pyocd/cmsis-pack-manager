@@ -2,11 +2,11 @@ use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use minidom::{Error, ErrorKind, Element};
-use slog::Logger;
+use minidom::{Error, Element};
+use slog::{Logger};
+use serde::{Serialize, Deserialize};
 
-use utils::parse::{attr_map, attr_parse, attr_parse_hex, FromElem};
-use utils::ResultLogExt;
+use crate::utils::prelude::*;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 enum Core {

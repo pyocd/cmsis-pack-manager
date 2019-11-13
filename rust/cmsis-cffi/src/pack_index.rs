@@ -1,4 +1,4 @@
-use slog::Logger;
+use slog::{Logger, o};
 use std::borrow::{Borrow, BorrowMut};
 use std::os::raw::c_char;
 use std::ffi::{CStr, CString};
@@ -12,10 +12,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use failure::{err_msg, Error};
 
-use cmsis_update::update;
-use cmsis_update::DownloadProgress;
-use config::{ConfigBuilder, read_vidx_list, DEFAULT_VIDX_LIST};
-use utils::set_last_error;
+use cmsis_pack::cmsis_update::update;
+use cmsis_pack::cmsis_update::DownloadProgress;
+use crate::config::{ConfigBuilder, read_vidx_list, DEFAULT_VIDX_LIST};
+use crate::utils::set_last_error;
 
 pub struct UpdateReturn(pub(crate) Vec<PathBuf>);
 

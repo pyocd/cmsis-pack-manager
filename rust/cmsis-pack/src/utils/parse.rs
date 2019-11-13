@@ -3,16 +3,18 @@ use std::fmt::Display;
 use std::path::Path;
 use std::io::BufRead;
 
-use minidom::{Element, Children, Error, ErrorKind};
+use minidom::{Element, Children, Error};
 use quick_xml::reader::Reader;
 use slog::Logger;
-
-use crate::ResultLogExt;
+use super::ResultLogExt;
 
 #[macro_export]
 macro_rules! err_msg {
     ($($arg:tt)*) => {
-        Error::from_kind(ErrorKind::Msg(format!($($arg)*)))
+        {
+            use minidom::ErrorKind;
+            Error::from_kind(ErrorKind::Msg(format!($($arg)*)))
+        }
     };
 }
 

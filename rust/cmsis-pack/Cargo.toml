@@ -1,0 +1,38 @@
+[package]
+authors = ["Jimmy Brisson <theotherjimmy@gmail.com>"]
+name = "cmsis-pack"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+minidom = "0.5.0"
+quick-xml = "0.7.3"
+slog = "^2"
+failure = "0.1.1"
+serde = "^1.0.89"
+serde_derive = "^1.0.89"
+serde_json = "1.0"
+futures = "0.1.25"
+slog-term = "^2"
+slog-async = "^2"
+tokio-core = "0.1.17"
+rustc-demangle = "=0.1.13"
+
+reqwest = { version = "0.9.21", default_features = false, features = ["rustls-tls"] }
+
+
+# [dependencies.cmsis-cffi]
+# optional = true
+# path = "cmsis-cffi"
+
+# [dependencies.cmsis-cli]
+# optional = true
+# path = "cmsis-cli"
+
+[dev-dependencies]
+time = "*"
+
+[features]
+default = []
+# cffi = ["cmsis-cffi"]
+# cli = ["cmsis-cli"]

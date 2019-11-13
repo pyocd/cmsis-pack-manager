@@ -1,4 +1,4 @@
-use slog::{Logger, Drain};
+use slog::{Logger, Drain, o};
 use slog_term::{TermDecorator, FullFormat};
 use slog_async::Async;
 use std::borrow::Cow;
@@ -8,11 +8,11 @@ use std::path::{Path, PathBuf};
 
 use failure::err_msg;
 
-use cmsis_utils::ResultLogExt;
-use cmsis_utils::parse::FromElem;
-use pack_desc::{self, dump_devices, Package};
+use cmsis_pack::utils::ResultLogExt;
+use cmsis_pack::utils::FromElem;
+use cmsis_pack::pdsc::{dump_devices, Package};
 
-use pack_index::UpdateReturn;
+use crate::pack_index::UpdateReturn;
 
 cffi!{
     fn dump_pdsc_json(
@@ -102,7 +102,7 @@ cffi!{
     fn dumps_components(ptr: *mut ParsedPacks) -> Result<*const c_char> {
         with_from_raw!(let boxed = ptr, {
             let pdscs = boxed.iter();
-            let dumped_components = pack_desc::dumps_components(pdscs)?;
+            let dumped_components = cmsis_pack::pdsc::dumps_components(pdscs)?;
             Ok(CString::new(dumped_components).unwrap().into_raw())
         })
     }

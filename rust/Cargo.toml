@@ -1,34 +1,9 @@
-[package]
-authors = ["Jimmy Brisson <theotherjimmy@gmail.com>"]
-name = "cmsis"
-version = "0.1.0"
-
-[dependencies.cmsis-cffi]
-optional = true
-path = "cmsis-cffi"
-
-[dependencies.cmsis-cli]
-optional = true
-path = "cmsis-cli"
-
-[dependencies.cmsis-update]
-path = "cmsis-update"
-
-[dependencies.pack-index]
-path = "pack-index"
-
-[dependencies.pdsc]
-path = "pdsc"
-
-[dev-dependencies]
-time = "*"
-
-[features]
-default = []
-cffi = ["cmsis-cffi"]
-cli = ["cmsis-cli"]
+[workspace]
+members = [
+    "cmsis-pack",
+    "cmsis-cffi",
+    "cmsis-cli"
+]
 
 [profile.release]
 debug = true
-
-[workspace]
