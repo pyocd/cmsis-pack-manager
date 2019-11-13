@@ -2,6 +2,8 @@
 authors = ["Jimmy Brisson <theotherjimmy@gmail.com>"]
 name = "cmsis-cli"
 version = "0.1.0"
+edition = "2018"
+
 [dependencies]
 app_dirs = "1.2.1"
 clap = "2.19.0"

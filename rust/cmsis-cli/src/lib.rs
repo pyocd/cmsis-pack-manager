@@ -1,16 +1,3 @@
-extern crate app_dirs;
-extern crate clap;
-extern crate failure;
-
-#[macro_use]
-extern crate slog;
-
-extern crate cmsis_update;
-extern crate utils;
-extern crate pack_index;
-extern crate pdsc;
-extern crate pbr;
-
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::io::Stdout;
@@ -18,6 +5,7 @@ use slog::Logger;
 use failure::Error;
 use clap::{ArgMatches, App, Arg, SubCommand};
 use pbr::ProgressBar;
+use slog::{debug, info, warn, error};
 
 use cmsis_update::{install, update, DownloadProgress};
 use pdsc::{dump_devices, Component, FileRef, Package};

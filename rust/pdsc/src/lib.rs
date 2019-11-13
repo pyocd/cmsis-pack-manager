@@ -25,9 +25,9 @@ use failure::Error as FailError;
 mod component;
 mod condition;
 mod device;
-pub use component::{ComponentBuilders, FileRef};
-pub use condition::{Condition, Conditions};
-pub use device::{Device, Devices, Memories, Algorithm, Processors};
+pub use crate::component::{ComponentBuilders, FileRef};
+pub use crate::condition::{Condition, Conditions};
+pub use crate::device::{Device, Devices, Memories, Algorithm, Processors};
 
 pub struct Release {
     pub version: String,

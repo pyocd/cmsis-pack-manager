@@ -7,7 +7,7 @@ use minidom::{Element, Children, Error, ErrorKind};
 use quick_xml::reader::Reader;
 use slog::Logger;
 
-use ResultLogExt;
+use crate::ResultLogExt;
 
 #[macro_export]
 macro_rules! err_msg {

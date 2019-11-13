@@ -1,14 +1,4 @@
-#[macro_use]
-extern crate slog;
-extern crate slog_term;
-extern crate slog_async;
-extern crate clap;
-extern crate cmsis_update;
-extern crate pack_index;
-extern crate pdsc;
-extern crate failure;
-extern crate cmsis_cli;
-
+use slog::{o, debug};
 use cmsis_cli::{
     Config,
     update_args,

@@ -5,6 +5,7 @@ use std::fs::{create_dir_all, OpenOptions};
 use app_dirs::{app_root, AppDataType, AppInfo};
 use slog::Logger;
 use failure::Error;
+use slog::{warn, error};
 
 use cmsis_update::DownloadConfig;
 

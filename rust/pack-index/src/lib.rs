@@ -1,9 +1,3 @@
-extern crate minidom;
-extern crate quick_xml;
-extern crate utils;
-extern crate slog;
-extern crate failure;
-
 use minidom::{Element, Error};
 use slog::Logger;
 use utils::parse::{assert_root_name, attr_map, child_text, get_child_no_ns, FromElem};

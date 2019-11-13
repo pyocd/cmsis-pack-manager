@@ -8,9 +8,9 @@ use futures::future::{ok, result};
 use futures::prelude::Future;
 use futures::stream::{futures_unordered, iter_ok};
 use futures::Stream;
-use reqwest::async::{Chunk, Client, ClientBuilder, Response};
+use reqwest::r#async::{Chunk, Client, ClientBuilder, Response};
 use reqwest::{RedirectPolicy, Url, UrlError};
-use slog::Logger;
+use slog::{Logger, o, slog_error, error};
 
 use pack_index::{PdscRef, Pidx, Vidx};
 use pdsc::Package;
@@ -31,7 +31,7 @@ pub trait DownloadConfig {
 
 pub trait IntoDownload {
     fn into_uri(&self) -> Result<Url, UrlError>;
-    fn into_fd<D: DownloadConfig>(&self, &D) -> PathBuf;
+    fn into_fd<D: DownloadConfig>(&self, _: &D) -> PathBuf;
 }
 
 impl IntoDownload for PdscRef {
