@@ -1,33 +1,21 @@
-#[macro_use]
-extern crate utils;
-#[macro_use]
-extern crate slog;
-#[macro_use]
-extern crate serde_derive;
-extern crate serde_json;
-extern crate failure;
-
-extern crate pack_index;
-extern crate minidom;
-
 use std::borrow::Cow;
 use std::fs::OpenOptions;
 use std::io::Read;
 use std::path::Path;
 use std::collections::{HashMap, BTreeMap};
-use minidom::{Element, Error, ErrorKind};
-use slog::Logger;
+use minidom::{Element, Error};
+use slog::{Logger, o, warn};
+use serde::{Serialize, Deserialize};
 
-use utils::parse::{assert_root_name, attr_map, child_text, get_child_no_ns, FromElem};
-use utils::ResultLogExt;
+use crate::utils::prelude::*;
 use failure::Error as FailError;
 
 mod component;
 mod condition;
 mod device;
-pub use crate::component::{ComponentBuilders, FileRef};
-pub use crate::condition::{Condition, Conditions};
-pub use crate::device::{Device, Devices, Memories, Algorithm, Processors};
+pub use component::{ComponentBuilders, FileRef};
+pub use condition::{Condition, Conditions};
+pub use device::{Device, Devices, Memories, Algorithm, Processors};
 
 pub struct Release {
     pub version: String,

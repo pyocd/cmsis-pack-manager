@@ -7,7 +7,7 @@ use slog::Logger;
 use failure::Error;
 use slog::{warn, error};
 
-use cmsis_update::DownloadConfig;
+use cmsis_pack::cmsis_update::DownloadConfig;
 
 pub struct Config {
     pub pack_store: PathBuf,

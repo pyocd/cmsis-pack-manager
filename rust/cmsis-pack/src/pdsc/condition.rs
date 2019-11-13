@@ -1,8 +1,7 @@
 use minidom::{Element, Error};
-use slog::Logger;
+use slog::{Logger, warn};
 
-use utils::parse::{FromElem, assert_root_name, attr_map};
-use utils::ResultLogExt;
+use crate::utils::prelude::*;
 
 pub struct ConditionComponent {
     pub device_family: Option<String>,

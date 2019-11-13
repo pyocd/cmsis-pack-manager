@@ -2,9 +2,9 @@ use std::path::{Path, PathBuf};
 use std::io::{BufRead, BufReader, Write};
 use std::fs::{create_dir_all, OpenOptions};
 
-use cmsis_update::DownloadConfig;
+use cmsis_pack::cmsis_update::DownloadConfig;
 
-use slog::Logger;
+use slog::{Logger, error, warn};
 use failure::{Error, err_msg};
 
 pub const DEFAULT_VIDX_LIST: [&'static str; 1] = [

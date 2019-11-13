@@ -12,9 +12,9 @@ use reqwest::r#async::{Chunk, Client, ClientBuilder, Response};
 use reqwest::{RedirectPolicy, Url, UrlError};
 use slog::{Logger, o, slog_error, error};
 
-use pack_index::{PdscRef, Pidx, Vidx};
-use pdsc::Package;
-use utils::parse::FromElem;
+use crate::pack_index::{PdscRef, Pidx, Vidx};
+use crate::pdsc::Package;
+use crate::utils::parse::FromElem;
 
 fn parse_vidx(body: Chunk, logger: &Logger) -> Result<Vidx, minidom::Error> {
     let string = String::from_utf8_lossy(body.as_ref());

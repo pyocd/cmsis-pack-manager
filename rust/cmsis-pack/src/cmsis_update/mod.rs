@@ -1,3 +1,5 @@
+mod download;
+
 use failure::Error;
 use std::path::PathBuf;
 
@@ -6,12 +8,10 @@ use futures::Stream;
 use slog::Logger;
 use tokio_core::reactor::Core;
 
-use pdsc::Package;
+use crate::pdsc::Package;
 
-mod download;
-
-use crate::download::DownloadContext;
-pub use crate::download::{DownloadConfig, DownloadProgress};
+use self::download::DownloadContext;
+pub use self::download::{DownloadConfig, DownloadProgress};
 
 type Result<T> = std::result::Result<T, Error>;
 
