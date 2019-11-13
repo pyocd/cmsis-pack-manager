@@ -3,6 +3,8 @@ pub(crate) mod prelude;
 
 pub use parse::FromElem;
 
+use log;
+
 use std::fmt::Display;
 
 pub trait ResultLogExt<T, E> {
@@ -11,7 +13,7 @@ pub trait ResultLogExt<T, E> {
 }
 
 impl<T, E> ResultLogExt<T, E> for Result<T, E>
-    where
+where
     E: Display,
 {
     fn ok_warn(self) -> Option<T> {

@@ -1,14 +1,12 @@
-use std::path::{Path, PathBuf};
-use std::io::{BufRead, BufReader, Write};
 use std::fs::{create_dir_all, OpenOptions};
+use std::io::{BufRead, BufReader, Write};
+use std::path::{Path, PathBuf};
 
 use cmsis_pack::cmsis_update::DownloadConfig;
 
-use failure::{Error, err_msg};
+use failure::{err_msg, Error};
 
-pub const DEFAULT_VIDX_LIST: [&str; 1] = [
-    "http://www.keil.com/pack/index.pidx",
-];
+pub const DEFAULT_VIDX_LIST: [&str; 1] = ["http://www.keil.com/pack/index.pidx"];
 
 pub struct Config {
     pack_store: PathBuf,
@@ -38,17 +36,13 @@ impl ConfigBuilder {
                 return Err(err_msg("Pack Store missing"));
             }
         };
-        Ok(Config {
-            pack_store,
-        })
+        Ok(Config { pack_store })
     }
 }
 
 impl Default for ConfigBuilder {
     fn default() -> Self {
-        Self {
-            pack_store: None,
-        }
+        Self { pack_store: None }
     }
 }
 
@@ -71,10 +65,8 @@ pub fn read_vidx_list(vidx_list: &Path) -> Vec<String> {
             .collect(),
         Err(_) => {
             log::warn!("Failed to open vendor index list read only. Recreating.");
-            let new_content: Vec<String> = DEFAULT_VIDX_LIST
-                .iter()
-                .map(|s| String::from(*s))
-                .collect();
+            let new_content: Vec<String> =
+                DEFAULT_VIDX_LIST.iter().map(|s| String::from(*s)).collect();
             match vidx_list.parent() {
                 Some(par) => {
                     create_dir_all(par).unwrap_or_else(|e| {
@@ -89,11 +81,7 @@ pub fn read_vidx_list(vidx_list: &Path) -> Vec<String> {
                     log::error!("Could not get parent directory for vendors.list");
                 }
             }
-            match OpenOptions::new()
-                .create(true)
-                .write(true)
-                .open(vidx_list)
-            {
+            match OpenOptions::new().create(true).write(true).open(vidx_list) {
                 Ok(mut fd) => {
                     let lines = new_content.join("\n");
                     fd.write_all(lines.as_bytes()).unwrap_or_else(|e| {
@@ -106,4 +94,3 @@ pub fn read_vidx_list(vidx_list: &Path) -> Vec<String> {
         }
     }
 }
-

@@ -1,10 +1,10 @@
+use minidom::{Element, Error};
+use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
+use std::collections::{BTreeMap, HashMap};
 use std::fs::OpenOptions;
 use std::io::Read;
 use std::path::Path;
-use std::collections::{HashMap, BTreeMap};
-use minidom::{Element, Error};
-use serde::{Serialize, Deserialize};
 
 use crate::utils::prelude::*;
 use failure::Error as FailError;
@@ -14,7 +14,7 @@ mod condition;
 mod device;
 pub use component::{ComponentBuilders, FileRef};
 pub use condition::{Condition, Conditions};
-pub use device::{Device, Devices, Memories, Algorithm, Processors, Core};
+pub use device::{Algorithm, Core, Device, Devices, Memories, Processors};
 
 pub struct Release {
     pub version: String,
@@ -43,7 +43,8 @@ impl Releases {
 impl FromElem for Releases {
     fn from_elem(e: &Element) -> Result<Self, Error> {
         assert_root_name(e, "releases")?;
-        let to_ret: Vec<_> = e.children()
+        let to_ret: Vec<_> = e
+            .children()
             .flat_map(|c| Release::from_elem(c).ok_warn())
             .collect();
         if to_ret.is_empty() {
@@ -54,7 +55,6 @@ impl FromElem for Releases {
     }
 }
 
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DumpDevice<'a> {
     name: &'a str,
@@ -64,7 +64,7 @@ pub struct DumpDevice<'a> {
     from_pack: FromPack<'a>,
     vendor: Option<&'a str>,
     family: &'a str,
-    sub_family: Option<&'a str>
+    sub_family: Option<&'a str>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -121,11 +121,7 @@ impl FromElem for Package {
         let description: String = child_text(e, "description", "package")?;
         let vendor: String = child_text(e, "vendor", "package")?;
         let url: String = child_text(e, "url", "package")?;
-        log::info!(
-            "Working on {}::{}",
-            vendor,
-            name,
-        );
+        log::info!("Working on {}::{}", vendor, name,);
         let components = get_child_no_ns(e, "components")
             .and_then(|c| ComponentBuilders::from_elem(c).ok_warn())
             .unwrap_or_default();
@@ -166,7 +162,8 @@ impl FromElem for Board {
     fn from_elem(e: &Element) -> Result<Self, Error> {
         Ok(Self {
             name: attr_map(e, "name", "board")?,
-            mounted_devices: e.children()
+            mounted_devices: e
+                .children()
                 .flat_map(|c| match c.name() {
                     "mountedDevice" => attr_map(c, "Dname", "mountedDevice").ok(),
                     _ => None,
@@ -202,25 +199,23 @@ impl Package {
             .0
             .clone()
             .into_iter()
-            .map(|comp| {
-                Component {
-                    vendor: comp.vendor.unwrap_or_else(|| self.vendor.clone()),
-                    class: comp.class.unwrap(),
-                    group: comp.group.unwrap(),
-                    sub_group: comp.sub_group,
-                    variant: comp.variant,
-                    version: comp.version.unwrap_or_else(|| {
-                        self.releases.latest_release().version.clone()
-                    }),
-                    api_version: comp.api_version,
-                    condition: comp.condition,
-                    max_instances: comp.max_instances,
-                    is_default: comp.is_default,
-                    deprecated: comp.deprecated,
-                    description: comp.description,
-                    rte_addition: comp.rte_addition,
-                    files: comp.files,
-                }
+            .map(|comp| Component {
+                vendor: comp.vendor.unwrap_or_else(|| self.vendor.clone()),
+                class: comp.class.unwrap(),
+                group: comp.group.unwrap(),
+                sub_group: comp.sub_group,
+                variant: comp.variant,
+                version: comp
+                    .version
+                    .unwrap_or_else(|| self.releases.latest_release().version.clone()),
+                api_version: comp.api_version,
+                condition: comp.condition,
+                max_instances: comp.max_instances,
+                is_default: comp.is_default,
+                deprecated: comp.deprecated,
+                description: comp.description,
+                rte_addition: comp.rte_addition,
+                files: comp.files,
             })
             .collect()
     }
@@ -245,11 +240,8 @@ impl Package {
         self.devices
             .0
             .iter()
-            .map(|(name, d)| {
-                (name.as_str(), DumpDevice::from_device(d, from_pack.clone()))
-            })
+            .map(|(name, d)| (name.as_str(), DumpDevice::from_device(d, from_pack.clone())))
             .collect()
-
     }
 }
 pub fn dump_devices<'a, P: AsRef<Path>, I: IntoIterator<Item = &'a Package>>(
@@ -319,7 +311,8 @@ pub fn dump_devices<'a, P: AsRef<Path>, I: IntoIterator<Item = &'a Package>>(
 }
 
 pub fn dumps_components<'a, I>(pdscs: I) -> Result<String, FailError>
-    where I: IntoIterator<Item = &'a Package>,
+where
+    I: IntoIterator<Item = &'a Package>,
 {
     let components = pdscs
         .into_iter()

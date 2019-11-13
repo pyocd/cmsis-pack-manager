@@ -16,3 +16,4 @@ cmsis-pack = { version = "0.1.0", path = "../cmsis-pack" }
 
 [build-dependencies]
 cbindgen = "0.9.1"
+cmsis-pack = { version = "0.1.0", path = "../cmsis-pack" }

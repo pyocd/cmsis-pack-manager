@@ -2,8 +2,8 @@ use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use minidom::{Error, Element};
-use serde::{Serialize, Deserialize};
+use minidom::{Element, Error};
+use serde::{Deserialize, Serialize};
 
 use crate::utils::prelude::*;
 
@@ -43,26 +43,26 @@ impl FromStr for Core {
     type Err = Error;
     fn from_str(from: &str) -> Result<Self, Error> {
         match from {
-            "Cortex-M0" =>  Ok(Core::CortexM0),
+            "Cortex-M0" => Ok(Core::CortexM0),
             "Cortex-M0+" => Ok(Core::CortexM0Plus),
-            "Cortex-M1" =>  Ok(Core::CortexM1),
-            "Cortex-M3" =>  Ok(Core::CortexM3),
-            "Cortex-M4" =>  Ok(Core::CortexM4),
-            "Cortex-M7" =>  Ok(Core::CortexM7),
+            "Cortex-M1" => Ok(Core::CortexM1),
+            "Cortex-M3" => Ok(Core::CortexM3),
+            "Cortex-M4" => Ok(Core::CortexM4),
+            "Cortex-M7" => Ok(Core::CortexM7),
             "Cortex-M23" => Ok(Core::CortexM23),
             "Cortex-M33" => Ok(Core::CortexM33),
-            "SC000" =>      Ok(Core::SC000),
-            "SC300" =>      Ok(Core::SC300),
-            "ARMV8MBL" =>   Ok(Core::ARMV8MBL),
-            "ARMV8MML" =>   Ok(Core::ARMV8MML),
-            "Cortex-R4" =>  Ok(Core::CortexR4),
-            "Cortex-R5" =>  Ok(Core::CortexR5),
-            "Cortex-R7" =>  Ok(Core::CortexR7),
-            "Cortex-R8" =>  Ok(Core::CortexR8),
-            "Cortex-A5" =>  Ok(Core::CortexA5),
-            "Cortex-A7" =>  Ok(Core::CortexA7),
-            "Cortex-A8" =>  Ok(Core::CortexA8),
-            "Cortex-A9" =>  Ok(Core::CortexA9),
+            "SC000" => Ok(Core::SC000),
+            "SC300" => Ok(Core::SC300),
+            "ARMV8MBL" => Ok(Core::ARMV8MBL),
+            "ARMV8MML" => Ok(Core::ARMV8MML),
+            "Cortex-R4" => Ok(Core::CortexR4),
+            "Cortex-R5" => Ok(Core::CortexR5),
+            "Cortex-R7" => Ok(Core::CortexR7),
+            "Cortex-R8" => Ok(Core::CortexR8),
+            "Cortex-A5" => Ok(Core::CortexA5),
+            "Cortex-A7" => Ok(Core::CortexA7),
+            "Cortex-A8" => Ok(Core::CortexA8),
+            "Cortex-A9" => Ok(Core::CortexA9),
             "Cortex-A15" => Ok(Core::CortexA15),
             "Cortex-A17" => Ok(Core::CortexA17),
             "Cortex-A32" => Ok(Core::CortexA32),
@@ -136,7 +136,7 @@ struct ProcessorBuilder {
 
 impl ProcessorBuilder {
     fn merge(self, parent: &Self) -> Self {
-        ProcessorBuilder{
+        ProcessorBuilder {
             core: self.core.or_else(|| parent.core.clone()),
             units: self.units.or_else(|| parent.units),
             fpu: self.fpu.or_else(|| parent.fpu.clone()),
@@ -144,8 +144,8 @@ impl ProcessorBuilder {
         }
     }
 
-    fn build(self) -> Result<Processor, Error>{
-        Ok(Processor{
+    fn build(self) -> Result<Processor, Error> {
+        Ok(Processor {
             core: self.core.ok_or_else(|| err_msg!("No Core found!"))?,
             units: self.units.unwrap_or(1u8),
             fpu: self.fpu.unwrap_or(FPU::None),
@@ -156,7 +156,7 @@ impl ProcessorBuilder {
 
 impl FromElem for ProcessorBuilder {
     fn from_elem(e: &Element) -> Result<Self, Error> {
-        Ok(ProcessorBuilder{
+        Ok(ProcessorBuilder {
             core: attr_parse(e, "Dcore", "processor").ok(),
             units: attr_parse(e, "Punits", "processor").ok(),
             fpu: attr_parse(e, "Dfpu", "processor").ok(),
@@ -177,38 +177,38 @@ enum ProcessorsBuilder {
     Asymmetric(BTreeMap<String, ProcessorBuilder>),
 }
 
-impl ProcessorsBuilder{
+impl ProcessorsBuilder {
     fn merge(self, parent: &Option<Self>) -> Result<Self, Error> {
         match self {
-            ProcessorsBuilder::Symmetric(me) =>
-                match parent {
-                    Some(ProcessorsBuilder::Symmetric(ref single_core)) =>
-                        Ok(ProcessorsBuilder::Symmetric(me.merge(single_core))),
-                    Some(ProcessorsBuilder::Asymmetric(_)) =>
-                        Err(err_msg!("Tried to merge symmetric and asymmetric processors")),
-                    None => Ok(ProcessorsBuilder::Symmetric(me)),
-                },
-            ProcessorsBuilder::Asymmetric(mut me) =>
-                match parent {
-                    Some(ProcessorsBuilder::Symmetric(_)) =>
-                        Err(err_msg!("Tried to merge asymmetric and symmetric processors")),
-                    Some(ProcessorsBuilder::Asymmetric(ref par_map)) => {
-                        me.extend(par_map.iter().map(|(k, v)| (k.clone(), v.clone())));
-                        Ok(ProcessorsBuilder::Asymmetric(me))
-                    },
-                    None => Ok(ProcessorsBuilder::Asymmetric(me)),
-                },
+            ProcessorsBuilder::Symmetric(me) => match parent {
+                Some(ProcessorsBuilder::Symmetric(ref single_core)) => {
+                    Ok(ProcessorsBuilder::Symmetric(me.merge(single_core)))
+                }
+                Some(ProcessorsBuilder::Asymmetric(_)) => Err(err_msg!(
+                    "Tried to merge symmetric and asymmetric processors"
+                )),
+                None => Ok(ProcessorsBuilder::Symmetric(me)),
+            },
+            ProcessorsBuilder::Asymmetric(mut me) => match parent {
+                Some(ProcessorsBuilder::Symmetric(_)) => Err(err_msg!(
+                    "Tried to merge asymmetric and symmetric processors"
+                )),
+                Some(ProcessorsBuilder::Asymmetric(ref par_map)) => {
+                    me.extend(par_map.iter().map(|(k, v)| (k.clone(), v.clone())));
+                    Ok(ProcessorsBuilder::Asymmetric(me))
+                }
+                None => Ok(ProcessorsBuilder::Asymmetric(me)),
+            },
         }
     }
 
     fn merge_into(&mut self, other: Self) {
         match self {
             ProcessorsBuilder::Symmetric(_) => (),
-            ProcessorsBuilder::Asymmetric(ref mut me) =>
-                match other {
-                    ProcessorsBuilder::Symmetric(_) => (),
-                    ProcessorsBuilder::Asymmetric(more) => me.extend(more.into_iter()),
-                }
+            ProcessorsBuilder::Asymmetric(ref mut me) => match other {
+                ProcessorsBuilder::Symmetric(_) => (),
+                ProcessorsBuilder::Asymmetric(more) => me.extend(more.into_iter()),
+            },
         }
     }
 
@@ -216,11 +216,13 @@ impl ProcessorsBuilder{
         match self {
             ProcessorsBuilder::Symmetric(prc) => prc.build().map(Processors::Symmetric),
             ProcessorsBuilder::Asymmetric(map) => {
-                let new_map: Result<BTreeMap<String, Processor>, Error> =
-                    map.into_iter().map(|(name, prc)| match prc.build() {
+                let new_map: Result<BTreeMap<String, Processor>, Error> = map
+                    .into_iter()
+                    .map(|(name, prc)| match prc.build() {
                         Ok(new_prc) => Ok((name, new_prc)),
-                        Err(e) => Err(e)
-                    }).collect();
+                        Err(e) => Err(e),
+                    })
+                    .collect();
                 Ok(Processors::Asymmetric(new_map?))
             }
         }
@@ -230,14 +232,15 @@ impl ProcessorsBuilder{
 impl FromElem for ProcessorsBuilder {
     fn from_elem(e: &Element) -> Result<Self, Error> {
         Ok(match e.attr("Pname") {
-            Some(name) => ProcessorsBuilder::Asymmetric(Some((name.to_string(), ProcessorBuilder::from_elem(e)?))
-                                                        .into_iter()
-                                                        .collect()),
-            None => ProcessorsBuilder::Symmetric(ProcessorBuilder::from_elem(e)?)
+            Some(name) => ProcessorsBuilder::Asymmetric(
+                Some((name.to_string(), ProcessorBuilder::from_elem(e)?))
+                    .into_iter()
+                    .collect(),
+            ),
+            None => ProcessorsBuilder::Symmetric(ProcessorBuilder::from_elem(e)?),
         })
     }
 }
-
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MemoryPermissions {
@@ -277,12 +280,12 @@ impl MemoryPermissions {
     }
 }
 
-enum NumberBool{
+enum NumberBool {
     False,
     True,
 }
 
-impl Into<bool> for NumberBool{
+impl Into<bool> for NumberBool {
     fn into(self) -> bool {
         match self {
             NumberBool::True => true,
@@ -299,7 +302,10 @@ impl FromStr for NumberBool {
             "1" => Ok(NumberBool::True),
             "false" => Ok(NumberBool::False),
             "0" => Ok(NumberBool::False),
-            unknown => Err(err_msg!("unkown boolean found in merory startup {}", unknown)),
+            unknown => Err(err_msg!(
+                "unkown boolean found in merory startup {}",
+                unknown
+            )),
         }
     }
 }
@@ -317,19 +323,18 @@ struct MemElem(String, Memory);
 
 impl FromElem for MemElem {
     fn from_elem(e: &Element) -> Result<Self, Error> {
-        let access = MemoryPermissions::from_str(
-            e.attr("access")
-            .unwrap_or_else(|| {
-                let memtype = e.attr("id").unwrap_or_default();
-                if memtype.contains("ROM") {
-                    "rx"
-                } else if memtype.contains("RAM") {
-                    "rw"
-                } else {
-                    ""
-                }
-            }));
-        let name = e.attr("id")
+        let access = MemoryPermissions::from_str(e.attr("access").unwrap_or_else(|| {
+            let memtype = e.attr("id").unwrap_or_default();
+            if memtype.contains("ROM") {
+                "rx"
+            } else if memtype.contains("RAM") {
+                "rw"
+            } else {
+                ""
+            }
+        }));
+        let name = e
+            .attr("id")
             .or_else(|| e.attr("name"))
             .map(|s| s.to_string())
             .ok_or_else(|| err_msg!("No name found for memory"))?;
@@ -358,12 +363,15 @@ impl FromElem for MemElem {
 pub struct Memories(pub HashMap<String, Memory>);
 
 fn merge_memories(lhs: Memories, rhs: &Memories) -> Memories {
-    let rhs: Vec<_> = rhs.0
+    let rhs: Vec<_> = rhs
+        .0
         .iter()
-        .filter_map(|(k, v)| if lhs.0.contains_key(k) {
-            None
-        } else {
-            Some((k.clone(), v.clone()))
+        .filter_map(|(k, v)| {
+            if lhs.0.contains_key(k) {
+                None
+            } else {
+                Some((k.clone(), v.clone()))
+            }
         })
         .collect();
     let mut lhs = lhs;
@@ -380,7 +388,6 @@ pub struct Algorithm {
     pub ram_start: Option<u64>,
     pub ram_size: Option<u64>,
 }
-
 
 impl FromElem for Algorithm {
     fn from_elem(e: &Element) -> Result<Self, Error> {
@@ -408,7 +415,7 @@ struct DeviceBuilder<'dom> {
     processor: Option<ProcessorsBuilder>,
     vendor: Option<&'dom str>,
     family: Option<&'dom str>,
-    sub_family: Option<&'dom str>
+    sub_family: Option<&'dom str>,
 }
 
 #[derive(Debug, Serialize)]
@@ -445,12 +452,14 @@ impl<'dom> DeviceBuilder<'dom> {
     }
 
     fn build(self) -> Result<Device, Error> {
-        let name = self.name.map(|s| s.into()).ok_or_else(|| {
-            err_msg!("Device found without a name")
-        })?;
-        let family = self.family.map(|s| s.into()).ok_or_else(|| {
-            err_msg!("Device found without a family")
-        })?;
+        let name = self
+            .name
+            .map(|s| s.into())
+            .ok_or_else(|| err_msg!("Device found without a name"))?;
+        let family = self
+            .family
+            .map(|s| s.into())
+            .ok_or_else(|| err_msg!("Device found without a family"))?;
         Ok(Device {
             processor: match self.processor {
                 Some(pb) => pb.build()?,
@@ -502,7 +511,8 @@ impl<'dom> DeviceBuilder<'dom> {
 
 fn parse_device<'dom>(e: &'dom Element) -> Vec<DeviceBuilder<'dom>> {
     let mut device = DeviceBuilder::from_elem(e);
-    let variants = e.children()
+    let variants = e
+        .children()
         .filter_map(|child| match child.name() {
             "variant" => Some(DeviceBuilder::from_elem(child)),
             "memory" => {
@@ -538,7 +548,8 @@ fn parse_device<'dom>(e: &'dom Element) -> Vec<DeviceBuilder<'dom>> {
 
 fn parse_sub_family<'dom>(e: &'dom Element) -> Vec<DeviceBuilder<'dom>> {
     let mut sub_family_device = DeviceBuilder::from_elem(e);
-    let devices = e.children()
+    let devices = e
+        .children()
         .flat_map(|child| match child.name() {
             "device" => parse_device(child),
             "memory" => {
@@ -570,7 +581,8 @@ fn parse_sub_family<'dom>(e: &'dom Element) -> Vec<DeviceBuilder<'dom>> {
 
 fn parse_family(e: &Element) -> Result<Vec<Device>, Error> {
     let mut family_device = DeviceBuilder::from_elem(e);
-    let all_devices = e.children()
+    let all_devices = e
+        .children()
         .flat_map(|child| match child.name() {
             "subFamily" => parse_sub_family(child),
             "device" => parse_device(child),
@@ -607,18 +619,15 @@ pub struct Devices(pub HashMap<String, Device>);
 impl FromElem for Devices {
     fn from_elem(e: &Element) -> Result<Self, Error> {
         e.children()
-            .fold(
-                Ok(HashMap::new()),
-                |res, c| match (res, parse_family(c)) {
-                    (Ok(mut devs), Ok(add_this)) => {
-                        devs.extend(add_this.into_iter().map(|dev| (dev.name.clone(), dev)));
-                        Ok(devs)
-                    }
-                    (Ok(_), Err(e)) => Err(e),
-                    (Err(e), Ok(_)) => Err(e),
-                    (Err(e), Err(_)) => Err(e),
-                },
-            )
+            .fold(Ok(HashMap::new()), |res, c| match (res, parse_family(c)) {
+                (Ok(mut devs), Ok(add_this)) => {
+                    devs.extend(add_this.into_iter().map(|dev| (dev.name.clone(), dev)));
+                    Ok(devs)
+                }
+                (Ok(_), Err(e)) => Err(e),
+                (Err(e), Ok(_)) => Err(e),
+                (Err(e), Err(_)) => Err(e),
+            })
             .map(Devices)
     }
 }
