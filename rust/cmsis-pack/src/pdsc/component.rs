@@ -1,7 +1,6 @@
 use std::str::FromStr;
 use std::path::PathBuf;
 
-use slog::{Logger, o, warn, error};
 use minidom::{Element, Error, ErrorKind};
 use serde::Serialize;
 
@@ -76,7 +75,7 @@ pub struct FileRef {
 }
 
 impl FromElem for FileRef {
-    fn from_elem(e: &Element, _: &Logger) -> Result<Self, Error> {
+    fn from_elem(e: &Element) -> Result<Self, Error> {
         assert_root_name(e, "file")?;
         Ok(Self {
             path: attr_map(e, "name", "file")?,
@@ -109,28 +108,26 @@ pub struct ComponentBuilder {
 }
 
 impl FromElem for ComponentBuilder {
-    fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
+    fn from_elem(e: &Element) -> Result<Self, Error> {
         assert_root_name(e, "component")?;
-        let mut l = l.new(o!("in" => "Component"));
         let vendor: Option<String> = attr_map(e, "Cvendor", "component").ok();
-        if let Some(v) = vendor.clone() {
-            l = l.new(o!("Vendor" => v));
-        }
         let class: Option<String> = attr_map(e, "Cclass", "component").ok();
-        if let Some(c) = class.clone() {
-            l = l.new(o!("Class" => c));
-        }
         let group: Option<String> = attr_map(e, "Cgroup", "component").ok();
-        if let Some(g) = group.clone() {
-            l = l.new(o!("Group" => g));
-        }
         let sub_group: Option<String> = attr_map(e, "Csub", "component").ok();
-        if let Some(s) = vendor.clone() {
-            l = l.new(o!("SubGroup" => s));
-        }
+        let vendor_string = vendor.clone().unwrap_or_else(|| "Vendor".into());
+        let class_string = class.clone().unwrap_or_else(|| "Class".into());
+        let group_string = group.clone().unwrap_or_else(|| "Group".into());
+        let sub_group_string = sub_group.clone().unwrap_or_else(|| "SubGroup".into());
         let files = get_child_no_ns(e, "files")
             .map(move |child| {
-                FileRef::vec_from_children(child.children(), &l)
+                log::info!(
+                    "Working on {}::{}::{}::{}",
+                    vendor_string,
+                    class_string,
+                    group_string,
+                    sub_group_string,
+                );
+                FileRef::vec_from_children(child.children())
             })
             .unwrap_or_default();
         Ok(Self {
@@ -166,17 +163,12 @@ pub struct Bundle {
 }
 
 impl Bundle {
-    pub fn into_components(self, l: &Logger) -> Vec<ComponentBuilder> {
+    pub fn into_components(self) -> Vec<ComponentBuilder> {
         let class = self.class;
         let version = self.version;
         let vendor = self.vendor;
         if self.components.is_empty() {
-            let mut l = l.new(o!("in" => "Bundle",
-                                 "Class" => class.clone()));
-            if let Some(v) = vendor.clone() {
-                l = l.new(o!("Vendor" => v));
-            }
-            warn!(l, "Bundle should not be empty")
+            log::warn!("Bundle should not be empty")
         }
         self.components
             .into_iter()
@@ -193,17 +185,17 @@ impl Bundle {
 }
 
 impl FromElem for Bundle {
-    fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
+    fn from_elem(e: &Element) -> Result<Self, Error> {
         assert_root_name(e, "bundle")?;
         let name: String = attr_map(e, "Cbundle", "bundle")?;
         let class: String = attr_map(e, "Cclass", "bundle")?;
         let version: String = attr_map(e, "Cversion", "bundle")?;
-        let l = l.new(o!("Bundle" => name.clone(),
-                         "Class" => class.clone(),
-                         "Version" => version.clone()));
+        // let l = l.new(o!("Bundle" => name.clone(),
+        //                  "Class" => class.clone(),
+        //                  "Version" => version.clone()));
         let components = e.children()
             .filter_map(move |chld| if chld.name() == "component" {
-                ComponentBuilder::from_elem(chld, &l).ok()
+                ComponentBuilder::from_elem(chld).ok()
             } else {
                 None
             })
@@ -222,15 +214,14 @@ impl FromElem for Bundle {
 
 fn child_to_component_iter(
     e: &Element,
-    l: &Logger,
 ) -> Result<Box<dyn Iterator<Item = ComponentBuilder>>, Error> {
     match e.name() {
         "bundle" => {
-            let bundle = Bundle::from_elem(e, l)?;
-            Ok(Box::new(bundle.into_components(l).into_iter()))
+            let bundle = Bundle::from_elem(e)?;
+            Ok(Box::new(bundle.into_components().into_iter()))
         }
         "component" => {
-            let component = ComponentBuilder::from_elem(e, l)?;
+            let component = ComponentBuilder::from_elem(e)?;
             Ok(Box::new(Some(component).into_iter()))
         }
         _ => Err(Error::from_kind(ErrorKind::Msg(format!(
@@ -244,14 +235,14 @@ fn child_to_component_iter(
 pub struct ComponentBuilders(pub(crate) Vec<ComponentBuilder>);
 
 impl FromElem for ComponentBuilders {
-    fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
+    fn from_elem(e: &Element) -> Result<Self, Error> {
         assert_root_name(e, "components")?;
         Ok(ComponentBuilders(
             e.children()
-                .flat_map(move |c| match child_to_component_iter(c, l) {
+                .flat_map(move |c| match child_to_component_iter(c) {
                     Ok(iter) => iter,
                     Err(e) => {
-                        error!(l, "when trying to parse component: {}", e);
+                        log::error!("when trying to parse component: {}", e);
                         Box::new(None.into_iter())
                     }
                 })

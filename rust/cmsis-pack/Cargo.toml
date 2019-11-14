@@ -7,7 +7,7 @@ edition = "2018"
 [dependencies]
 minidom = "0.5.0"
 quick-xml = "0.7.3"
-slog = "^2"
+log = "0.4.8"
 failure = "0.1.1"
 serde = "^1.0.89"
 serde_derive = "^1.0.89"

@@ -1,5 +1,4 @@
 use minidom::{Element, Error};
-use slog::{Logger, warn};
 
 use crate::utils::prelude::*;
 
@@ -12,7 +11,7 @@ pub struct ConditionComponent {
 }
 
 impl FromElem for ConditionComponent {
-    fn from_elem(e: &Element, _: &Logger) -> Result<Self, Error> {
+    fn from_elem(e: &Element) -> Result<Self, Error> {
         Ok(ConditionComponent {
             device_family: attr_map(e, "Dfamily", "condition").ok(),
             device_sub_family: attr_map(e, "Dsubfamily", "condition").ok(),
@@ -31,7 +30,7 @@ pub struct Condition {
 }
 
 impl FromElem for Condition {
-    fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
+    fn from_elem(e: &Element) -> Result<Self, Error> {
         assert_root_name(e, "condition")?;
         let mut accept = Vec::new();
         let mut deny = Vec::new();
@@ -39,17 +38,17 @@ impl FromElem for Condition {
         for elem in e.children() {
             match elem.name() {
                 "accept" => {
-                    accept.push(ConditionComponent::from_elem(e, l)?);
+                    accept.push(ConditionComponent::from_elem(e)?);
                 }
                 "deny" => {
-                    deny.push(ConditionComponent::from_elem(e, l)?);
+                    deny.push(ConditionComponent::from_elem(e)?);
                 }
                 "require" => {
-                    require.push(ConditionComponent::from_elem(e, l)?);
+                    require.push(ConditionComponent::from_elem(e)?);
                 }
                 "description" => {}
                 _ => {
-                    warn!(l, "Found unkonwn element {} in components", elem.name());
+                    log::warn!("Found unkonwn element {} in components", elem.name());
                 }
             }
         }
@@ -66,11 +65,11 @@ impl FromElem for Condition {
 pub struct Conditions(pub Vec<Condition>);
 
 impl FromElem for Conditions {
-    fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
+    fn from_elem(e: &Element) -> Result<Self, Error> {
         assert_root_name(e, "conditions")?;
         Ok(Conditions(
             e.children()
-                .flat_map(|c| Condition::from_elem(c, l).ok_warn(l))
+                .flat_map(|c| Condition::from_elem(c).ok_warn())
                 .collect(),
         ))
     }

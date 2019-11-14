@@ -4,31 +4,30 @@ pub(crate) mod prelude;
 pub use parse::FromElem;
 
 use std::fmt::Display;
-use slog::{Logger, warn, error};
 
 pub trait ResultLogExt<T, E> {
-    fn ok_warn(self, log: &Logger) -> Option<T>;
-    fn ok_error(self, log: &Logger) -> Option<T>;
+    fn ok_warn(self) -> Option<T>;
+    fn ok_error(self) -> Option<T>;
 }
 
 impl<T, E> ResultLogExt<T, E> for Result<T, E>
     where
     E: Display,
 {
-    fn ok_warn(self, log: &Logger) -> Option<T> {
+    fn ok_warn(self) -> Option<T> {
         match self {
             Ok(x) => Some(x),
             Err(e) => {
-                warn!(log, "{}", e);
+                log::warn!("{}", e);
                 None
             }
         }
     }
-    fn ok_error(self, log: &Logger) -> Option<T> {
+    fn ok_error(self) -> Option<T> {
         match self {
             Ok(x) => Some(x),
             Err(e) => {
-                error!(log, "{}", e);
+                log::error!("{}", e);
                 None
             }
         }

@@ -5,7 +5,6 @@ use std::io::BufRead;
 
 use minidom::{Element, Children, Error};
 use quick_xml::reader::Reader;
-use slog::Logger;
 use super::ResultLogExt;
 
 #[macro_export]
@@ -100,25 +99,25 @@ pub fn assert_root_name(from: &Element, name: &str) -> Result<(), Error> {
 
 
 pub trait FromElem: Sized {
-    fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error>;
+    fn from_elem(e: &Element) -> Result<Self, Error>;
 
-    fn from_reader<T: BufRead>(r: &mut Reader<T>, l: &Logger) -> Result<Self, Error> {
+    fn from_reader<T: BufRead>(r: &mut Reader<T>) -> Result<Self, Error> {
         let mut root = Element::from_reader(r)?;
         root.set_attr::<&str, Option<String>>("xmlns:xs", None);
-        Self::from_elem(&root, l)
+        Self::from_elem(&root)
     }
-    fn from_string(s: &str, l: &Logger) -> Result<Self, Error> {
+    fn from_string(s: &str) -> Result<Self, Error> {
         let mut r = Reader::from_str(s);
-        Self::from_reader(&mut r, l)
+        Self::from_reader(&mut r)
     }
-    fn from_path(p: &Path, l: &Logger) -> Result<Self, Error> {
+    fn from_path(p: &Path) -> Result<Self, Error> {
         let mut r = Reader::from_file(p)?;
-        Self::from_reader(&mut r, l)
+        Self::from_reader(&mut r)
     }
-    fn vec_from_children(clds: Children, l: &Logger) -> Vec<Self> {
+    fn vec_from_children(clds: Children) -> Vec<Self> {
         clds.flat_map(move |cld| {
-            Self::from_elem(cld, l)
-                .ok_warn(l)
+            Self::from_elem(cld)
+                .ok_warn()
                 .into_iter()
         }).collect()
     }
