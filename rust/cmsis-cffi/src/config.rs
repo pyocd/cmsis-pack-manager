@@ -4,7 +4,6 @@ use std::fs::{create_dir_all, OpenOptions};
 
 use cmsis_pack::cmsis_update::DownloadConfig;
 
-use slog::{Logger, error, warn};
 use failure::{Error, err_msg};
 
 pub const DEFAULT_VIDX_LIST: [&str; 1] = [
@@ -59,19 +58,19 @@ impl Config {
     }
 }
 
-pub fn read_vidx_list(vidx_list: &Path, l: &Logger) -> Vec<String> {
+pub fn read_vidx_list(vidx_list: &Path) -> Vec<String> {
     let fd = OpenOptions::new().read(true).open(vidx_list);
     match fd.map_err(Error::from) {
         Ok(r) => BufReader::new(r)
             .lines()
             .enumerate()
             .flat_map(|(linenum, line)| {
-                line.map_err(|e| error!(l, "Could not parse line #{}: {}", linenum, e))
+                line.map_err(|e| log::error!("Could not parse line #{}: {}", linenum, e))
                     .into_iter()
             })
             .collect(),
         Err(_) => {
-            warn!(l, "Failed to open vendor index list read only. Recreating.");
+            log::warn!("Failed to open vendor index list read only. Recreating.");
             let new_content: Vec<String> = DEFAULT_VIDX_LIST
                 .iter()
                 .map(|s| String::from(*s))
@@ -79,8 +78,7 @@ pub fn read_vidx_list(vidx_list: &Path, l: &Logger) -> Vec<String> {
             match vidx_list.parent() {
                 Some(par) => {
                     create_dir_all(par).unwrap_or_else(|e| {
-                        error!(
-                            l,
+                        log::error!(
                             "Could not create parent directory for vendor index list.\
                              Error: {}",
                             e
@@ -88,7 +86,7 @@ pub fn read_vidx_list(vidx_list: &Path, l: &Logger) -> Vec<String> {
                     });
                 }
                 None => {
-                    error!(l, "Could not get parent directory for vendors.list");
+                    log::error!("Could not get parent directory for vendors.list");
                 }
             }
             match OpenOptions::new()
@@ -99,13 +97,10 @@ pub fn read_vidx_list(vidx_list: &Path, l: &Logger) -> Vec<String> {
                 Ok(mut fd) => {
                     let lines = new_content.join("\n");
                     fd.write_all(lines.as_bytes()).unwrap_or_else(|e| {
-                        error!(l, "Could not create vendor list file: {}", e);
+                        log::error!("Could not create vendor list file: {}", e);
                     });
                 }
-                Err(e) => error!(
-                    l,
-                    "Could not open vendors index list file for writing {}", e
-                ),
+                Err(e) => log::error!("Could not open vendors index list file for writing {}", e),
             }
             new_content
         }

@@ -1,12 +1,3 @@
-// #[macro_use]
-// extern crate slog;
-// extern crate slog_term;
-// extern crate slog_async;
-// extern crate pack_index as pi;
-// extern crate pdsc as pack_desc;
-// extern crate utils as cmsis_utils;
-// extern crate failure;
-
 macro_rules! with_from_raw {
     (let $boxed:ident = $ptr:ident, $block:block) => {
         {

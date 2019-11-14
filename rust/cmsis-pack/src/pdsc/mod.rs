@@ -4,7 +4,6 @@ use std::io::Read;
 use std::path::Path;
 use std::collections::{HashMap, BTreeMap};
 use minidom::{Element, Error};
-use slog::{Logger, o, warn};
 use serde::{Serialize, Deserialize};
 
 use crate::utils::prelude::*;
@@ -23,7 +22,7 @@ pub struct Release {
 }
 
 impl FromElem for Release {
-    fn from_elem(e: &Element, _: &Logger) -> Result<Self, Error> {
+    fn from_elem(e: &Element) -> Result<Self, Error> {
         assert_root_name(e, "release")?;
         Ok(Self {
             version: attr_map(e, "version", "release")?,
@@ -42,10 +41,10 @@ impl Releases {
 }
 
 impl FromElem for Releases {
-    fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
+    fn from_elem(e: &Element) -> Result<Self, Error> {
         assert_root_name(e, "releases")?;
         let to_ret: Vec<_> = e.children()
-            .flat_map(|c| Release::from_elem(c, l).ok_warn(l))
+            .flat_map(|c| Release::from_elem(c).ok_warn())
             .collect();
         if to_ret.is_empty() {
             Err(err_msg!("There must be at least one release!"))
@@ -116,29 +115,31 @@ pub struct Package {
 }
 
 impl FromElem for Package {
-    fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
+    fn from_elem(e: &Element) -> Result<Self, Error> {
         assert_root_name(e, "package")?;
         let name: String = child_text(e, "name", "package")?;
         let description: String = child_text(e, "description", "package")?;
         let vendor: String = child_text(e, "vendor", "package")?;
         let url: String = child_text(e, "url", "package")?;
-        let l = l.new(o!("Vendor" => vendor.clone(),
-                         "Package" => name.clone()
-        ));
+        log::info!(
+            "Working on {}::{}",
+            vendor,
+            name,
+        );
         let components = get_child_no_ns(e, "components")
-            .and_then(|c| ComponentBuilders::from_elem(c, &l).ok_warn(&l))
+            .and_then(|c| ComponentBuilders::from_elem(c).ok_warn())
             .unwrap_or_default();
         let releases = get_child_no_ns(e, "releases")
-            .and_then(|c| Releases::from_elem(c, &l).ok_warn(&l))
+            .and_then(|c| Releases::from_elem(c).ok_warn())
             .unwrap_or_default();
         let conditions = get_child_no_ns(e, "conditions")
-            .and_then(|c| Conditions::from_elem(c, &l).ok_warn(&l))
+            .and_then(|c| Conditions::from_elem(c).ok_warn())
             .unwrap_or_default();
         let devices = get_child_no_ns(e, "devices")
-            .and_then(|c| Devices::from_elem(c, &l).ok_warn(&l))
+            .and_then(|c| Devices::from_elem(c).ok_warn())
             .unwrap_or_default();
         let boards = get_child_no_ns(e, "boards")
-            .map(|c| Board::vec_from_children(c.children(), &l))
+            .map(|c| Board::vec_from_children(c.children()))
             .unwrap_or_default();
         Ok(Self {
             name,
@@ -162,7 +163,7 @@ pub struct Board {
 }
 
 impl FromElem for Board {
-    fn from_elem(e: &Element, _: &Logger) -> Result<Self, Error> {
+    fn from_elem(e: &Element) -> Result<Self, Error> {
         Ok(Self {
             name: attr_map(e, "name", "board")?,
             mounted_devices: e.children()
@@ -224,11 +225,11 @@ impl Package {
             .collect()
     }
 
-    pub fn make_condition_lookup<'a>(&'a self, l: &Logger) -> HashMap<&'a str, &'a Condition> {
+    pub fn make_condition_lookup<'a>(&'a self) -> HashMap<&'a str, &'a Condition> {
         let mut map = HashMap::with_capacity(self.conditions.0.iter().count());
         for cond in self.conditions.0.iter() {
             if let Some(dup) = map.insert(cond.id.as_str(), cond) {
-                warn!(l, "Duplicate Condition found {}", dup.id);
+                log::warn!("Duplicate Condition found {}", dup.id);
             }
         }
         map
@@ -255,7 +256,6 @@ pub fn dump_devices<'a, P: AsRef<Path>, I: IntoIterator<Item = &'a Package>>(
     pdscs: I,
     device_dest: Option<P>,
     board_dest: Option<P>,
-    _: &Logger,
 ) -> Result<(), FailError> {
     let pdscs: Vec<&Package> = pdscs.into_iter().collect();
     let devices = pdscs

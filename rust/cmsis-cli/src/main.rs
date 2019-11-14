@@ -1,4 +1,3 @@
-use slog::{o, debug};
 use cmsis_cli::{
     Config,
     update_args,
@@ -11,7 +10,6 @@ use cmsis_cli::{
     dump_devices_command
 };
 use clap::{Arg, App};
-use slog::Drain;
 use failure::Error;
 
 fn main() {
@@ -28,36 +26,32 @@ fn main() {
         .subcommand(install_args())
         .get_matches();
 
-    let decorator = slog_term::TermDecorator::new().build();
-    let drain = slog_term::FullFormat::new(decorator).build().fuse();
-    let drain = slog_async::Async::new(drain).build().fuse();
-    let log = slog::Logger::root(drain, o!());
-
-    debug!(log, "Logging ready.");
+    simplelog::TermLogger::init(simplelog::LevelFilter::Info, simplelog::Config::default(), simplelog::TerminalMode::Mixed).unwrap();
+    log::debug!("Logging ready.");
 
     match matches.subcommand() {
         ("update", Some(sub_m)) => {
             Config::new()
                 .map_err(Error::from)
-                .and_then(|config| update_command(&config, sub_m, &log))
+                .and_then(|config| update_command(&config, sub_m))
                 .unwrap();
         }
         ("install", Some(sub_m)) => {
             Config::new()
                 .map_err(Error::from)
-                .and_then(|config| install_command(&config, sub_m, &log))
+                .and_then(|config| install_command(&config, sub_m))
                 .unwrap();
         }
         ("check", Some(sub_m)) => {
             Config::new()
                 .map_err(Error::from)
-                .and_then(|config| check_command(&config, sub_m, &log))
+                .and_then(|config| check_command(&config, sub_m))
                 .unwrap();
         }
         ("dump-devices", Some(sub_m)) => {
             Config::new()
                 .map_err(Error::from)
-                .and_then(|config| dump_devices_command(&config, sub_m, &log))
+                .and_then(|config| dump_devices_command(&config, sub_m))
                 .unwrap();
         }
         (bad_command, Some(_)) => {

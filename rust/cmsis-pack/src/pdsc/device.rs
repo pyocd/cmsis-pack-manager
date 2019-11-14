@@ -3,7 +3,6 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use minidom::{Error, Element};
-use slog::{Logger};
 use serde::{Serialize, Deserialize};
 
 use crate::utils::prelude::*;
@@ -156,7 +155,7 @@ impl ProcessorBuilder {
 }
 
 impl FromElem for ProcessorBuilder {
-    fn from_elem(e: &Element, _: &Logger) -> Result<Self, Error> {
+    fn from_elem(e: &Element) -> Result<Self, Error> {
         Ok(ProcessorBuilder{
             core: attr_parse(e, "Dcore", "processor").ok(),
             units: attr_parse(e, "Punits", "processor").ok(),
@@ -229,12 +228,12 @@ impl ProcessorsBuilder{
 }
 
 impl FromElem for ProcessorsBuilder {
-    fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
+    fn from_elem(e: &Element) -> Result<Self, Error> {
         Ok(match e.attr("Pname") {
-            Some(name) => ProcessorsBuilder::Asymmetric(Some((name.to_string(), ProcessorBuilder::from_elem(e, l)?))
+            Some(name) => ProcessorsBuilder::Asymmetric(Some((name.to_string(), ProcessorBuilder::from_elem(e)?))
                                                         .into_iter()
                                                         .collect()),
-            None => ProcessorsBuilder::Symmetric(ProcessorBuilder::from_elem(e, l)?)
+            None => ProcessorsBuilder::Symmetric(ProcessorBuilder::from_elem(e)?)
         })
     }
 }
@@ -317,7 +316,7 @@ struct Memory {
 struct MemElem(String, Memory);
 
 impl FromElem for MemElem {
-    fn from_elem(e: &Element, _l: &Logger) -> Result<Self, Error> {
+    fn from_elem(e: &Element) -> Result<Self, Error> {
         let access = MemoryPermissions::from_str(
             e.attr("access")
             .unwrap_or_else(|| {
@@ -384,7 +383,7 @@ pub struct Algorithm {
 
 
 impl FromElem for Algorithm {
-    fn from_elem(e: &Element, _l: &Logger) -> Result<Self, Error> {
+    fn from_elem(e: &Element) -> Result<Self, Error> {
         let default = attr_parse(e, "default", "memory")
             .map(|nb: NumberBool| nb.into())
             .unwrap_or_default();
@@ -501,26 +500,26 @@ impl<'dom> DeviceBuilder<'dom> {
     }
 }
 
-fn parse_device<'dom>(e: &'dom Element, l: &Logger) -> Vec<DeviceBuilder<'dom>> {
+fn parse_device<'dom>(e: &'dom Element) -> Vec<DeviceBuilder<'dom>> {
     let mut device = DeviceBuilder::from_elem(e);
     let variants = e.children()
         .filter_map(|child| match child.name() {
             "variant" => Some(DeviceBuilder::from_elem(child)),
             "memory" => {
-                FromElem::from_elem(child, l)
-                    .ok_warn(l)
+                FromElem::from_elem(child)
+                    .ok_warn()
                     .map(|mem| device.add_memory(mem));
                 None
             }
             "algorithm" => {
-                FromElem::from_elem(child, l)
-                    .ok_warn(l)
+                FromElem::from_elem(child)
+                    .ok_warn()
                     .map(|alg| device.add_algorithm(alg));
                 None
             }
             "processor" => {
-                FromElem::from_elem(child, l)
-                    .ok_warn(l)
+                FromElem::from_elem(child)
+                    .ok_warn()
                     .map(|prc| device.add_processor(prc));
                 None
             }
@@ -532,31 +531,31 @@ fn parse_device<'dom>(e: &'dom Element, l: &Logger) -> Vec<DeviceBuilder<'dom>> 
     } else {
         variants
             .into_iter()
-            .flat_map(|bld| bld.add_parent(&device).ok_warn(l))
+            .flat_map(|bld| bld.add_parent(&device).ok_warn())
             .collect()
     }
 }
 
-fn parse_sub_family<'dom>(e: &'dom Element, l: &Logger) -> Vec<DeviceBuilder<'dom>> {
+fn parse_sub_family<'dom>(e: &'dom Element) -> Vec<DeviceBuilder<'dom>> {
     let mut sub_family_device = DeviceBuilder::from_elem(e);
     let devices = e.children()
         .flat_map(|child| match child.name() {
-            "device" => parse_device(child, l),
+            "device" => parse_device(child),
             "memory" => {
-                FromElem::from_elem(child, l)
-                    .ok_warn(l)
+                FromElem::from_elem(child)
+                    .ok_warn()
                     .map(|mem| sub_family_device.add_memory(mem));
                 Vec::new()
             }
             "algorithm" => {
-                FromElem::from_elem(child, l)
-                    .ok_warn(l)
+                FromElem::from_elem(child)
+                    .ok_warn()
                     .map(|alg| sub_family_device.add_algorithm(alg));
                 Vec::new()
             }
             "processor" => {
-                FromElem::from_elem(child, l)
-                    .ok_warn(l)
+                FromElem::from_elem(child)
+                    .ok_warn()
                     .map(|prc| sub_family_device.add_processor(prc));
                 Vec::new()
             }
@@ -565,31 +564,31 @@ fn parse_sub_family<'dom>(e: &'dom Element, l: &Logger) -> Vec<DeviceBuilder<'do
         .collect::<Vec<_>>();
     devices
         .into_iter()
-        .flat_map(|bldr| bldr.add_parent(&sub_family_device).ok_warn(l))
+        .flat_map(|bldr| bldr.add_parent(&sub_family_device).ok_warn())
         .collect()
 }
 
-fn parse_family(e: &Element, l: &Logger) -> Result<Vec<Device>, Error> {
+fn parse_family(e: &Element) -> Result<Vec<Device>, Error> {
     let mut family_device = DeviceBuilder::from_elem(e);
     let all_devices = e.children()
         .flat_map(|child| match child.name() {
-            "subFamily" => parse_sub_family(child, &l),
-            "device" => parse_device(child, &l),
+            "subFamily" => parse_sub_family(child),
+            "device" => parse_device(child),
             "memory" => {
-                FromElem::from_elem(child, l)
-                    .ok_warn(l)
+                FromElem::from_elem(child)
+                    .ok_warn()
                     .map(|mem| family_device.add_memory(mem));
                 Vec::new()
             }
             "algorithm" => {
-                FromElem::from_elem(child, l)
-                    .ok_warn(l)
+                FromElem::from_elem(child)
+                    .ok_warn()
                     .map(|alg| family_device.add_algorithm(alg));
                 Vec::new()
             }
             "processor" => {
-                FromElem::from_elem(child, l)
-                    .ok_warn(l)
+                FromElem::from_elem(child)
+                    .ok_warn()
                     .map(|prc| family_device.add_processor(prc));
                 Vec::new()
             }
@@ -606,11 +605,11 @@ fn parse_family(e: &Element, l: &Logger) -> Result<Vec<Device>, Error> {
 pub struct Devices(pub HashMap<String, Device>);
 
 impl FromElem for Devices {
-    fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
+    fn from_elem(e: &Element) -> Result<Self, Error> {
         e.children()
             .fold(
                 Ok(HashMap::new()),
-                |res, c| match (res, parse_family(c, l)) {
+                |res, c| match (res, parse_family(c)) {
                     (Ok(mut devs), Ok(add_this)) => {
                         devs.extend(add_this.into_iter().map(|dev| (dev.name.clone(), dev)));
                         Ok(devs)

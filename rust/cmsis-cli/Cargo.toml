@@ -16,9 +16,8 @@ path = "src/main.rs"
 app_dirs = "1.2.1"
 clap = "2.19.0"
 failure = "0.1.1"
-slog = "^2"
-slog-async = "^2"
-slog-term = "^2"
+log = "0.4.8"
+simplelog = "0.7.4"
 pbr = "^1.0.0"
 
 cmsis-pack = { version = "0.1.0", path = "../cmsis-pack" }

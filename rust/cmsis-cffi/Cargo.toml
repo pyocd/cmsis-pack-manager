@@ -9,9 +9,8 @@ name = "cmsis_cffi"
 crate-type = ["cdylib"]
 
 [dependencies]
-slog = "^2"
-slog-term = "^2"
-slog-async = "^2"
+log = "0.4.8"
+simplelog = "0.7.4"
 failure = "0.1.1"
 cmsis-pack = { version = "0.1.0", path = "../cmsis-pack" }
 

@@ -1,6 +1,5 @@
 #![allow(clippy::missing_safety_doc)]
 
-use slog::{Logger, o};
 use std::borrow::{Borrow, BorrowMut};
 use std::os::raw::c_char;
 use std::ffi::{CStr, CString};
@@ -95,16 +94,10 @@ cffi!{
         } else {
             conf_bld
         };
-        extern crate slog_term;
-        extern crate slog_async;
-        use slog::Drain;
-        let decorator = slog_term::TermDecorator::new().build();
-        let drain = slog_term::FullFormat::new(decorator).build().fuse();
-        let drain = slog_async::Async::new(drain).build().fuse();
-        let log = Logger::root(drain, o!());
+        simplelog::TermLogger::init(simplelog::LevelFilter::Info, simplelog::Config::default(), simplelog::TerminalMode::Mixed).unwrap();
         let vidx_list = if !vidx_list.is_null() {
             let vlist = unsafe { CStr::from_ptr(vidx_list) }.to_string_lossy();
-            read_vidx_list(vlist.as_ref().as_ref(), &log)
+            read_vidx_list(vlist.as_ref().as_ref())
         } else {
             DEFAULT_VIDX_LIST.iter().map(|s| String::from(*s)).collect()
         };
@@ -117,8 +110,7 @@ cffi!{
             .spawn(move || {
                 let res = update(
                     &conf, 
-                    vidx_list, 
-                    &log, 
+                    vidx_list,
                     DownloadSender::from_sender(send)
                 ).map(UpdateReturn);
                 threads_done_flag.store(true, Ordering::Release);

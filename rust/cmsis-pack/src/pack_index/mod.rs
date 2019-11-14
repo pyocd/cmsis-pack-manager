@@ -1,5 +1,4 @@
 use minidom::{Element, Error};
-use slog::{Logger};
 use crate::utils::prelude::*;
 
 #[derive(Debug, Clone)]
@@ -32,7 +31,7 @@ pub struct Vidx {
 }
 
 impl FromElem for PdscRef {
-    fn from_elem(e: &Element, _: &Logger) -> Result<Self, Error> {
+    fn from_elem(e: &Element) -> Result<Self, Error> {
         assert_root_name(e, "pdsc")?;
         Ok(Self {
             url: attr_map(e, "url", "pdsc")?,
@@ -49,7 +48,7 @@ impl FromElem for PdscRef {
 
 
 impl FromElem for Pidx {
-    fn from_elem(e: &Element, _: &Logger) -> Result<Self, Error> {
+    fn from_elem(e: &Element) -> Result<Self, Error> {
         assert_root_name(e, "pidx")?;
         Ok(Self {
             url: attr_map(e, "url", "pidx")?,
@@ -60,7 +59,7 @@ impl FromElem for Pidx {
 }
 
 impl FromElem for Vidx {
-    fn from_elem(root: &Element, l: &Logger) -> Result<Self, Error> {
+    fn from_elem(root: &Element) -> Result<Self, Error> {
         assert_root_name(root, "index")?;
         let vendor = child_text(root, "vendor", "index")?;
         let url = child_text(root, "url", "index")?;
@@ -69,10 +68,10 @@ impl FromElem for Vidx {
             url,
             timestamp: get_child_no_ns(root, "timestamp").map(Element::text),
             vendor_index: get_child_no_ns(root, "vindex")
-                .map(|e| Pidx::vec_from_children(e.children(), &l))
+                .map(|e| Pidx::vec_from_children(e.children()))
                 .unwrap_or_default(),
             pdsc_index: get_child_no_ns(root, "pindex")
-                .map(|e| PdscRef::vec_from_children(e.children(), &l))
+                .map(|e| PdscRef::vec_from_children(e.children()))
                 .unwrap_or_default(),
         })
     }
@@ -82,11 +81,9 @@ impl FromElem for Vidx {
 #[cfg(test)]
 mod test {
     use super::*;
-    use slog::{Discard, Logger};
 
     #[test]
     fn pdscref_missing_attr() {
-        let log = Logger::root(Discard, o!());
         let erroring_strings = vec![
             "<pdsc>",
             "<pdsc url=\"Vendor\" name=\"Name\" version=\"1.2.3-alpha\">",
@@ -95,29 +92,27 @@ mod test {
             "<pdsc vendor=\"Vendor\" name=\"Name\" version=\"1.2.3-alpha\">",
         ];
         for bad_string in erroring_strings {
-            assert!(PdscRef::from_string(bad_string, &log).is_err());
+            assert!(PdscRef::from_string(bad_string).is_err());
         }
     }
 
     #[test]
     fn pdscref_wrong_elem() {
-        let log = Logger::root(Discard, o!());
         let bad_string = "<notPdsc vendor=\"Vendor\" url=\"Url\" name=\"name\" version=\"1.2.3-alpha\">";
-        assert!(PdscRef::from_string(bad_string, &log).is_err())
+        assert!(PdscRef::from_string(bad_string).is_err())
     }
 
     #[test]
     fn pdscref_optionals() {
-        let log = Logger::root(Discard, o!());
         let good_string = "<pdsc vendor=\"Vendor\" url=\"Url\" name=\"Name\" version=\"1.2.3-alpha\">";
-        let response = PdscRef::from_string(good_string, &log).unwrap();
+        let response = PdscRef::from_string(good_string).unwrap();
         assert_eq!(response.vendor, String::from("Vendor"));
         assert_eq!(response.url, "Url");
         assert_eq!(response.name, String::from("Name"));
         assert_eq!(response.version, String::from("1.2.3-alpha"));
         let good_string = "<pdsc vendor=\"Vendor\" url=\"Url\" name=\"Name\" version=\"1.2.3-alpha\"
                 date=\"A-Date\" deprecated=\"true\" replacement=\"Other\" size=\"8MB\">";
-        let response = PdscRef::from_string(good_string, &log).unwrap();
+        let response = PdscRef::from_string(good_string).unwrap();
         assert_eq!(response.date, Some(String::from("A-Date")));
         assert_eq!(response.deprecated, Some(String::from("true")));
         assert_eq!(response.replacement, Some(String::from("Other")));
@@ -126,34 +121,31 @@ mod test {
 
     #[test]
     fn pidx_misssing_attr() {
-        let log = Logger::root(Discard, o!());
         let erroring_strings = vec![
             "<pidx/>",
             "<pidx vendor=\"Vendor\"/>",
             "<pidx url=\"Url\"/>",
         ];
         for bad_string in erroring_strings {
-            assert!(Pidx::from_string(bad_string, &log).is_err());
+            assert!(Pidx::from_string(bad_string).is_err());
         }
     }
 
     #[test]
     fn pidx_wrong_elem() {
-        let log = Logger::root(Discard, o!());
         let bad_string = "<notpidx url=\"Url\" vendor=\"Vendor\"/>";
-        assert!(Pidx::from_string(bad_string, &log).is_err())
+        assert!(Pidx::from_string(bad_string).is_err())
     }
 
     #[test]
     fn pidx_optionals() {
-        let log = Logger::root(Discard, o!());
         let good_string = "<pidx vendor=\"Vendor\" url=\"Url\"/>";
-        let response = Pidx::from_string(good_string, &log).unwrap();
+        let response = Pidx::from_string(good_string).unwrap();
         assert_eq!(response.vendor, String::from("Vendor"));
         assert_eq!(response.url, "Url");
 
         let good_string = "<pidx vendor=\"Vendor\" url=\"Url\" date=\"Fri Sep  1 11:21:06 CDT 2017\"/>";
-        let response = Pidx::from_string(good_string, &log).unwrap();
+        let response = Pidx::from_string(good_string).unwrap();
         assert_eq!(response.vendor, String::from("Vendor"));
         assert_eq!(response.url, "Url");
         assert_eq!(
@@ -165,7 +157,6 @@ mod test {
 
     #[test]
     fn vidx_misssing_attr() {
-        let log = Logger::root(Discard, o!());
         let erroring_strings = vec![
             "<index xmlns:xs=\"http://www.w3.org/2001/XMLSchema-instance\">
              </index>",
@@ -177,28 +168,26 @@ mod test {
              </index>",
         ];
         for bad_string in erroring_strings {
-            assert!(Vidx::from_string(bad_string, &log).is_err());
+            assert!(Vidx::from_string(bad_string).is_err());
         }
     }
 
     #[test]
     fn vidx_wrong_elem() {
-        let log = Logger::root(Discard, o!());
         let bad_string = "<notindex xmlns:xs=\"http://www.w3.org/2001/XMLSchema-instance\">
                <vendor>Vendor</vendor>
                <url>Url</url>
              </notindex>";
-        assert!(Vidx::from_string(bad_string, &log).is_err())
+        assert!(Vidx::from_string(bad_string).is_err())
     }
 
     #[test]
     fn vidx_optionals() {
-        let log = Logger::root(Discard, o!());
         let good_string = "<index xmlns:xs=\"http://www.w3.org/2001/XMLSchema-instance\">
                <vendor>Vendor</vendor>
                <url>Url</url>
              </index>";
-        let response = Vidx::from_string(good_string, &log).unwrap();
+        let response = Vidx::from_string(good_string).unwrap();
         assert_eq!(response.vendor, String::from("Vendor"));
         assert_eq!(response.url, "Url");
 
@@ -207,7 +196,7 @@ mod test {
                <url>Url</url>
                <timestamp>Fri Sep  1 13:26:41 CDT 2017</timestamp>
              </index>";
-        let response = Vidx::from_string(good_string, &log).unwrap();
+        let response = Vidx::from_string(good_string).unwrap();
         assert_eq!(response.vendor, String::from("Vendor"));
         assert_eq!(response.url, "Url");
     }

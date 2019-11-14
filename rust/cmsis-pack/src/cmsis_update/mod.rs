@@ -5,7 +5,6 @@ use std::path::PathBuf;
 
 use futures::stream::iter_ok;
 use futures::Stream;
-use slog::Logger;
 use tokio_core::reactor::Core;
 
 use crate::pdsc::Package;
@@ -19,7 +18,6 @@ type Result<T> = std::result::Result<T, Error>;
 pub fn update<I, P, D>(
     config: &D,
     vidx_list: I,
-    logger: &Logger,
     progress: P,
 ) -> Result<Vec<PathBuf>>
 where
@@ -28,7 +26,7 @@ where
     D: DownloadConfig,
 {
     let mut core = Core::new().unwrap();
-    let dl_cntx = DownloadContext::new(config, progress, logger)?;
+    let dl_cntx = DownloadContext::new(config, progress)?;
     let fut = {
         let parsed_vidx = dl_cntx.download_vidx_list(vidx_list);
         let pdsc_list = parsed_vidx
@@ -43,7 +41,6 @@ where
 pub fn install<'a, I: 'a, P, D>(
     config: &'a D,
     pdsc_list: I,
-    logger: &'a Logger,
     progress: P,
 ) -> Result<Vec<PathBuf>>
 where
@@ -52,7 +49,7 @@ where
     D: DownloadConfig,
 {
     let mut core = Core::new().unwrap();
-    let dl_cntx = DownloadContext::new(config, progress, logger)?;
+    let dl_cntx = DownloadContext::new(config, progress)?;
     let fut = dl_cntx.download_stream(iter_ok(pdsc_list)).collect();
     core.run(fut)
 }
