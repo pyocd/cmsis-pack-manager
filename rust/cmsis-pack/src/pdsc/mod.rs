@@ -12,10 +12,9 @@ use failure::{format_err, Error};
 mod component;
 mod condition;
 mod device;
-
-pub use crate::pdsc::component::{ComponentBuilders, FileRef};
-pub use crate::pdsc::condition::{Condition, Conditions};
-pub use crate::pdsc::device::{Algorithm, Core, Device, Devices, Memories, Processors};
+pub use component::{ComponentBuilders, FileRef};
+pub use condition::{Condition, Conditions};
+pub use device::{Device, Devices, Memories, Algorithm, Processors, Core};
 
 pub struct Release {
     pub version: String,

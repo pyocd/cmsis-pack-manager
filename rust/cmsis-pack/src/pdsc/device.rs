@@ -120,10 +120,10 @@ impl FromStr for MPU {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Processor {
-    units: u8,
+    pub units: u8,
     pub core: Core,
-    fpu: FPU,
-    mpu: MPU,
+    pub fpu: FPU,
+    pub mpu: MPU,
 }
 
 #[derive(Debug, Clone)]
