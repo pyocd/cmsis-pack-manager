@@ -1,16 +1,3 @@
-extern crate failure;
-extern crate futures;
-extern crate minidom;
-extern crate reqwest;
-extern crate tokio_core;
-
-#[macro_use]
-extern crate slog;
-
-extern crate pack_index;
-extern crate pdsc;
-extern crate utils;
-
 use failure::Error;
 use std::path::PathBuf;
 
@@ -23,8 +10,8 @@ use pdsc::Package;
 
 mod download;
 
-use download::DownloadContext;
-pub use download::{DownloadConfig, DownloadProgress};
+use crate::download::DownloadContext;
+pub use crate::download::{DownloadConfig, DownloadProgress};
 
 type Result<T> = std::result::Result<T, Error>;
 
