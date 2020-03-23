@@ -5,7 +5,7 @@ authors = ["Jimmy Brisson <theotherjimmy@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-minidom = "0.5.0"
+minidom = "0.6.0"
 slog = "^2"
 serde = "^1.0.89"
 serde_derive = "^1.0.89"

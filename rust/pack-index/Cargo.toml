@@ -5,8 +5,8 @@ authors = ["Jimmy Brisson <theotherjimmy@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-minidom = "0.5.0"
-quick-xml = "0.7.3"
+minidom = "0.6.0"
+quick-xml = "0.9.0"
 slog = "^2"
 failure = "0.1.1"
 utils = { path = "../utils" }
