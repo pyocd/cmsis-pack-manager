@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 futures = "0.1.25"
-minidom = "0.5.0"
+minidom = "0.6.0"
 slog = "^2"
 slog-term = "^2"
 slog-async = "^2"
