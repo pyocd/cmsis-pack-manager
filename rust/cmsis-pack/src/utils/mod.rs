@@ -3,8 +3,6 @@ pub(crate) mod prelude;
 
 pub use parse::FromElem;
 
-use log;
-
 use std::fmt::Display;
 
 pub trait ResultLogExt<T, E> {

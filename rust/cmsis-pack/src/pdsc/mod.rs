@@ -94,9 +94,9 @@ impl<'a> DumpDevice<'a> {
             algorithms: Cow::Borrowed(&dev.algorithms),
             processor: Cow::Borrowed(&dev.processor),
             from_pack,
-            vendor: dev.vendor.as_ref().map(String::as_str),
+            vendor: dev.vendor.as_deref(),
             family: &dev.family,
-            sub_family: dev.sub_family.as_ref().map(String::as_str),
+            sub_family: dev.sub_family.as_deref(),
         }
     }
 }
