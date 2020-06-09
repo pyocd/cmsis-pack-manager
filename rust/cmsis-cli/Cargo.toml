@@ -1,7 +1,7 @@
 [package]
 authors = ["Jimmy Brisson <theotherjimmy@gmail.com>"]
 name = "cmsis-cli"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2018"
 
 [dependencies]
@@ -12,15 +12,4 @@ slog = "^2"
 slog-async = "^2"
 slog-term = "^2"
 pbr = "^1.0.0"
-
-[dependencies.cmsis-update]
-path = "../cmsis-update"
-
-[dependencies.pack-index]
-path = "../pack-index"
-
-[dependencies.pdsc]
-path = "../pdsc"
-
-[dependencies.utils]
-path = "../utils"
+cmsis = { path="../cmsis" }

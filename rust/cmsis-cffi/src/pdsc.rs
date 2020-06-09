@@ -8,9 +8,9 @@ use std::path::{Path, PathBuf};
 
 use failure::err_msg;
 
-use cmsis_utils::ResultLogExt;
-use cmsis_utils::parse::FromElem;
-use pack_desc::{self, dump_devices, Package};
+use cmsis::utils::ResultLogExt;
+use cmsis::utils::parse::FromElem;
+use cmsis::pdsc::{self, dump_devices, Package};
 
 use pack_index::UpdateReturn;
 
@@ -102,7 +102,7 @@ cffi!{
     fn dumps_components(ptr: *mut ParsedPacks) -> Result<*const c_char> {
         with_from_raw!(let boxed = ptr, {
             let pdscs = boxed.iter();
-            let dumped_components = pack_desc::dumps_components(pdscs)?;
+            let dumped_components = pdsc::dumps_components(pdscs)?;
             Ok(CString::new(dumped_components).unwrap().into_raw())
         })
     }

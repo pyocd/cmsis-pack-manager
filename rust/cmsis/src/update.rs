@@ -10,8 +10,8 @@ use pdsc::Package;
 
 mod download;
 
-use crate::download::DownloadContext;
-pub use crate::download::{DownloadConfig, DownloadProgress};
+use crate::update::download::DownloadContext;
+pub use crate::update::download::{DownloadConfig, DownloadProgress};
 
 type Result<T> = std::result::Result<T, Error>;
 

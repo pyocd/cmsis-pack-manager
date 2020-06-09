@@ -22,7 +22,7 @@ from os.path import join, dirname
 
 def build_native(spec):
     build = spec.add_external_build(
-        cmd=['cargo', 'build', '--release', '--lib', '--features=cffi'],
+        cmd=['cargo', 'build', '--release', '--lib'],
         path=join(dirname(__file__), 'rust')
     )
 

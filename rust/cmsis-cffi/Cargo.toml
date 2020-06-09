@@ -1,6 +1,6 @@
 [package]
 name = "cmsis-cffi"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Jimmy Brisson <theotherjimmy@gmail.com>"]
 
 [lib]
@@ -12,8 +12,4 @@ slog = "^2"
 slog-term = "^2"
 slog-async = "^2"
 failure = "0.1.1"
-
-cmsis-update = { path = "../cmsis-update" }
-pack-index = { path = "../pack-index" }
-pdsc = { path = "../pdsc" }
-utils = { path = "../utils" }
+cmsis = { path = "../cmsis" }

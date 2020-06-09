@@ -1,14 +1,4 @@
-#[macro_use]
-extern crate utils;
-#[macro_use]
-extern crate slog;
-#[macro_use]
-extern crate serde_derive;
-extern crate serde_json;
-extern crate failure;
-
-extern crate pack_index;
-extern crate minidom;
+use crate::err_msg;
 
 use std::borrow::Cow;
 use std::fs::OpenOptions;
@@ -25,9 +15,9 @@ use failure::Error as FailError;
 mod component;
 mod condition;
 mod device;
-pub use crate::component::{ComponentBuilders, FileRef};
-pub use crate::condition::{Condition, Conditions};
-pub use crate::device::{Device, Devices, Memories, Algorithm, Processors};
+pub use crate::pdsc::component::{ComponentBuilders, FileRef};
+pub use crate::pdsc::condition::{Condition, Conditions};
+pub use crate::pdsc::device::{Device, Devices, Memories, Algorithm, Processors};
 
 pub struct Release {
     pub version: String,

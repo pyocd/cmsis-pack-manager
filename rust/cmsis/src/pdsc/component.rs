@@ -1,6 +1,7 @@
 use std::str::FromStr;
 use std::path::PathBuf;
 
+use crate::err_msg;
 use slog::Logger;
 use minidom::{Element, Error, ErrorKind};
 

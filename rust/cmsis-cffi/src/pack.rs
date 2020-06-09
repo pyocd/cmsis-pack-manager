@@ -8,7 +8,7 @@ use std::thread;
 
 use failure::err_msg;
 
-use cmsis_update::install;
+use cmsis::update::install;
 use config::ConfigBuilder;
 
 use pdsc::ParsedPacks;

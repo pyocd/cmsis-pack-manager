@@ -2,6 +2,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 use std::str::FromStr;
 
+use crate::err_msg;
 use minidom::{Error, ErrorKind, Element};
 use slog::Logger;
 
