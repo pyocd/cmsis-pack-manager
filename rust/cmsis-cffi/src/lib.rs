@@ -2,7 +2,7 @@
 extern crate slog;
 extern crate slog_term;
 extern crate slog_async;
-extern crate cmsis;
+extern crate cmsis_pack;
 extern crate failure;
 
 macro_rules! with_from_raw {

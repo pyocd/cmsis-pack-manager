@@ -1,6 +1,6 @@
 [workspace]
 members = [
-	"cmsis",
+	"cmsis-pack",
 	"cmsis-cffi",
 	"cmsis-cli"
 ]

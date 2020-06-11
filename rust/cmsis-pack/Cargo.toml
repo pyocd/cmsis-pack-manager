@@ -1,6 +1,6 @@
 [package]
 authors = ["Jimmy Brisson <theotherjimmy@gmail.com>"]
-name = "cmsis"
+name = "cmsis-pack"
 version = "0.2.0"
 
 [dependencies]

@@ -12,4 +12,4 @@ slog = "^2"
 slog-async = "^2"
 slog-term = "^2"
 pbr = "^1.0.0"
-cmsis = { path="../cmsis" }
+cmsis-pack = { path="../cmsis-pack" }

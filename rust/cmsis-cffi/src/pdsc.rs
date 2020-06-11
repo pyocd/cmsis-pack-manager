@@ -8,9 +8,9 @@ use std::path::{Path, PathBuf};
 
 use failure::err_msg;
 
-use cmsis::utils::ResultLogExt;
-use cmsis::utils::parse::FromElem;
-use cmsis::pdsc::{self, dump_devices, Package};
+use cmsis_pack::utils::ResultLogExt;
+use cmsis_pack::utils::parse::FromElem;
+use cmsis_pack::pdsc::{self, dump_devices, Package};
 
 use pack_index::UpdateReturn;
 

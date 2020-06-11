@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 use std::io::{BufRead, BufReader, Write};
 use std::fs::{create_dir_all, OpenOptions};
 
-use cmsis::update::DownloadConfig;
+use cmsis_pack::update::DownloadConfig;
 
 use slog::Logger;
 use failure::{Error, err_msg};

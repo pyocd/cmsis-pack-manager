@@ -7,10 +7,10 @@ use clap::{ArgMatches, App, Arg, SubCommand};
 use pbr::ProgressBar;
 use slog::{debug, info, warn, error};
 
-extern crate cmsis;
-use cmsis::update::{install, update, DownloadProgress};
-use cmsis::pdsc::{dump_devices, Component, FileRef, Package};
-use cmsis::utils::parse::FromElem;
+extern crate cmsis_pack;
+use cmsis_pack::update::{install, update, DownloadProgress};
+use cmsis_pack::pdsc::{dump_devices, Component, FileRef, Package};
+use cmsis_pack::utils::parse::FromElem;
 
 mod config;
 
