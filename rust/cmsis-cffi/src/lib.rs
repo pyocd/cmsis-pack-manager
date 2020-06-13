@@ -1,13 +1,7 @@
-#[macro_use]
-extern crate slog;
-extern crate slog_term;
-extern crate slog_async;
-extern crate cmsis_pack;
-extern crate failure;
-
 macro_rules! with_from_raw {
     (let $boxed:ident = $ptr:ident, $block:block) => {
         {
+            #[allow(unused_unsafe)]
             let $boxed = unsafe {Box::from_raw($ptr)};
             let ret = $block;
             Box::into_raw($boxed);
@@ -16,7 +10,8 @@ macro_rules! with_from_raw {
     };
     (let mut $boxed:ident = $ptr:ident, $block:block) => {
         {
-            let mut $boxed = unsafe {Box::from_raw($ptr)};
+            #[allow(unused_unsafe)]
+            let mut $boxed = unsafe{Box::from_raw($ptr)};
             let ret = $block;
             Box::into_raw($boxed);
             ret

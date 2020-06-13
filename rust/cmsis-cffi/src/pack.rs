@@ -1,4 +1,3 @@
-use slog::Logger;
 use std::os::raw::c_char;
 use std::ffi::CStr;
 use std::sync::Arc;
@@ -9,17 +8,16 @@ use std::thread;
 use failure::err_msg;
 
 use cmsis_pack::update::install;
-use config::ConfigBuilder;
-
-use pdsc::ParsedPacks;
-use pack_index::{DownloadSender, UpdatePoll, RunningUpdateContext, UpdateReturn};
+use crate::config::ConfigBuilder;
+use crate::pdsc::ParsedPacks;
+use crate::pack_index::{DownloadSender, UpdatePoll, RunningUpdateContext, UpdateReturn};
 
 cffi!{
     fn update_packs(
         pack_store: *const c_char,
         parsed_packs: *mut ParsedPacks
     ) -> Result<*mut UpdatePoll> {
-        let conf_bld = ConfigBuilder::new();
+        let conf_bld = ConfigBuilder::default();
         let conf_bld = if !pack_store.is_null() {
             let pstore = unsafe { CStr::from_ptr(pack_store) }.to_string_lossy();
             conf_bld.with_pack_store(pstore.into_owned())
@@ -37,17 +35,10 @@ cffi!{
                 let thread = thread::Builder::new()
                     .name("update".to_string())
                     .spawn(move || {
-                        extern crate slog_term;
-                        extern crate slog_async;
-                        use slog::Drain;
-                        let decorator = slog_term::TermDecorator::new().build();
-                        let drain = slog_term::FullFormat::new(decorator).build().fuse();
-                        let drain = slog_async::Async::new(drain).build().fuse();
-                        let log = Logger::root(drain, o!());
+                        simplelog::TermLogger::init(simplelog::LevelFilter::Info, simplelog::Config::default(), simplelog::TerminalMode::Mixed).unwrap();
                         let res = install(
                             &conf, 
-                            packs.iter(), 
-                            &log, 
+                            packs.iter(),
                             DownloadSender::from_sender(send)
                         ).map(UpdateReturn);
                         threads_done_flag.store(true, Ordering::Release);

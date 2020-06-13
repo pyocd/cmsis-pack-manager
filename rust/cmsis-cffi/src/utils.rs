@@ -1,3 +1,5 @@
+#![allow(clippy::missing_safety_doc)]
+
 use std::mem;
 use std::panic;
 use std::ptr;

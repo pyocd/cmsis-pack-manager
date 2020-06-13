@@ -9,9 +9,8 @@ extern crate futures;
 extern crate minidom;
 extern crate quick_xml;
 extern crate reqwest;
-#[macro_use]
-extern crate slog;
-#[macro_use]
+extern crate log;
+extern crate serde;
 extern crate serde_derive;
 extern crate serde_json;
 extern crate tokio_core;

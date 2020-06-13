@@ -1,4 +1,5 @@
-use slog::Logger;
+#![allow(clippy::missing_safety_doc)]
+
 use std::borrow::{Borrow, BorrowMut};
 use std::os::raw::c_char;
 use std::ffi::{CStr, CString};
@@ -14,8 +15,8 @@ use failure::{err_msg, Error};
 
 use cmsis_pack::update::update;
 use cmsis_pack::update::DownloadProgress;
-use config::{ConfigBuilder, read_vidx_list, DEFAULT_VIDX_LIST};
-use utils::set_last_error;
+use crate::config::{ConfigBuilder, read_vidx_list, DEFAULT_VIDX_LIST};
+use crate::utils::set_last_error;
 
 pub struct UpdateReturn(pub(crate) Vec<PathBuf>);
 
@@ -86,23 +87,17 @@ cffi!{
         pack_store: *const c_char,
         vidx_list: *const c_char,
     ) -> Result<*mut UpdatePoll> {
-        let conf_bld = ConfigBuilder::new();
+        let conf_bld = ConfigBuilder::default();
         let conf_bld = if !pack_store.is_null() {
             let pstore = unsafe { CStr::from_ptr(pack_store) }.to_string_lossy();
             conf_bld.with_pack_store(pstore.into_owned())
         } else {
             conf_bld
         };
-        extern crate slog_term;
-        extern crate slog_async;
-        use slog::Drain;
-        let decorator = slog_term::TermDecorator::new().build();
-        let drain = slog_term::FullFormat::new(decorator).build().fuse();
-        let drain = slog_async::Async::new(drain).build().fuse();
-        let log = Logger::root(drain, o!());
+        simplelog::TermLogger::init(simplelog::LevelFilter::Info, simplelog::Config::default(), simplelog::TerminalMode::Mixed).unwrap();
         let vidx_list = if !vidx_list.is_null() {
             let vlist = unsafe { CStr::from_ptr(vidx_list) }.to_string_lossy();
-            read_vidx_list(vlist.as_ref().as_ref(), &log)
+            read_vidx_list(vlist.as_ref().as_ref())
         } else {
             DEFAULT_VIDX_LIST.iter().map(|s| String::from(*s)).collect()
         };
@@ -115,8 +110,7 @@ cffi!{
             .spawn(move || {
                 let res = update(
                     &conf, 
-                    vidx_list, 
-                    &log, 
+                    vidx_list,
                     DownloadSender::from_sender(send)
                 ).map(UpdateReturn);
                 threads_done_flag.store(true, Ordering::Release);
@@ -132,7 +126,7 @@ cffi!{
 
 
 #[no_mangle]
-pub extern "C" fn update_pdsc_poll(ptr: *mut UpdatePoll) -> bool {
+pub unsafe extern "C" fn update_pdsc_poll(ptr: *mut UpdatePoll) -> bool {
     if !ptr.is_null() {
         with_from_raw!(let mut boxed = ptr,{
             let (ret, next_state) = match mem::replace(boxed.borrow_mut(), UpdatePoll::Drained) {
@@ -160,13 +154,13 @@ pub extern "C" fn update_pdsc_poll(ptr: *mut UpdatePoll) -> bool {
 }
 
 #[no_mangle]
-pub extern "C" fn update_pdsc_get_status(ptr: *mut UpdatePoll) -> *mut DownloadUpdate {
+pub unsafe extern "C" fn update_pdsc_get_status(ptr: *mut UpdatePoll) -> *mut DownloadUpdate {
     if !ptr.is_null() {
         with_from_raw!(let boxed = ptr,{
             match boxed.borrow() {
-                &UpdatePoll::Complete(_) => null_mut(),
-                &UpdatePoll::Drained => null_mut(),
-                &UpdatePoll::Running(ref cont) => {
+                UpdatePoll::Complete(_) => null_mut(),
+                UpdatePoll::Drained => null_mut(),
+                UpdatePoll::Running(ref cont) => {
                     let response = cont.result_stream.try_recv();
                     match response {
                         Ok(inner) => Box::into_raw(Box::new(inner)),
@@ -189,7 +183,7 @@ cffi!{
 }
 
 #[no_mangle]
-pub extern "C" fn update_pdsc_result(ptr: *mut UpdatePoll) -> *mut UpdateReturn {
+pub unsafe extern "C" fn update_pdsc_result(ptr: *mut UpdatePoll) -> *mut UpdateReturn {
     if !ptr.is_null() {
         with_from_raw!(let mut boxed = ptr,{
             let (ret, next_state) = match mem::replace(boxed.borrow_mut(), UpdatePoll::Drained) {
@@ -244,7 +238,8 @@ cffi!{
         if !ptr.is_null() && !cstr.is_null() {
             with_from_raw!(let mut boxed = ptr, {
                 let pstore = unsafe { CStr::from_ptr(cstr) }.to_string_lossy();
-                Ok(boxed.0.push(pstore.into_owned().into()))
+                boxed.0.push(pstore.into_owned().into());
+                Ok(())
             })
         } else {
             Err(err_msg("update pdsc index push called with null"))

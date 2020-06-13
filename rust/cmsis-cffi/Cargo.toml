@@ -2,14 +2,17 @@
 name = "cmsis-cffi"
 version = "0.2.0"
 authors = ["Jimmy Brisson <theotherjimmy@gmail.com>"]
+edition = "2018"
 
 [lib]
 name = "cmsis_cffi"
 crate-type = ["cdylib"]
 
 [dependencies]
-slog = "^2"
-slog-term = "^2"
-slog-async = "^2"
+log = "0.4.8"
+simplelog = "0.7.4"
 failure = "0.1.1"
 cmsis-pack = { path = "../cmsis-pack" }
+
+[build-dependencies]
+cbindgen = "0.14.2"
