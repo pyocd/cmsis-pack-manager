@@ -1,29 +1,25 @@
-#include <cstdarg>
-#include <cstdint>
-#include <cstdlib>
-#include <new>
+#include <stdarg.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdlib.h>
 
-struct UpdatePoll;
+typedef struct UpdatePoll UpdatePoll;
 
-struct UpdateReturn;
+typedef struct UpdateReturn UpdateReturn;
 
-struct DownloadUpdate {
+typedef struct {
   bool is_size;
   uintptr_t size;
-};
+} DownloadUpdate;
 
-extern "C" {
-
-const char *err_get_last_message();
+const char *err_get_last_message(void);
 
 void err_last_message_free(char *ptr);
 
 DownloadUpdate *update_pdsc_get_status(UpdatePoll *ptr);
 
-UpdateReturn *update_pdsc_index_new();
+UpdateReturn *update_pdsc_index_new(void);
 
 bool update_pdsc_poll(UpdatePoll *ptr);
 
 UpdateReturn *update_pdsc_result(UpdatePoll *ptr);
-
-} // extern "C"
