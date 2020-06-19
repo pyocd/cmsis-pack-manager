@@ -1,18 +1,18 @@
-use std::os::raw::c_char;
 use std::ffi::CStr;
-use std::sync::Arc;
-use std::sync::mpsc::channel;
+use std::os::raw::c_char;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::channel;
+use std::sync::Arc;
 use std::thread;
 
 use failure::err_msg;
 
-use cmsis_pack::update::install;
 use crate::config::ConfigBuilder;
+use crate::pack_index::{DownloadSender, RunningUpdateContext, UpdatePoll, UpdateReturn};
 use crate::pdsc::ParsedPacks;
-use crate::pack_index::{DownloadSender, UpdatePoll, RunningUpdateContext, UpdateReturn};
+use cmsis_pack::update::install;
 
-cffi!{
+cffi! {
     fn update_packs(
         pack_store: *const c_char,
         parsed_packs: *mut ParsedPacks
@@ -37,7 +37,7 @@ cffi!{
                     .spawn(move || {
                         simplelog::TermLogger::init(simplelog::LevelFilter::Info, simplelog::Config::default(), simplelog::TerminalMode::Mixed).unwrap();
                         let res = install(
-                            &conf, 
+                            &conf,
                             packs.iter(),
                             DownloadSender::from_sender(send)
                         ).map(UpdateReturn);

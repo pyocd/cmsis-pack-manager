@@ -8,6 +8,6 @@ fn main() {
     config.language = cbindgen::Language::C;
 
     cbindgen::generate_with_config(&crate_dir, config)
-      .expect("Unable to generate bindings")
-      .write_to_file("cmsis.h");
+        .expect("Unable to generate bindings")
+        .write_to_file("cmsis.h");
 }

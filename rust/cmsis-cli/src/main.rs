@@ -1,15 +1,8 @@
+use clap::{App, Arg};
 use cmsis_cli::{
-    Config,
-    update_args,
-    update_command,
-    install_args,
-    install_command,
-    check_args,
-    check_command,
-    dump_devices_args,
-    dump_devices_command
+    check_args, check_command, dump_devices_args, dump_devices_command, install_args,
+    install_command, update_args, update_command, Config,
 };
-use clap::{Arg, App};
 use failure::Error;
 
 fn main() {
@@ -17,16 +10,23 @@ fn main() {
     let matches = App::new("CMSIS Pack manager and builder")
         .version("0.1.0")
         .author("Jimmy Brisson")
-        .arg(Arg::with_name("verbose").short("v").help(
-            "Sets the level of verbosity",
-        ))
+        .arg(
+            Arg::with_name("verbose")
+                .short("v")
+                .help("Sets the level of verbosity"),
+        )
         .subcommand(update_args())
         .subcommand(check_args())
         .subcommand(dump_devices_args())
         .subcommand(install_args())
         .get_matches();
 
-    simplelog::TermLogger::init(simplelog::LevelFilter::Info, simplelog::Config::default(), simplelog::TerminalMode::Mixed).unwrap();
+    simplelog::TermLogger::init(
+        simplelog::LevelFilter::Info,
+        simplelog::Config::default(),
+        simplelog::TerminalMode::Mixed,
+    )
+    .unwrap();
     log::debug!("Logging ready.");
 
     match matches.subcommand() {

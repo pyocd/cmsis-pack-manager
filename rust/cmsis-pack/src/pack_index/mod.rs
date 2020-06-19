@@ -1,5 +1,5 @@
-use minidom::{Element, Error};
 use crate::utils::prelude::*;
+use minidom::{Element, Error};
 
 #[derive(Debug, Clone)]
 pub struct PdscRef {
@@ -19,7 +19,6 @@ pub struct Pidx {
     pub vendor: String,
     pub date: Option<String>,
 }
-
 
 #[derive(Debug)]
 pub struct Vidx {
@@ -45,7 +44,6 @@ impl FromElem for PdscRef {
         })
     }
 }
-
 
 impl FromElem for Pidx {
     fn from_elem(e: &Element) -> Result<Self, Error> {
@@ -77,7 +75,6 @@ impl FromElem for Vidx {
     }
 }
 
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -98,19 +95,22 @@ mod test {
 
     #[test]
     fn pdscref_wrong_elem() {
-        let bad_string = "<notPdsc vendor=\"Vendor\" url=\"Url\" name=\"name\" version=\"1.2.3-alpha\">";
+        let bad_string =
+            "<notPdsc vendor=\"Vendor\" url=\"Url\" name=\"name\" version=\"1.2.3-alpha\">";
         assert!(PdscRef::from_string(bad_string).is_err())
     }
 
     #[test]
     fn pdscref_optionals() {
-        let good_string = "<pdsc vendor=\"Vendor\" url=\"Url\" name=\"Name\" version=\"1.2.3-alpha\">";
+        let good_string =
+            "<pdsc vendor=\"Vendor\" url=\"Url\" name=\"Name\" version=\"1.2.3-alpha\">";
         let response = PdscRef::from_string(good_string).unwrap();
         assert_eq!(response.vendor, String::from("Vendor"));
         assert_eq!(response.url, "Url");
         assert_eq!(response.name, String::from("Name"));
         assert_eq!(response.version, String::from("1.2.3-alpha"));
-        let good_string = "<pdsc vendor=\"Vendor\" url=\"Url\" name=\"Name\" version=\"1.2.3-alpha\"
+        let good_string =
+            "<pdsc vendor=\"Vendor\" url=\"Url\" name=\"Name\" version=\"1.2.3-alpha\"
                 date=\"A-Date\" deprecated=\"true\" replacement=\"Other\" size=\"8MB\">";
         let response = PdscRef::from_string(good_string).unwrap();
         assert_eq!(response.date, Some(String::from("A-Date")));
@@ -144,7 +144,8 @@ mod test {
         assert_eq!(response.vendor, String::from("Vendor"));
         assert_eq!(response.url, "Url");
 
-        let good_string = "<pidx vendor=\"Vendor\" url=\"Url\" date=\"Fri Sep  1 11:21:06 CDT 2017\"/>";
+        let good_string =
+            "<pidx vendor=\"Vendor\" url=\"Url\" date=\"Fri Sep  1 11:21:06 CDT 2017\"/>";
         let response = Pidx::from_string(good_string).unwrap();
         assert_eq!(response.vendor, String::from("Vendor"));
         assert_eq!(response.url, "Url");
@@ -153,7 +154,6 @@ mod test {
             Some(String::from("Fri Sep  1 11:21:06 CDT 2017"))
         )
     }
-
 
     #[test]
     fn vidx_misssing_attr() {

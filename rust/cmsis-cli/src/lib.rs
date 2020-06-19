@@ -1,12 +1,12 @@
+use clap::{App, Arg, ArgMatches, SubCommand};
+use failure::Error;
+use pbr::ProgressBar;
+use std::io::Stdout;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
-use std::io::Stdout;
-use failure::Error;
-use clap::{ArgMatches, App, Arg, SubCommand};
-use pbr::ProgressBar;
 
-use cmsis_pack::update::{install, update, DownloadProgress};
 use cmsis_pack::pdsc::{dump_devices, Component, FileRef, Package};
+use cmsis_pack::update::{install, update, DownloadProgress};
 use cmsis_pack::utils::FromElem;
 
 mod config;
@@ -54,15 +54,13 @@ pub fn install_args() -> App<'static, 'static> {
                 .required(true)
                 .takes_value(true)
                 .index(1)
-                .multiple(true)
+                .multiple(true),
         )
 }
 
-pub fn install_command<'a>(
-    conf: &Config,
-    args: &ArgMatches<'a>,
-) -> Result<(), Error> {
-    let pdsc_list: Vec<_> = args.values_of("PDSC")
+pub fn install_command<'a>(conf: &Config, args: &ArgMatches<'a>) -> Result<(), Error> {
+    let pdsc_list: Vec<_> = args
+        .values_of("PDSC")
         .unwrap()
         .filter_map(|input| Package::from_path(Path::new(input)).ok())
         .collect();
@@ -111,7 +109,6 @@ pub fn update_command<'a>(conf: &Config, _: &ArgMatches<'a>) -> Result<(), Error
     Ok(())
 }
 
-
 pub fn dump_devices_args<'a, 'b>() -> App<'a, 'b> {
     SubCommand::with_name("dump-devices")
         .about("Dump devices as json")
@@ -122,24 +119,23 @@ pub fn dump_devices_args<'a, 'b>() -> App<'a, 'b> {
                 .takes_value(true)
                 .help("Dump JSON in the specified file"),
         )
-        .arg(Arg::with_name("boards").short("b").takes_value(true).help(
-            "Dump JSON in the specified file",
-        ))
+        .arg(
+            Arg::with_name("boards")
+                .short("b")
+                .takes_value(true)
+                .help("Dump JSON in the specified file"),
+        )
         .arg(
             Arg::with_name("INPUT")
                 .help("Input file to dump devices from")
                 .index(1),
         )
-
 }
 
-pub fn dump_devices_command<'a>(
-    c: &Config,
-    args: &ArgMatches<'a>,
-) -> Result<(), Error> {
-    let files = args.value_of("INPUT").map(|input| {
-        vec![Box::new(Path::new(input)).to_path_buf()]
-    });
+pub fn dump_devices_command<'a>(c: &Config, args: &ArgMatches<'a>) -> Result<(), Error> {
+    let files = args
+        .value_of("INPUT")
+        .map(|input| vec![Box::new(Path::new(input)).to_path_buf()]);
     let filenames = files
         .or_else(|| {
             c.pack_store.read_dir().ok().map(|rd| {
@@ -165,9 +161,7 @@ pub fn dump_devices_command<'a>(
 
 pub fn check_args<'a, 'b>() -> App<'a, 'b> {
     SubCommand::with_name("check")
-        .about(
-            "Check a project or pack for correct usage of the CMSIS standard",
-        )
+        .about("Check a project or pack for correct usage of the CMSIS standard")
         .version("0.1.0")
         .arg(
             Arg::with_name("INPUT")
@@ -236,4 +230,3 @@ pub fn check_command<'a>(_: &Config, args: &ArgMatches<'a>) -> Result<(), Error>
     log::debug!("exiting");
     Ok(())
 }
-

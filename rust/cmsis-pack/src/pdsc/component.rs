@@ -1,13 +1,12 @@
-use std::str::FromStr;
 use std::path::PathBuf;
+use std::str::FromStr;
 
 use crate::utils::prelude::*;
 use minidom::{Element, Error, ErrorKind};
 use serde::Serialize;
 
-
 #[derive(Debug, PartialEq, Eq, Clone, Serialize)]
-pub enum FileCategory{
+pub enum FileCategory {
     Doc,
     Header,
     Include,
@@ -46,7 +45,7 @@ impl FromStr for FileCategory {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Serialize)]
-pub enum FileAttribute{
+pub enum FileAttribute {
     Config,
     Template,
 }
@@ -61,7 +60,6 @@ impl FromStr for FileAttribute {
         }
     }
 }
-
 
 #[derive(Debug, Clone, Serialize)]
 pub struct FileRef {
@@ -172,13 +170,11 @@ impl Bundle {
         }
         self.components
             .into_iter()
-            .map(|comp| {
-                ComponentBuilder {
-                    class: comp.class.or_else(|| Some(class.clone())),
-                    version: comp.version.or_else(|| Some(version.clone())),
-                    vendor: comp.vendor.or_else(|| vendor.clone()),
-                    ..comp
-                }
+            .map(|comp| ComponentBuilder {
+                class: comp.class.or_else(|| Some(class.clone())),
+                version: comp.version.or_else(|| Some(version.clone())),
+                vendor: comp.vendor.or_else(|| vendor.clone()),
+                ..comp
             })
             .collect()
     }
@@ -193,11 +189,14 @@ impl FromElem for Bundle {
         // let l = l.new(o!("Bundle" => name.clone(),
         //                  "Class" => class.clone(),
         //                  "Version" => version.clone()));
-        let components = e.children()
-            .filter_map(move |chld| if chld.name() == "component" {
-                ComponentBuilder::from_elem(chld).ok()
-            } else {
-                None
+        let components = e
+            .children()
+            .filter_map(move |chld| {
+                if chld.name() == "component" {
+                    ComponentBuilder::from_elem(chld).ok()
+                } else {
+                    None
+                }
             })
             .collect();
         Ok(Self {

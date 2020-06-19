@@ -15,11 +15,7 @@ pub use self::download::{DownloadConfig, DownloadProgress};
 type Result<T> = std::result::Result<T, Error>;
 
 /// Flatten a list of Vidx Urls into a list of updated CMSIS packs
-pub fn update<I, P, D>(
-    config: &D,
-    vidx_list: I,
-    progress: P,
-) -> Result<Vec<PathBuf>>
+pub fn update<I, P, D>(config: &D, vidx_list: I, progress: P) -> Result<Vec<PathBuf>>
 where
     I: IntoIterator<Item = String>,
     P: DownloadProgress,
@@ -38,11 +34,7 @@ where
 }
 
 /// Flatten a list of Vidx Urls into a list of updated CMSIS packs
-pub fn install<'a, I: 'a, P, D>(
-    config: &'a D,
-    pdsc_list: I,
-    progress: P,
-) -> Result<Vec<PathBuf>>
+pub fn install<'a, I: 'a, P, D>(config: &'a D, pdsc_list: I, progress: P) -> Result<Vec<PathBuf>>
 where
     I: IntoIterator<Item = &'a Package>,
     P: DownloadProgress + 'a,
