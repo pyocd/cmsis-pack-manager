@@ -11,9 +11,9 @@ use futures::Stream;
 use reqwest::r#async::{Chunk, Client, ClientBuilder, Response};
 use reqwest::{RedirectPolicy, Url, UrlError};
 
-use pack_index::{PdscRef, Pidx, Vidx};
-use pdsc::Package;
-use utils::parse::FromElem;
+use crate::pack_index::{PdscRef, Pidx, Vidx};
+use crate::pdsc::Package;
+use crate::utils::parse::FromElem;
 
 fn parse_vidx(body: Chunk) -> Result<Vidx, minidom::Error> {
     let string = String::from_utf8_lossy(body.as_ref());
@@ -193,25 +193,19 @@ where
                 iter_ok(to_dl).map(move |from| {
                     let dest = from.into_fd(self.config);
                     let source = from.into_uri();
-                    result(source)
-                        .from_err()
-                        .and_then(move |source| {
-                            self.download_file(source.clone(), dest.clone())
-                                .then(move |res| {
-                                    self.prog.complete();
-                                    match res {
-                                        Ok(_) => Ok(Some(dest)),
-                                        Err(e) => {
-                                            log::error!(
-                                                "download of {:?} failed: {}",
-                                                source,
-                                                e
-                                            );
-                                            Ok(None)
-                                        }
+                    result(source).from_err().and_then(move |source| {
+                        self.download_file(source.clone(), dest.clone())
+                            .then(move |res| {
+                                self.prog.complete();
+                                match res {
+                                    Ok(_) => Ok(Some(dest)),
+                                    Err(e) => {
+                                        log::error!("download of {:?} failed: {}", source, e);
+                                        Ok(None)
                                     }
-                                })
-                        })
+                                }
+                            })
+                    })
                 })
             })
             .flatten_stream();
@@ -247,17 +241,15 @@ where
     {
         futures_unordered(list.into_iter().map(|vidx_ref| {
             let vidx = vidx_ref.into();
-            self.download_vidx(vidx.clone()).then(move |r| {
-                match r {
-                    Ok(Ok(r)) => Ok(Some(r)),
-                    Ok(Err(e)) => {
-                        log::error!("{}", format!("{}", e).replace("uri", &vidx));
-                        Ok(None)
-                    }
-                    Err(e) => {
-                        log::error!("{}", format!("{}", e).replace("uri", &vidx));
-                        Ok(None)
-                    }
+            self.download_vidx(vidx.clone()).then(move |r| match r {
+                Ok(Ok(r)) => Ok(Some(r)),
+                Ok(Err(e)) => {
+                    log::error!("{}", format!("{}", e).replace("uri", &vidx));
+                    Ok(None)
+                }
+                Err(e) => {
+                    log::error!("{}", format!("{}", e).replace("uri", &vidx));
+                    Ok(None)
                 }
             })
         }))

@@ -1,24 +1,24 @@
-use std::os::raw::c_char;
 use std::ffi::CStr;
-use std::sync::Arc;
-use std::sync::mpsc::channel;
+use std::os::raw::c_char;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::channel;
+use std::sync::Arc;
 use std::thread;
 
 use failure::err_msg;
 
+use crate::config::ConfigBuilder;
 use cmsis_pack::update::install;
-use config::ConfigBuilder;
 
-use pdsc::ParsedPacks;
-use pack_index::{DownloadSender, UpdatePoll, RunningUpdateContext, UpdateReturn};
+use crate::pack_index::{DownloadSender, RunningUpdateContext, UpdatePoll, UpdateReturn};
+use crate::pdsc::ParsedPacks;
 
-cffi!{
+cffi! {
     fn update_packs(
         pack_store: *const c_char,
         parsed_packs: *mut ParsedPacks
     ) -> Result<*mut UpdatePoll> {
-        let conf_bld = ConfigBuilder::new();
+        let conf_bld = ConfigBuilder::default();
         let conf_bld = if !pack_store.is_null() {
             let pstore = unsafe { CStr::from_ptr(pack_store) }.to_string_lossy();
             conf_bld.with_pack_store(pstore.into_owned())
@@ -37,7 +37,7 @@ cffi!{
                     .name("update".to_string())
                     .spawn(move || {
                         let res = install(
-                            &conf, 
+                            &conf,
                             packs.iter(),
                             DownloadSender::from_sender(send)
                         ).map(UpdateReturn);

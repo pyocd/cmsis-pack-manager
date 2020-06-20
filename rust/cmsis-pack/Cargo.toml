@@ -2,6 +2,7 @@
 authors = ["Jimmy Brisson <theotherjimmy@gmail.com>"]
 name = "cmsis-pack"
 version = "0.2.0"
+edition = "2018"
 
 [dependencies]
 failure = "0.1.1"

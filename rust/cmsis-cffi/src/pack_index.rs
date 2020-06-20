@@ -1,20 +1,21 @@
+#![allow(clippy::missing_safety_doc)]
 use std::borrow::{Borrow, BorrowMut};
-use std::os::raw::c_char;
 use std::ffi::{CStr, CString};
+use std::mem;
+use std::os::raw::c_char;
 use std::path::PathBuf;
 use std::ptr::null_mut;
-use std::thread;
-use std::mem;
-use std::sync::Arc;
-use std::sync::mpsc::{channel, Sender, Receiver};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::Arc;
+use std::thread;
 
 use failure::{err_msg, Error};
 
+use crate::config::{read_vidx_list, ConfigBuilder, DEFAULT_VIDX_LIST};
+use crate::utils::set_last_error;
 use cmsis_pack::update::update;
 use cmsis_pack::update::DownloadProgress;
-use config::{ConfigBuilder, read_vidx_list, DEFAULT_VIDX_LIST};
-use utils::set_last_error;
 
 pub struct UpdateReturn(pub(crate) Vec<PathBuf>);
 
@@ -75,7 +76,7 @@ impl UpdateReturn {
         UpdateReturn(inner)
     }
 
-    pub fn iter(&self) -> impl Iterator<Item=&PathBuf> {
+    pub fn iter(&self) -> impl Iterator<Item = &PathBuf> {
         self.0.iter()
     }
 }
@@ -85,7 +86,7 @@ cffi! {
         pack_store: *const c_char,
         vidx_list: *const c_char,
     ) -> Result<*mut UpdatePoll> {
-        let conf_bld = ConfigBuilder::new();
+        let conf_bld = ConfigBuilder::default();
         let conf_bld = if !pack_store.is_null() {
             let pstore = unsafe { CStr::from_ptr(pack_store) }.to_string_lossy();
             conf_bld.with_pack_store(pstore.into_owned())
@@ -106,7 +107,7 @@ cffi! {
             .name("update".to_string())
             .spawn(move || {
                 let res = update(
-                    &conf, 
+                    &conf,
                     vidx_list,
                     DownloadSender::from_sender(send)
                 ).map(UpdateReturn);
@@ -122,7 +123,7 @@ cffi! {
 }
 
 #[no_mangle]
-pub extern "C" fn update_pdsc_poll(ptr: *mut UpdatePoll) -> bool {
+pub unsafe extern "C" fn update_pdsc_poll(ptr: *mut UpdatePoll) -> bool {
     if !ptr.is_null() {
         with_from_raw!(let mut boxed = ptr,{
             let (ret, next_state) = match mem::replace(boxed.borrow_mut(), UpdatePoll::Drained) {
@@ -150,13 +151,13 @@ pub extern "C" fn update_pdsc_poll(ptr: *mut UpdatePoll) -> bool {
 }
 
 #[no_mangle]
-pub extern "C" fn update_pdsc_get_status(ptr: *mut UpdatePoll) -> *mut DownloadUpdate {
+pub unsafe extern "C" fn update_pdsc_get_status(ptr: *mut UpdatePoll) -> *mut DownloadUpdate {
     if !ptr.is_null() {
         with_from_raw!(let boxed = ptr,{
             match boxed.borrow() {
-                &UpdatePoll::Complete(_) => null_mut(),
-                &UpdatePoll::Drained => null_mut(),
-                &UpdatePoll::Running(ref cont) => {
+                UpdatePoll::Complete(_) => null_mut(),
+                UpdatePoll::Drained => null_mut(),
+                UpdatePoll::Running(ref cont) => {
                     let response = cont.result_stream.try_recv();
                     match response {
                         Ok(inner) => Box::into_raw(Box::new(inner)),
@@ -179,7 +180,7 @@ cffi! {
 }
 
 #[no_mangle]
-pub extern "C" fn update_pdsc_result(ptr: *mut UpdatePoll) -> *mut UpdateReturn {
+pub unsafe extern "C" fn update_pdsc_result(ptr: *mut UpdatePoll) -> *mut UpdateReturn {
     if !ptr.is_null() {
         with_from_raw!(let mut boxed = ptr,{
             let (ret, next_state) = match mem::replace(boxed.borrow_mut(), UpdatePoll::Drained) {
@@ -234,7 +235,8 @@ cffi! {
         if !ptr.is_null() && !cstr.is_null() {
             with_from_raw!(let mut boxed = ptr, {
                 let pstore = unsafe { CStr::from_ptr(cstr) }.to_string_lossy();
-                Ok(boxed.0.push(pstore.into_owned().into()))
+                boxed.0.push(pstore.into_owned().into());
+                Ok(())
             })
         } else {
             Err(err_msg("update pdsc index push called with null"))

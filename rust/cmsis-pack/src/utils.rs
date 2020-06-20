@@ -10,7 +10,7 @@ pub trait ResultLogExt<T, E> {
 }
 
 impl<T, E> ResultLogExt<T, E> for Result<T, E>
-    where
+where
     E: Display,
 {
     fn ok_warn(self) -> Option<T> {

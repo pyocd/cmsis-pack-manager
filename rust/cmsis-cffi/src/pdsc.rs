@@ -1,17 +1,17 @@
 use std::borrow::Cow;
-use std::os::raw::c_char;
 use std::ffi::{CStr, CString};
+use std::os::raw::c_char;
 use std::path::{Path, PathBuf};
 
 use failure::err_msg;
 
-use cmsis_pack::utils::ResultLogExt;
-use cmsis_pack::utils::FromElem;
 use cmsis_pack::pdsc::{dump_devices, Package};
+use cmsis_pack::utils::FromElem;
+use cmsis_pack::utils::ResultLogExt;
 
-use pack_index::UpdateReturn;
+use crate::pack_index::UpdateReturn;
 
-cffi!{
+cffi! {
     fn dump_pdsc_json(
         packs: *mut ParsedPacks,
         devices_dest: *const c_char,
@@ -46,7 +46,7 @@ impl ParsedPacks {
     }
 }
 
-cffi!{
+cffi! {
     fn pack_from_path(ptr: *const c_char) -> Result<*mut UpdateReturn>{
         if !ptr.is_null() {
             let fname = unsafe { CStr::from_ptr(ptr) }.to_string_lossy();
@@ -63,7 +63,7 @@ cffi!{
     }
 }
 
-cffi!{
+cffi! {
     fn parse_packs(ptr: *mut UpdateReturn) -> Result<*mut ParsedPacks>{
         if !ptr.is_null() {
             with_from_raw!(let boxed = ptr,{
@@ -79,7 +79,7 @@ cffi!{
     }
 }
 
-cffi!{
+cffi! {
     fn parse_packs_free(ptr: *mut ParsedPacks) {
         if !ptr.is_null() {
             drop(unsafe { Box::from_raw(ptr) })
@@ -87,7 +87,7 @@ cffi!{
     }
 }
 
-cffi!{
+cffi! {
     fn dumps_components(ptr: *mut ParsedPacks) -> Result<*const c_char> {
         with_from_raw!(let boxed = ptr, {
             let pdscs = boxed.iter();

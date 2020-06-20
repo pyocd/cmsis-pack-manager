@@ -1,7 +1,7 @@
 use minidom::{Element, Error};
 
-use utils::parse::{FromElem, assert_root_name, attr_map};
-use utils::ResultLogExt;
+use crate::utils::parse::{assert_root_name, attr_map, FromElem};
+use crate::utils::ResultLogExt;
 
 pub struct ConditionComponent {
     pub device_family: Option<String>,
