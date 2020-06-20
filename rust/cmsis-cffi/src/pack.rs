@@ -1,4 +1,3 @@
-use slog::Logger;
 use std::os::raw::c_char;
 use std::ffi::CStr;
 use std::sync::Arc;
@@ -37,17 +36,9 @@ cffi!{
                 let thread = thread::Builder::new()
                     .name("update".to_string())
                     .spawn(move || {
-                        extern crate slog_term;
-                        extern crate slog_async;
-                        use slog::Drain;
-                        let decorator = slog_term::TermDecorator::new().build();
-                        let drain = slog_term::FullFormat::new(decorator).build().fuse();
-                        let drain = slog_async::Async::new(drain).build().fuse();
-                        let log = Logger::root(drain, o!());
                         let res = install(
                             &conf, 
-                            packs.iter(), 
-                            &log, 
+                            packs.iter(),
                             DownloadSender::from_sender(send)
                         ).map(UpdateReturn);
                         threads_done_flag.store(true, Ordering::Release);

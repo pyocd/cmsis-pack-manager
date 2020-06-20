@@ -1,4 +1,3 @@
-use slog::Logger;
 use std::borrow::{Borrow, BorrowMut};
 use std::os::raw::c_char;
 use std::ffi::{CStr, CString};
@@ -26,7 +25,7 @@ pub struct RunningUpdateContext {
 }
 
 #[repr(C)]
-pub struct DownloadUpdate{
+pub struct DownloadUpdate {
     pub is_size: bool,
     pub size: usize,
 }
@@ -40,10 +39,10 @@ impl DownloadSender {
 }
 
 impl DownloadProgress for DownloadSender {
-    fn size(&self, size: usize){
-        let _ = self.0.send(DownloadUpdate{
+    fn size(&self, size: usize) {
+        let _ = self.0.send(DownloadUpdate {
             is_size: true,
-            size
+            size,
         });
     }
 
@@ -52,9 +51,9 @@ impl DownloadProgress for DownloadSender {
     }
 
     fn complete(&self) {
-        let _ = self.0.send(DownloadUpdate{
+        let _ = self.0.send(DownloadUpdate {
             is_size: false,
-            size: 0
+            size: 0,
         });
     }
 
@@ -76,12 +75,12 @@ impl UpdateReturn {
         UpdateReturn(inner)
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &PathBuf> {
+    pub fn iter(&self) -> impl Iterator<Item=&PathBuf> {
         self.0.iter()
     }
 }
 
-cffi!{
+cffi! {
     fn update_pdsc_index(
         pack_store: *const c_char,
         vidx_list: *const c_char,
@@ -93,16 +92,9 @@ cffi!{
         } else {
             conf_bld
         };
-        extern crate slog_term;
-        extern crate slog_async;
-        use slog::Drain;
-        let decorator = slog_term::TermDecorator::new().build();
-        let drain = slog_term::FullFormat::new(decorator).build().fuse();
-        let drain = slog_async::Async::new(drain).build().fuse();
-        let log = Logger::root(drain, o!());
         let vidx_list = if !vidx_list.is_null() {
             let vlist = unsafe { CStr::from_ptr(vidx_list) }.to_string_lossy();
-            read_vidx_list(vlist.as_ref().as_ref(), &log)
+            read_vidx_list(vlist.as_ref().as_ref())
         } else {
             DEFAULT_VIDX_LIST.iter().map(|s| String::from(*s)).collect()
         };
@@ -115,8 +107,7 @@ cffi!{
             .spawn(move || {
                 let res = update(
                     &conf, 
-                    vidx_list, 
-                    &log, 
+                    vidx_list,
                     DownloadSender::from_sender(send)
                 ).map(UpdateReturn);
                 threads_done_flag.store(true, Ordering::Release);
@@ -129,7 +120,6 @@ cffi!{
         }))))
     }
 }
-
 
 #[no_mangle]
 pub extern "C" fn update_pdsc_poll(ptr: *mut UpdatePoll) -> bool {
@@ -180,7 +170,7 @@ pub extern "C" fn update_pdsc_get_status(ptr: *mut UpdatePoll) -> *mut DownloadU
     }
 }
 
-cffi!{
+cffi! {
     fn update_pdsc_status_free(ptr: *mut DownloadUpdate) {
         if !ptr.is_null() {
             drop(unsafe { Box::from_raw(ptr) })
@@ -218,7 +208,7 @@ pub extern "C" fn update_pdsc_index_new() -> *mut UpdateReturn {
     Box::into_raw(Box::new(UpdateReturn(Vec::new())))
 }
 
-cffi!{
+cffi! {
     fn update_pdsc_index_next(ptr: *mut UpdateReturn) -> Result<*const c_char> {
         if !ptr.is_null() {
             with_from_raw!(let mut boxed = ptr, {
@@ -239,7 +229,7 @@ cffi!{
     }
 }
 
-cffi!{
+cffi! {
     fn update_pdsc_index_push(ptr: *mut UpdateReturn, cstr: *mut c_char) -> Result<()> {
         if !ptr.is_null() && !cstr.is_null() {
             with_from_raw!(let mut boxed = ptr, {
@@ -252,7 +242,7 @@ cffi!{
     }
 }
 
-cffi!{
+cffi! {
     fn cstring_free(ptr: *mut c_char) {
         if !ptr.is_null() {
             drop(unsafe { CString::from_raw(ptr) })
@@ -260,7 +250,7 @@ cffi!{
     }
 }
 
-cffi!{
+cffi! {
     fn update_pdsc_index_free(ptr: *mut UpdateReturn) {
         if !ptr.is_null() {
             drop(unsafe { Box::from_raw(ptr) })

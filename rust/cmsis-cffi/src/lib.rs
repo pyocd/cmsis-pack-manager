@@ -1,9 +1,12 @@
-#[macro_use]
-extern crate slog;
-extern crate slog_term;
-extern crate slog_async;
 extern crate cmsis_pack;
 extern crate failure;
+#[macro_use]
+extern crate ctor;
+
+#[ctor]
+fn cmsis_cffi_init() {
+    simplelog::TermLogger::init(simplelog::LevelFilter::Info, simplelog::Config::default(), simplelog::TerminalMode::Mixed).unwrap();
+}
 
 macro_rules! with_from_raw {
     (let $boxed:ident = $ptr:ident, $block:block) => {
@@ -30,6 +33,3 @@ pub mod config;
 pub mod pack_index;
 pub mod pdsc;
 pub mod pack;
-
-
-

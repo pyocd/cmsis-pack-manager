@@ -1,8 +1,8 @@
 [workspace]
 members = [
-	"cmsis-pack",
-	"cmsis-cffi",
-	"cmsis-cli"
+    "cmsis-pack",
+    "cmsis-cffi",
+    "cmsis-cli"
 ]
 
 [profile.release]
