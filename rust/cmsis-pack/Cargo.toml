@@ -3,6 +3,7 @@ authors = ["Jimmy Brisson <theotherjimmy@gmail.com>",
            "Chris Reed <chris.reed@arm.com>",
            "Mathias Brossard <mathias.brossard@arm.com>"]
 name = "cmsis-pack"
+repository = "https://github.com/ARMmbed/cmsis-pack-manager"
 version = "0.2.0"
 edition = "2018"
 description = "Rust crate for managing CMSIS PACKs"
