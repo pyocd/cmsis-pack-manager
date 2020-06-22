@@ -1,5 +1,7 @@
 [package]
-authors = ["Jimmy Brisson <theotherjimmy@gmail.com>"]
+authors = ["Jimmy Brisson <theotherjimmy@gmail.com>",
+           "Chris Reed <chris.reed@arm.com>",
+           "Mathias Brossard <mathias.brossard@arm.com>"]
 name = "cmsis-pack"
 version = "0.2.0"
 edition = "2018"
