@@ -3,6 +3,10 @@ authors = ["Jimmy Brisson <theotherjimmy@gmail.com>"]
 name = "cmsis-pack"
 version = "0.2.0"
 edition = "2018"
+description = "Rust crate for managing CMSIS PACKs"
+license = "Apache-2.0"
+categories = ["embedded", "hardware-support", "development-tools::debugging"]
+keywords = ["embedded", "cmsis"]
 
 [dependencies]
 failure = "0.1.1"
