@@ -1,9 +1,9 @@
 // #![feature(test)]
-// extern crate cmsis;
+// extern crate cmsis_pack;
 // extern crate test;
 
-// use cmsis::pack_index::{Vidx, Pidx, PdscRef};
-// use cmsis::parse::FromElem;
+// use cmsis_pack::pack_index::{Vidx, Pidx, PdscRef};
+// use cmsis_pack::parse::FromElem;
 // use test::Bencher;
 
 // trait BenchParse: FromElem {

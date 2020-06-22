@@ -7,7 +7,8 @@ use slog::Logger;
 use failure::Error;
 use slog::{warn, error};
 
-use cmsis_update::DownloadConfig;
+extern crate cmsis_pack;
+use cmsis_pack::update::DownloadConfig;
 
 pub struct Config {
     pub pack_store: PathBuf,
@@ -23,7 +24,7 @@ impl DownloadConfig for Config {
 impl Config {
     pub fn new() -> Result<Config, Error> {
         let app_info = AppInfo {
-            name: "cmsis",
+            name: "cmsis-pack",
             author: "Arm",
         };
         let pack_store = app_root(AppDataType::UserData, &app_info)?;

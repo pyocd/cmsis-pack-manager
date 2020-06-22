@@ -1,8 +1,3 @@
-extern crate minidom;
-extern crate quick_xml;
-#[macro_use]
-extern crate slog;
-
 pub trait ResultLogExt<T, E> {
     fn ok_warn(self, log: &Logger) -> Option<T>;
     fn ok_error(self, log: &Logger) -> Option<T>;

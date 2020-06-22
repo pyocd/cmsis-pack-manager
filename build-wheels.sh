@@ -49,6 +49,8 @@ else
     # Move pure wheels to target directory
     mkdir -p /io/dist
     mv /dist/*any.whl /io/dist || echo "No pure wheels to move"
+    # Ignore PyYAML wheel
+    mv /dist/PyYAML*.whl /io/dist
 
     # Bundle external shared libraries into the wheel
     for whl in /dist/*.whl; do
