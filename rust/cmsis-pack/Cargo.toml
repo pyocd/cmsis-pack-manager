@@ -24,7 +24,7 @@ tokio-core = "0.1.17"
 reqwest = { version = "0.9.24", default_features = false, features = ["rustls-tls"] }
 
 [dev-dependencies]
-time = "*"
+time = "0.2.16"
 
 [features]
 default = []
