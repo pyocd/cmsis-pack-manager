@@ -1,21 +1,21 @@
-use slog::Logger;
+#![allow(clippy::missing_safety_doc)]
 use std::borrow::{Borrow, BorrowMut};
-use std::os::raw::c_char;
 use std::ffi::{CStr, CString};
+use std::mem;
+use std::os::raw::c_char;
 use std::path::PathBuf;
 use std::ptr::null_mut;
-use std::thread;
-use std::mem;
-use std::sync::Arc;
-use std::sync::mpsc::{channel, Sender, Receiver};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::Arc;
+use std::thread;
 
 use failure::{err_msg, Error};
 
+use crate::config::{read_vidx_list, ConfigBuilder, DEFAULT_VIDX_LIST};
+use crate::utils::set_last_error;
 use cmsis_pack::update::update;
 use cmsis_pack::update::DownloadProgress;
-use config::{ConfigBuilder, read_vidx_list, DEFAULT_VIDX_LIST};
-use utils::set_last_error;
 
 pub struct UpdateReturn(pub(crate) Vec<PathBuf>);
 
@@ -26,7 +26,7 @@ pub struct RunningUpdateContext {
 }
 
 #[repr(C)]
-pub struct DownloadUpdate{
+pub struct DownloadUpdate {
     pub is_size: bool,
     pub size: usize,
 }
@@ -40,10 +40,10 @@ impl DownloadSender {
 }
 
 impl DownloadProgress for DownloadSender {
-    fn size(&self, size: usize){
-        let _ = self.0.send(DownloadUpdate{
+    fn size(&self, size: usize) {
+        let _ = self.0.send(DownloadUpdate {
             is_size: true,
-            size
+            size,
         });
     }
 
@@ -52,9 +52,9 @@ impl DownloadProgress for DownloadSender {
     }
 
     fn complete(&self) {
-        let _ = self.0.send(DownloadUpdate{
+        let _ = self.0.send(DownloadUpdate {
             is_size: false,
-            size: 0
+            size: 0,
         });
     }
 
@@ -81,28 +81,21 @@ impl UpdateReturn {
     }
 }
 
-cffi!{
+cffi! {
     fn update_pdsc_index(
         pack_store: *const c_char,
         vidx_list: *const c_char,
     ) -> Result<*mut UpdatePoll> {
-        let conf_bld = ConfigBuilder::new();
+        let conf_bld = ConfigBuilder::default();
         let conf_bld = if !pack_store.is_null() {
             let pstore = unsafe { CStr::from_ptr(pack_store) }.to_string_lossy();
             conf_bld.with_pack_store(pstore.into_owned())
         } else {
             conf_bld
         };
-        extern crate slog_term;
-        extern crate slog_async;
-        use slog::Drain;
-        let decorator = slog_term::TermDecorator::new().build();
-        let drain = slog_term::FullFormat::new(decorator).build().fuse();
-        let drain = slog_async::Async::new(drain).build().fuse();
-        let log = Logger::root(drain, o!());
         let vidx_list = if !vidx_list.is_null() {
             let vlist = unsafe { CStr::from_ptr(vidx_list) }.to_string_lossy();
-            read_vidx_list(vlist.as_ref().as_ref(), &log)
+            read_vidx_list(vlist.as_ref().as_ref())
         } else {
             DEFAULT_VIDX_LIST.iter().map(|s| String::from(*s)).collect()
         };
@@ -114,9 +107,8 @@ cffi!{
             .name("update".to_string())
             .spawn(move || {
                 let res = update(
-                    &conf, 
-                    vidx_list, 
-                    &log, 
+                    &conf,
+                    vidx_list,
                     DownloadSender::from_sender(send)
                 ).map(UpdateReturn);
                 threads_done_flag.store(true, Ordering::Release);
@@ -130,9 +122,8 @@ cffi!{
     }
 }
 
-
 #[no_mangle]
-pub extern "C" fn update_pdsc_poll(ptr: *mut UpdatePoll) -> bool {
+pub unsafe extern "C" fn update_pdsc_poll(ptr: *mut UpdatePoll) -> bool {
     if !ptr.is_null() {
         with_from_raw!(let mut boxed = ptr,{
             let (ret, next_state) = match mem::replace(boxed.borrow_mut(), UpdatePoll::Drained) {
@@ -160,13 +151,13 @@ pub extern "C" fn update_pdsc_poll(ptr: *mut UpdatePoll) -> bool {
 }
 
 #[no_mangle]
-pub extern "C" fn update_pdsc_get_status(ptr: *mut UpdatePoll) -> *mut DownloadUpdate {
+pub unsafe extern "C" fn update_pdsc_get_status(ptr: *mut UpdatePoll) -> *mut DownloadUpdate {
     if !ptr.is_null() {
         with_from_raw!(let boxed = ptr,{
             match boxed.borrow() {
-                &UpdatePoll::Complete(_) => null_mut(),
-                &UpdatePoll::Drained => null_mut(),
-                &UpdatePoll::Running(ref cont) => {
+                UpdatePoll::Complete(_) => null_mut(),
+                UpdatePoll::Drained => null_mut(),
+                UpdatePoll::Running(ref cont) => {
                     let response = cont.result_stream.try_recv();
                     match response {
                         Ok(inner) => Box::into_raw(Box::new(inner)),
@@ -180,7 +171,7 @@ pub extern "C" fn update_pdsc_get_status(ptr: *mut UpdatePoll) -> *mut DownloadU
     }
 }
 
-cffi!{
+cffi! {
     fn update_pdsc_status_free(ptr: *mut DownloadUpdate) {
         if !ptr.is_null() {
             drop(unsafe { Box::from_raw(ptr) })
@@ -189,7 +180,7 @@ cffi!{
 }
 
 #[no_mangle]
-pub extern "C" fn update_pdsc_result(ptr: *mut UpdatePoll) -> *mut UpdateReturn {
+pub unsafe extern "C" fn update_pdsc_result(ptr: *mut UpdatePoll) -> *mut UpdateReturn {
     if !ptr.is_null() {
         with_from_raw!(let mut boxed = ptr,{
             let (ret, next_state) = match mem::replace(boxed.borrow_mut(), UpdatePoll::Drained) {
@@ -218,7 +209,7 @@ pub extern "C" fn update_pdsc_index_new() -> *mut UpdateReturn {
     Box::into_raw(Box::new(UpdateReturn(Vec::new())))
 }
 
-cffi!{
+cffi! {
     fn update_pdsc_index_next(ptr: *mut UpdateReturn) -> Result<*const c_char> {
         if !ptr.is_null() {
             with_from_raw!(let mut boxed = ptr, {
@@ -239,12 +230,13 @@ cffi!{
     }
 }
 
-cffi!{
+cffi! {
     fn update_pdsc_index_push(ptr: *mut UpdateReturn, cstr: *mut c_char) -> Result<()> {
         if !ptr.is_null() && !cstr.is_null() {
             with_from_raw!(let mut boxed = ptr, {
                 let pstore = unsafe { CStr::from_ptr(cstr) }.to_string_lossy();
-                Ok(boxed.0.push(pstore.into_owned().into()))
+                boxed.0.push(pstore.into_owned().into());
+                Ok(())
             })
         } else {
             Err(err_msg("update pdsc index push called with null"))
@@ -252,7 +244,7 @@ cffi!{
     }
 }
 
-cffi!{
+cffi! {
     fn cstring_free(ptr: *mut c_char) {
         if !ptr.is_null() {
             drop(unsafe { CString::from_raw(ptr) })
@@ -260,7 +252,7 @@ cffi!{
     }
 }
 
-cffi!{
+cffi! {
     fn update_pdsc_index_free(ptr: *mut UpdateReturn) {
         if !ptr.is_null() {
             drop(unsafe { Box::from_raw(ptr) })

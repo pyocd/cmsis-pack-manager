@@ -1,12 +1,13 @@
+#![allow(clippy::missing_safety_doc)]
+use std::cell::RefCell;
+use std::ffi::CString;
 use std::mem;
+use std::os::raw::c_char;
 use std::panic;
 use std::ptr;
 use std::thread;
-use std::cell::RefCell;
-use std::os::raw::c_char;
-use std::ffi::CString;
 
-use failure::{Error, err_msg};
+use failure::{err_msg, Error};
 
 thread_local! {
     pub static LAST_ERROR: RefCell<Option<Error>> = RefCell::new(None);
@@ -24,7 +25,9 @@ pub unsafe extern "C" fn err_get_last_message() -> *const c_char {
         if let Some(ref err) = e.replace(None) {
             let msg = err.to_string();
             let cause = err.backtrace();
-            CString::new(format!("{}\n{}", cause, msg)).unwrap().into_raw()
+            CString::new(format!("{}\n{}", cause, msg))
+                .unwrap()
+                .into_raw()
         } else {
             ptr::null()
         }
@@ -33,7 +36,7 @@ pub unsafe extern "C" fn err_get_last_message() -> *const c_char {
 
 #[no_mangle]
 pub unsafe extern "C" fn err_last_message_free(ptr: *mut c_char) {
-    if ! ptr.is_null() {
+    if !ptr.is_null() {
         drop(CString::from_raw(ptr))
     }
 }

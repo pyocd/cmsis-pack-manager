@@ -10,15 +10,14 @@ use futures::stream::{futures_unordered, iter_ok};
 use futures::Stream;
 use reqwest::r#async::{Chunk, Client, ClientBuilder, Response};
 use reqwest::{RedirectPolicy, Url, UrlError};
-use slog::{Logger, o, slog_error, error};
 
-use pack_index::{PdscRef, Pidx, Vidx};
-use pdsc::Package;
-use utils::parse::FromElem;
+use crate::pack_index::{PdscRef, Pidx, Vidx};
+use crate::pdsc::Package;
+use crate::utils::parse::FromElem;
 
-fn parse_vidx(body: Chunk, logger: &Logger) -> Result<Vidx, minidom::Error> {
+fn parse_vidx(body: Chunk) -> Result<Vidx, minidom::Error> {
     let string = String::from_utf8_lossy(body.as_ref());
-    Vidx::from_string(string.borrow(), logger)
+    Vidx::from_string(string.borrow())
 }
 
 fn into_uri(Pidx { url, vendor, .. }: Pidx) -> String {
@@ -111,9 +110,7 @@ impl DownloadProgress for () {
     fn size(&self, _: usize) {}
     fn progress(&self, _: usize) {}
     fn complete(&self) {}
-    fn for_file(&self, _: &str) -> Self {
-        ()
-    }
+    fn for_file(&self, _: &str) -> Self {}
 }
 
 pub struct DownloadContext<'a, Conf, Prog>
@@ -124,7 +121,6 @@ where
     config: &'a Conf,
     prog: Prog,
     client: Client,
-    log: &'a Logger,
 }
 
 impl<'a, Conf, Prog> DownloadContext<'a, Conf, Prog>
@@ -132,7 +128,7 @@ where
     Conf: DownloadConfig,
     Prog: DownloadProgress + 'a,
 {
-    pub fn new(config: &'a Conf, prog: Prog, log: &'a Logger) -> Result<Self, Error> {
+    pub fn new(config: &'a Conf, prog: Prog) -> Result<Self, Error> {
         let client = ClientBuilder::new()
             .use_rustls_tls()
             .use_sys_proxy()
@@ -142,7 +138,6 @@ where
             config,
             prog,
             client,
-            log,
         })
     }
 
@@ -198,26 +193,19 @@ where
                 iter_ok(to_dl).map(move |from| {
                     let dest = from.into_fd(self.config);
                     let source = from.into_uri();
-                    result(source)
-                        .from_err()
-                        .and_then(move |source| {
-                            self.download_file(source.clone(), dest.clone())
-                                .then(move |res| {
-                                    self.prog.complete();
-                                    match res {
-                                        Ok(_) => Ok(Some(dest)),
-                                        Err(e) => {
-                                            slog_error!(
-                                                self.log,
-                                                "download of {:?} failed: {}",
-                                                source,
-                                                e
-                                            );
-                                            Ok(None)
-                                        }
+                    result(source).from_err().and_then(move |source| {
+                        self.download_file(source.clone(), dest.clone())
+                            .then(move |res| {
+                                self.prog.complete();
+                                match res {
+                                    Ok(_) => Ok(Some(dest)),
+                                    Err(e) => {
+                                        log::error!("download of {:?} failed: {}", source, e);
+                                        Ok(None)
                                     }
-                                })
-                        })
+                                }
+                            })
+                    })
                 })
             })
             .flatten_stream();
@@ -240,7 +228,7 @@ where
                     .concat2()
                     .from_err()
             })
-            .map(move |body| parse_vidx(body, self.log))
+            .map(parse_vidx)
     }
 
     pub(crate) fn download_vidx_list<I>(
@@ -252,19 +240,16 @@ where
         <I as IntoIterator>::Item: Into<String>,
     {
         futures_unordered(list.into_iter().map(|vidx_ref| {
-            let string = vidx_ref.into();
-            self.download_vidx(string.clone()).then(move |r| {
-                let logger = self.log.new(o!("uri" => string));
-                match r {
-                    Ok(Ok(r)) => Ok(Some(r)),
-                    Ok(Err(e)) => {
-                        error!(logger, "{}", e);
-                        Ok(None)
-                    }
-                    Err(e) => {
-                        error!(logger, "{}", e);
-                        Ok(None)
-                    }
+            let vidx = vidx_ref.into();
+            self.download_vidx(vidx.clone()).then(move |r| match r {
+                Ok(Ok(r)) => Ok(Some(r)),
+                Ok(Err(e)) => {
+                    log::error!("{}", format!("{}", e).replace("uri", &vidx));
+                    Ok(None)
+                }
+                Err(e) => {
+                    log::error!("{}", format!("{}", e).replace("uri", &vidx));
+                    Ok(None)
                 }
             })
         }))

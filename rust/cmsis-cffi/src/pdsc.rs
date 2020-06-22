@@ -1,29 +1,22 @@
-use slog::{Logger, Drain};
-use slog_term::{TermDecorator, FullFormat};
-use slog_async::Async;
 use std::borrow::Cow;
-use std::os::raw::c_char;
 use std::ffi::{CStr, CString};
+use std::os::raw::c_char;
 use std::path::{Path, PathBuf};
 
 use failure::err_msg;
 
+use cmsis_pack::pdsc::{dump_devices, Package};
+use cmsis_pack::utils::FromElem;
 use cmsis_pack::utils::ResultLogExt;
-use cmsis_pack::utils::parse::FromElem;
-use cmsis_pack::pdsc::{self, dump_devices, Package};
 
-use pack_index::UpdateReturn;
+use crate::pack_index::UpdateReturn;
 
-cffi!{
+cffi! {
     fn dump_pdsc_json(
         packs: *mut ParsedPacks,
         devices_dest: *const c_char,
         boards_dest: *const c_char,
     ) -> Result<()> {
-        let decorator = TermDecorator::new().build();
-        let drain = FullFormat::new(decorator).build().fuse();
-        let drain = Async::new(drain).build().fuse();
-        let log = Logger::root(drain, o!());
         let dev_dest: Option<Cow<str>> = if !devices_dest.is_null() {
             let fname = unsafe { CStr::from_ptr(devices_dest) }.to_string_lossy();
             Some(fname)
@@ -40,7 +33,7 @@ cffi!{
             dump_devices(&filenames.0,
                          dev_dest.map(|d| d.to_string()),
                          brd_dest.map(|d| d.to_string()),
-                         &log)
+            )
         })
     }
 }
@@ -53,7 +46,7 @@ impl ParsedPacks {
     }
 }
 
-cffi!{
+cffi! {
     fn pack_from_path(ptr: *const c_char) -> Result<*mut UpdateReturn>{
         if !ptr.is_null() {
             let fname = unsafe { CStr::from_ptr(ptr) }.to_string_lossy();
@@ -70,18 +63,14 @@ cffi!{
     }
 }
 
-cffi!{
+cffi! {
     fn parse_packs(ptr: *mut UpdateReturn) -> Result<*mut ParsedPacks>{
         if !ptr.is_null() {
             with_from_raw!(let boxed = ptr,{
-                let decorator = TermDecorator::new().build();
-                let drain = FullFormat::new(decorator).build().fuse();
-                let drain = Async::new(drain).build().fuse();
-                let log = Logger::root(drain, o!());
                 let pdsc_files = boxed.iter();
                 Ok(Box::into_raw(Box::new(ParsedPacks(
                     pdsc_files
-                        .filter_map(|input| Package::from_path(Path::new(input), &log).ok_warn(&log))
+                        .filter_map(|input| Package::from_path(Path::new(input)).ok_warn())
                         .collect()))))
             })
         } else {
@@ -90,7 +79,7 @@ cffi!{
     }
 }
 
-cffi!{
+cffi! {
     fn parse_packs_free(ptr: *mut ParsedPacks) {
         if !ptr.is_null() {
             drop(unsafe { Box::from_raw(ptr) })
@@ -98,11 +87,11 @@ cffi!{
     }
 }
 
-cffi!{
+cffi! {
     fn dumps_components(ptr: *mut ParsedPacks) -> Result<*const c_char> {
         with_from_raw!(let boxed = ptr, {
             let pdscs = boxed.iter();
-            let dumped_components = pdsc::dumps_components(pdscs)?;
+            let dumped_components = cmsis_pack::pdsc::dumps_components(pdscs)?;
             Ok(CString::new(dumped_components).unwrap().into_raw())
         })
     }

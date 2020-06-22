@@ -1,15 +1,15 @@
 use crate::err_msg;
 
+use minidom::{Element, Error};
+use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
+use std::collections::{BTreeMap, HashMap};
 use std::fs::OpenOptions;
 use std::io::Read;
 use std::path::Path;
-use std::collections::{HashMap, BTreeMap};
-use minidom::{Element, Error, ErrorKind};
-use slog::Logger;
 
-use utils::parse::{assert_root_name, attr_map, child_text, get_child_no_ns, FromElem};
-use utils::ResultLogExt;
+use crate::utils::parse::{assert_root_name, attr_map, child_text, get_child_no_ns, FromElem};
+use crate::utils::ResultLogExt;
 use failure::Error as FailError;
 
 mod component;
@@ -17,7 +17,7 @@ mod condition;
 mod device;
 pub use crate::pdsc::component::{ComponentBuilders, FileRef};
 pub use crate::pdsc::condition::{Condition, Conditions};
-pub use crate::pdsc::device::{Device, Devices, Memories, Algorithm, Processors};
+pub use crate::pdsc::device::{Algorithm, Device, Devices, Memories, Processors};
 
 pub struct Release {
     pub version: String,
@@ -25,7 +25,7 @@ pub struct Release {
 }
 
 impl FromElem for Release {
-    fn from_elem(e: &Element, _: &Logger) -> Result<Self, Error> {
+    fn from_elem(e: &Element) -> Result<Self, Error> {
         assert_root_name(e, "release")?;
         Ok(Self {
             version: attr_map(e, "version", "release")?,
@@ -44,19 +44,19 @@ impl Releases {
 }
 
 impl FromElem for Releases {
-    fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
+    fn from_elem(e: &Element) -> Result<Self, Error> {
         assert_root_name(e, "releases")?;
-        let to_ret: Vec<_> = e.children()
-            .flat_map(|c| Release::from_elem(c, l).ok_warn(l))
+        let to_ret: Vec<_> = e
+            .children()
+            .flat_map(|c| Release::from_elem(c).ok_warn())
             .collect();
-        if to_ret.len() == 0usize {
+        if to_ret.is_empty() {
             Err(err_msg!("There must be at least one release!"))
         } else {
             Ok(Releases(to_ret))
         }
     }
 }
-
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DumpDevice<'a> {
@@ -67,7 +67,7 @@ pub struct DumpDevice<'a> {
     from_pack: FromPack<'a>,
     vendor: Option<&'a str>,
     family: &'a str,
-    sub_family: Option<&'a str>
+    sub_family: Option<&'a str>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -96,10 +96,10 @@ impl<'a> DumpDevice<'a> {
             memories: Cow::Borrowed(&dev.memories),
             algorithms: Cow::Borrowed(&dev.algorithms),
             processor: Cow::Borrowed(&dev.processor),
-            from_pack: from_pack,
-            vendor: dev.vendor.as_ref().map(String::as_str),
+            from_pack,
+            vendor: dev.vendor.as_deref(),
             family: &dev.family,
-            sub_family: dev.sub_family.as_ref().map(String::as_str),
+            sub_family: dev.sub_family.as_deref(),
         }
     }
 }
@@ -118,29 +118,27 @@ pub struct Package {
 }
 
 impl FromElem for Package {
-    fn from_elem(e: &Element, l: &Logger) -> Result<Self, Error> {
+    fn from_elem(e: &Element) -> Result<Self, Error> {
         assert_root_name(e, "package")?;
         let name: String = child_text(e, "name", "package")?;
         let description: String = child_text(e, "description", "package")?;
         let vendor: String = child_text(e, "vendor", "package")?;
         let url: String = child_text(e, "url", "package")?;
-        let l = l.new(o!("Vendor" => vendor.clone(),
-                         "Package" => name.clone()
-        ));
+        log::info!("Working on {}::{}", vendor, name,);
         let components = get_child_no_ns(e, "components")
-            .and_then(|c| ComponentBuilders::from_elem(c, &l).ok_warn(&l))
+            .and_then(|c| ComponentBuilders::from_elem(c).ok_warn())
             .unwrap_or_default();
         let releases = get_child_no_ns(e, "releases")
-            .and_then(|c| Releases::from_elem(c, &l).ok_warn(&l))
+            .and_then(|c| Releases::from_elem(c).ok_warn())
             .unwrap_or_default();
         let conditions = get_child_no_ns(e, "conditions")
-            .and_then(|c| Conditions::from_elem(c, &l).ok_warn(&l))
+            .and_then(|c| Conditions::from_elem(c).ok_warn())
             .unwrap_or_default();
         let devices = get_child_no_ns(e, "devices")
-            .and_then(|c| Devices::from_elem(c, &l).ok_warn(&l))
+            .and_then(|c| Devices::from_elem(c).ok_warn())
             .unwrap_or_default();
         let boards = get_child_no_ns(e, "boards")
-            .map(|c| Board::vec_from_children(c.children(), &l))
+            .map(|c| Board::vec_from_children(c.children()))
             .unwrap_or_default();
         Ok(Self {
             name,
@@ -164,10 +162,11 @@ pub struct Board {
 }
 
 impl FromElem for Board {
-    fn from_elem(e: &Element, _: &Logger) -> Result<Self, Error> {
+    fn from_elem(e: &Element) -> Result<Self, Error> {
         Ok(Self {
             name: attr_map(e, "name", "board")?,
-            mounted_devices: e.children()
+            mounted_devices: e
+                .children()
                 .flat_map(|c| match c.name() {
                     "mountedDevice" => attr_map(c, "Dname", "mountedDevice").ok(),
                     _ => None,
@@ -203,34 +202,32 @@ impl Package {
             .0
             .clone()
             .into_iter()
-            .map(|comp| {
-                Component {
-                    vendor: comp.vendor.unwrap_or_else(|| self.vendor.clone()),
-                    class: comp.class.unwrap(),
-                    group: comp.group.unwrap(),
-                    sub_group: comp.sub_group,
-                    variant: comp.variant,
-                    version: comp.version.unwrap_or_else(|| {
-                        self.releases.latest_release().version.clone()
-                    }),
-                    api_version: comp.api_version,
-                    condition: comp.condition,
-                    max_instances: comp.max_instances,
-                    is_default: comp.is_default,
-                    deprecated: comp.deprecated,
-                    description: comp.description,
-                    rte_addition: comp.rte_addition,
-                    files: comp.files,
-                }
+            .map(|comp| Component {
+                vendor: comp.vendor.unwrap_or_else(|| self.vendor.clone()),
+                class: comp.class.unwrap(),
+                group: comp.group.unwrap(),
+                sub_group: comp.sub_group,
+                variant: comp.variant,
+                version: comp
+                    .version
+                    .unwrap_or_else(|| self.releases.latest_release().version.clone()),
+                api_version: comp.api_version,
+                condition: comp.condition,
+                max_instances: comp.max_instances,
+                is_default: comp.is_default,
+                deprecated: comp.deprecated,
+                description: comp.description,
+                rte_addition: comp.rte_addition,
+                files: comp.files,
             })
             .collect()
     }
 
-    pub fn make_condition_lookup<'a>(&'a self, l: &Logger) -> HashMap<&'a str, &'a Condition> {
+    pub fn make_condition_lookup<'a>(&'a self) -> HashMap<&'a str, &'a Condition> {
         let mut map = HashMap::with_capacity(self.conditions.0.iter().count());
         for cond in self.conditions.0.iter() {
             if let Some(dup) = map.insert(cond.id.as_str(), cond) {
-                warn!(l, "Duplicate Condition found {}", dup.id);
+                log::warn!("Duplicate Condition found {}", dup.id);
             }
         }
         map
@@ -246,18 +243,14 @@ impl Package {
         self.devices
             .0
             .iter()
-            .map(|(name, d)| {
-                (name.as_str(), DumpDevice::from_device(d, from_pack.clone()))
-            })
+            .map(|(name, d)| (name.as_str(), DumpDevice::from_device(d, from_pack.clone())))
             .collect()
-
     }
 }
 pub fn dump_devices<'a, P: AsRef<Path>, I: IntoIterator<Item = &'a Package>>(
     pdscs: I,
     device_dest: Option<P>,
     board_dest: Option<P>,
-    _: &Logger,
 ) -> Result<(), FailError> {
     let pdscs: Vec<&Package> = pdscs.into_iter().collect();
     let devices = pdscs
@@ -321,7 +314,8 @@ pub fn dump_devices<'a, P: AsRef<Path>, I: IntoIterator<Item = &'a Package>>(
 }
 
 pub fn dumps_components<'a, I>(pdscs: I) -> Result<String, FailError>
-    where I: IntoIterator<Item = &'a Package>,
+where
+    I: IntoIterator<Item = &'a Package>,
 {
     let components = pdscs
         .into_iter()
