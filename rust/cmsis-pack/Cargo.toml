@@ -1,6 +1,9 @@
 [package]
-authors = ["Jimmy Brisson <theotherjimmy@gmail.com>"]
+authors = ["Jimmy Brisson <theotherjimmy@gmail.com>",
+           "Chris Reed <chris.reed@arm.com>",
+           "Mathias Brossard <mathias.brossard@arm.com>"]
 name = "cmsis-pack"
+repository = "https://github.com/ARMmbed/cmsis-pack-manager"
 version = "0.2.0"
 edition = "2018"
 description = "Rust crate for managing CMSIS PACKs"
@@ -22,7 +25,7 @@ tokio-core = "0.1.17"
 reqwest = { version = "0.9.24", default_features = false, features = ["rustls-tls"] }
 
 [dev-dependencies]
-time = "*"
+time = "0.2.16"
 
 [features]
 default = []
