@@ -1,4 +1,5 @@
 pub(crate) mod parse;
+pub(crate) mod prelude;
 
 pub use self::parse::FromElem;
 

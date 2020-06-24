@@ -15,7 +15,7 @@ use crate::pack_index::{PdscRef, Pidx, Vidx};
 use crate::pdsc::Package;
 use crate::utils::parse::FromElem;
 
-fn parse_vidx(body: Chunk) -> Result<Vidx, minidom::Error> {
+fn parse_vidx(body: Chunk) -> Result<Vidx, Error> {
     let string = String::from_utf8_lossy(body.as_ref());
     Vidx::from_string(string.borrow())
 }
@@ -215,7 +215,7 @@ where
     fn download_vidx<I: Into<String>>(
         &'a self,
         vidx_ref: I,
-    ) -> impl Future<Item = Result<Vidx, minidom::Error>, Error = Error> + 'a {
+    ) -> impl Future<Item = Result<Vidx, Error>, Error = Error> + 'a {
         let vidx = vidx_ref.into();
         result(vidx.parse())
             .from_err()

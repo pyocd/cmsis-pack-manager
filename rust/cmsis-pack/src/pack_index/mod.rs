@@ -1,5 +1,6 @@
-use crate::utils::parse::{assert_root_name, attr_map, child_text, get_child_no_ns, FromElem};
-use minidom::{Element, Error};
+use crate::utils::prelude::*;
+use failure::Error;
+use minidom::Element;
 
 #[derive(Debug, Clone)]
 pub struct PdscRef {

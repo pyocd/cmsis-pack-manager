@@ -2,12 +2,10 @@ use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use crate::err_msg;
-use minidom::{Element, Error};
+use crate::utils::prelude::*;
+use failure::{format_err, Error};
+use minidom::Element;
 use serde::{Deserialize, Serialize};
-
-use crate::utils::parse::{attr_map, attr_parse, attr_parse_hex, FromElem};
-use crate::utils::ResultLogExt;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 enum Core {
@@ -73,7 +71,7 @@ impl FromStr for Core {
             "Cortex-A57" => Ok(Core::CortexA57),
             "Cortex-A72" => Ok(Core::CortexA72),
             "Cortex-A73" => Ok(Core::CortexA73),
-            unknown => Err(err_msg!("Unknown core {}", unknown)),
+            unknown => Err(format_err!("Unknown core {}", unknown)),
         }
     }
 }
@@ -96,7 +94,7 @@ impl FromStr for FPU {
             "0" => Ok(FPU::None),
             "DP_FPU" => Ok(FPU::DoublePrecision),
             "2" => Ok(FPU::DoublePrecision),
-            unknown => Err(err_msg!("Unknown fpu {}", unknown)),
+            unknown => Err(format_err!("Unknown fpu {}", unknown)),
         }
     }
 }
@@ -115,7 +113,7 @@ impl FromStr for MPU {
             "1" => Ok(MPU::Present),
             "None" => Ok(MPU::NotPresent),
             "0" => Ok(MPU::NotPresent),
-            unknown => Err(err_msg!("Unknown fpu {}", unknown)),
+            unknown => Err(format_err!("Unknown fpu {}", unknown)),
         }
     }
 }
@@ -148,7 +146,7 @@ impl ProcessorBuilder {
 
     fn build(self) -> Result<Processor, Error> {
         Ok(Processor {
-            core: self.core.ok_or_else(|| err_msg!("No Core found!"))?,
+            core: self.core.ok_or_else(|| format_err!("No Core found!"))?,
             units: self.units.unwrap_or(1u8),
             fpu: self.fpu.unwrap_or(FPU::None),
             mpu: self.mpu.unwrap_or(MPU::NotPresent),
@@ -186,13 +184,13 @@ impl ProcessorsBuilder {
                 Some(ProcessorsBuilder::Symmetric(ref single_core)) => {
                     Ok(ProcessorsBuilder::Symmetric(me.merge(single_core)))
                 }
-                Some(ProcessorsBuilder::Asymmetric(_)) => Err(err_msg!(
+                Some(ProcessorsBuilder::Asymmetric(_)) => Err(format_err!(
                     "Tried to merge symmetric and asymmetric processors"
                 )),
                 None => Ok(ProcessorsBuilder::Symmetric(me)),
             },
             ProcessorsBuilder::Asymmetric(mut me) => match parent {
-                Some(ProcessorsBuilder::Symmetric(_)) => Err(err_msg!(
+                Some(ProcessorsBuilder::Symmetric(_)) => Err(format_err!(
                     "Tried to merge asymmetric and symmetric processors"
                 )),
                 Some(ProcessorsBuilder::Asymmetric(ref par_map)) => {
@@ -304,7 +302,7 @@ impl FromStr for NumberBool {
             "1" => Ok(NumberBool::True),
             "false" => Ok(NumberBool::False),
             "0" => Ok(NumberBool::False),
-            unknown => Err(err_msg!(
+            unknown => Err(format_err!(
                 "unkown boolean found in merory startup {}",
                 unknown
             )),
@@ -339,7 +337,7 @@ impl FromElem for MemElem {
             .attr("id")
             .or_else(|| e.attr("name"))
             .map(|s| s.to_string())
-            .ok_or_else(|| err_msg!("No name found for memory"))?;
+            .ok_or_else(|| format_err!("No name found for memory"))?;
         let start = attr_parse_hex(e, "start", "memory")?;
         let size = attr_parse_hex(e, "size", "memory")?;
         let startup = attr_parse(e, "startup", "memory")
@@ -457,15 +455,15 @@ impl<'dom> DeviceBuilder<'dom> {
         let name = self
             .name
             .map(|s| s.into())
-            .ok_or_else(|| err_msg!("Device found without a name"))?;
+            .ok_or_else(|| format_err!("Device found without a name"))?;
         let family = self
             .family
             .map(|s| s.into())
-            .ok_or_else(|| err_msg!("Device found without a family"))?;
+            .ok_or_else(|| format_err!("Device found without a family"))?;
         Ok(Device {
             processor: match self.processor {
                 Some(pb) => pb.build()?,
-                None => return Err(err_msg!("Device found without a processor {}", name)),
+                None => return Err(format_err!("Device found without a processor {}", name)),
             },
             name,
             memories: self.memories,

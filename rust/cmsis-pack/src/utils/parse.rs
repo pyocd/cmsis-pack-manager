@@ -4,18 +4,10 @@ use std::path::Path;
 use std::str::FromStr;
 
 use crate::utils::ResultLogExt;
-use minidom::{Children, Element, Error};
-use quick_xml::reader::Reader;
+use minidom::{Children, Element};
+use quick_xml::Reader;
 
-#[macro_export]
-macro_rules! err_msg {
-    ($($arg:tt)*) => {
-        {
-            use minidom::ErrorKind;
-            Error::from_kind(ErrorKind::Msg(format!($($arg)*)))
-        }
-    };
-}
+use failure::{format_err, Error};
 
 pub fn attr_map<'a, T>(from: &'a Element, name: &str, elemname: &'static str) -> Result<T, Error>
 where
@@ -23,7 +15,7 @@ where
 {
     from.attr(name)
         .map(T::from)
-        .ok_or_else(|| err_msg!("{} not found in {} element", name, elemname))
+        .ok_or_else(|| format_err!("{} not found in {} element", name, elemname))
 }
 
 pub fn attr_parse_hex<'a>(
@@ -32,14 +24,14 @@ pub fn attr_parse_hex<'a>(
     elemname: &'static str,
 ) -> Result<u64, Error> {
     from.attr(name)
-        .ok_or_else(|| err_msg!("{} not found in {} element", name, elemname))
+        .ok_or_else(|| format_err!("{} not found in {} element", name, elemname))
         .and_then(|st| {
             if st.starts_with("0x") {
-                u64::from_str_radix(&st[2..], 16).map_err(|e| err_msg!("{}", e))
+                u64::from_str_radix(&st[2..], 16).map_err(|e| format_err!("{}", e))
             } else if st.starts_with('0') {
-                u64::from_str_radix(&st[1..], 8).map_err(|e| err_msg!("{}", e))
+                u64::from_str_radix(&st[1..], 8).map_err(|e| format_err!("{}", e))
             } else {
-                u64::from_str_radix(st, 10).map_err(|e| err_msg!("{}", e))
+                u64::from_str_radix(st, 10).map_err(|e| format_err!("{}", e))
             }
         })
 }
@@ -54,8 +46,8 @@ where
     E: Display,
 {
     from.attr(name)
-        .ok_or_else(|| err_msg!("{} not found in {} element", name, elemname))
-        .and_then(|st| st.parse::<T>().map_err(|e| err_msg!("{}", e)))
+        .ok_or_else(|| format_err!("{} not found in {} element", name, elemname))
+        .and_then(|st| st.parse::<T>().map_err(|e| format_err!("{}", e)))
 }
 
 pub fn child_text<'a>(
@@ -65,7 +57,7 @@ pub fn child_text<'a>(
 ) -> Result<String, Error> {
     match get_child_no_ns(from, name) {
         Some(child) => Ok(child.text()),
-        None => Err(err_msg!(
+        None => Err(format_err!(
             "child element \"{}\" not found in \"{}\" element",
             name,
             elemname
@@ -84,7 +76,7 @@ pub fn get_child_no_ns<'a>(from: &'a Element, name: &str) -> Option<&'a Element>
 
 pub fn assert_root_name(from: &Element, name: &str) -> Result<(), Error> {
     if from.name() != name {
-        Err(err_msg!(
+        Err(format_err!(
             "tried to parse element \"{}\" from element \"{}\"",
             name,
             from.name()
