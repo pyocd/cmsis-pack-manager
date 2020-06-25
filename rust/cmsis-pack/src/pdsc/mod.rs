@@ -1,6 +1,4 @@
-use crate::err_msg;
-
-use minidom::{Element, Error};
+use minidom::Element;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::collections::{BTreeMap, HashMap};
@@ -8,13 +6,13 @@ use std::fs::OpenOptions;
 use std::io::Read;
 use std::path::Path;
 
-use crate::utils::parse::{assert_root_name, attr_map, child_text, get_child_no_ns, FromElem};
-use crate::utils::ResultLogExt;
-use failure::Error as FailError;
+use crate::utils::prelude::*;
+use failure::{format_err, Error};
 
 mod component;
 mod condition;
 mod device;
+
 pub use crate::pdsc::component::{ComponentBuilders, FileRef};
 pub use crate::pdsc::condition::{Condition, Conditions};
 pub use crate::pdsc::device::{Algorithm, Device, Devices, Memories, Processors};
@@ -51,7 +49,7 @@ impl FromElem for Releases {
             .flat_map(|c| Release::from_elem(c).ok_warn())
             .collect();
         if to_ret.is_empty() {
-            Err(err_msg!("There must be at least one release!"))
+            Err(format_err!("There must be at least one release!"))
         } else {
             Ok(Releases(to_ret))
         }
@@ -251,7 +249,7 @@ pub fn dump_devices<'a, P: AsRef<Path>, I: IntoIterator<Item = &'a Package>>(
     pdscs: I,
     device_dest: Option<P>,
     board_dest: Option<P>,
-) -> Result<(), FailError> {
+) -> Result<(), Error> {
     let pdscs: Vec<&Package> = pdscs.into_iter().collect();
     let devices = pdscs
         .iter()
@@ -313,7 +311,7 @@ pub fn dump_devices<'a, P: AsRef<Path>, I: IntoIterator<Item = &'a Package>>(
     Ok(())
 }
 
-pub fn dumps_components<'a, I>(pdscs: I) -> Result<String, FailError>
+pub fn dumps_components<'a, I>(pdscs: I) -> Result<String, Error>
 where
     I: IntoIterator<Item = &'a Package>,
 {

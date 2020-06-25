@@ -1,13 +1,11 @@
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use crate::err_msg;
-use minidom::{Element, Error, ErrorKind};
+use failure::{format_err, Error};
+use minidom::Element;
 use serde::Serialize;
 
-use crate::utils::parse::{
-    assert_root_name, attr_map, attr_parse, child_text, get_child_no_ns, FromElem,
-};
+use crate::utils::prelude::*;
 
 #[derive(Debug, PartialEq, Eq, Clone, Serialize)]
 pub enum FileCategory {
@@ -43,7 +41,7 @@ impl FromStr for FileCategory {
             "utility" => Ok(FileCategory::Utility),
             "image" => Ok(FileCategory::Image),
             "other" => Ok(FileCategory::Other),
-            unknown => Err(err_msg!("Unknown file catogory {}", unknown)),
+            unknown => Err(format_err!("Unknown file catogory {}", unknown)),
         }
     }
 }
@@ -60,7 +58,7 @@ impl FromStr for FileAttribute {
         match from {
             "config" => Ok(FileAttribute::Config),
             "template" => Ok(FileAttribute::Template),
-            unknown => Err(err_msg!("Unknown file attribute {}", unknown)),
+            unknown => Err(format_err!("Unknown file attribute {}", unknown)),
         }
     }
 }
@@ -227,10 +225,10 @@ fn child_to_component_iter(
             let component = ComponentBuilder::from_elem(e)?;
             Ok(Box::new(Some(component).into_iter()))
         }
-        _ => Err(Error::from_kind(ErrorKind::Msg(format!(
+        _ => Err(format_err!(
             "element of name {} is not allowed as a descendant of components",
             e.name()
-        )))),
+        )),
     }
 }
 
