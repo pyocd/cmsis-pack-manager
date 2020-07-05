@@ -1,5 +1,0 @@
-milksnake>=0.1.2
-pytest-runner
-setuptools>=40.0
-setuptools_scm!=1.5.3,!=1.5.4
-setuptools_scm_git_archive

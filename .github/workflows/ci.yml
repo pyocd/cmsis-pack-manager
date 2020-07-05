@@ -38,15 +38,12 @@ jobs:
           find ./ -name "__pycache__" -type d -print0 |xargs -0 rm -rf
           find ./ -name "*.pyc" -type f -print0 |xargs -0 rm -rf
           find ./ -name "*.so" -type f -print0 |xargs -0 rm -rf
-          pip install -U setuptools pip
-          pip install -U --upgrade-strategy=eager -r requirements.txt
-          pip install -U --upgrade-strategy=eager -r setup_requirements.txt
+          pip install -U setuptools pip wheel
           pip install -U --upgrade-strategy=eager -r test_requirements.txt
           sudo apt install libffi-dev
       - name: Compile
         run: |
-          python setup.py build
-          python setup.py install
+          pip install -U --upgrade-strategy=eager .
       - name: Run Tests
         run: |
           pytest --cache-clear

@@ -1,5 +1,5 @@
-# ARM Pack Manager
-# Copyright (c) 2017 ARM Limited
+# CMSIS Pack Manager
+# Copyright (c) 2017-2020 Arm Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,12 +13,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from os import getenv
-import subprocess
+import os
+import sys
 from setuptools import setup
-from distutils.version import StrictVersion
-from os.path import join, dirname
+from os.path import (join, dirname, realpath)
 
+# Get the directory containing this setup.py. Even though full paths are used below, we must
+# chdir in order for setuptools-scm to successfully pick up the version.
+SCRIPT_DIR = dirname(realpath(__file__))
+os.chdir(SCRIPT_DIR)
+
+# Read the readme file using UTF-8 encoding.
+open_args = { 'mode': 'r' }
+if sys.version_info[0] > 2:
+    # Python 3.x version requires explicitly setting the encoding.
+    # Python 2.x version of open() doesn't support the encoding parameter.
+    open_args['encoding'] = 'utf-8'
+
+readme_path = os.path.join(SCRIPT_DIR, "README.md")
+with open(readme_path, **open_args) as f:
+    readme = f.read()
 
 def build_native(spec):
     arch_flags = getenv("ARCHFLAGS")
@@ -57,27 +71,13 @@ def build_native(spec):
             header_filename=lambda: build.find_header('cmsis.h', in_path='cmsis-cffi')
         )
 
-def run(cmd):
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-    stdout, stderr = proc.communicate()
-    if proc.returncode != 0:
-        raise subprocess.CalledProcessError(
-            proc.returncode,
-            cmd,
-        )
-    else:
-        return stdout.strip()
-
-
-with open("requirements.txt") as inreq:
-    install_requires = list(inreq)
-with open("setup_requirements.txt") as setreq:
-    setup_requires = list(setreq)
-with open("test_requirements.txt") as testreq:
-    test_require = list(testreq)
-
 setup(
     name="cmsis-pack-manager",
+    description="Python manager for CMSIS-Pack index and cache with fast Rust backend",
+    long_description=readme,
+    long_description_content_type='text/markdown',
+    url="https://github.com/pyocd/cmsis-pack-manager",
+    license="Apache 2.0",
     use_scm_version={
         'local_scheme': 'dirty-tag',
         'write_to': 'cmsis_pack_manager/_version.py',
@@ -85,9 +85,24 @@ setup(
     packages=["cmsis_pack_manager"],
     zip_safe=False,
     platforms='any',
-    setup_requires=setup_requires,
-    install_requires=install_requires,
-    tests_require=test_require,
+    setup_requires=[
+        "milksnake>=0.1.2",
+        "pytest-runner",
+        "setuptools>=40.0",
+        "setuptools_scm!=1.5.3,!=1.5.4",
+        "setuptools_scm_git_archive",
+    ],
+    install_requires=[
+        "appdirs>=1.4",
+        "milksnake>=0.1.2",
+        "pyyaml>=5.1",
+    ],
+    tests_require=[
+        "hypothesis",
+        "jinja2",
+        "mock",
+        "pytest",
+    ],
     entry_points={
         'console_scripts': [
             'pack-manager=cmsis_pack_manager.pack_manager:main'
