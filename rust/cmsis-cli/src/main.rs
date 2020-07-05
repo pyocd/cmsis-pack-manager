@@ -10,9 +10,7 @@ use failure::Error;
 
 fn main() {
     // Note: This argument parser should do nothing more than handle
-    let matches = App::new("CMSIS Pack manager and builder")
-        .version("0.1.0")
-        .author("Jimmy Brisson")
+    let matches = App::new("CMSIS Pack manager")
         .arg(
             Arg::with_name("verbose")
                 .short("v")
