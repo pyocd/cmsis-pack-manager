@@ -21,6 +21,8 @@ pub enum FileCategory {
     LinkerScript,
     Utility,
     Image,
+    PreIncludeGlobal,
+    PreIncludeLocal,
     Other,
 }
 
@@ -40,8 +42,10 @@ impl FromStr for FileCategory {
             "linkerScript" => Ok(FileCategory::LinkerScript),
             "utility" => Ok(FileCategory::Utility),
             "image" => Ok(FileCategory::Image),
+            "preIncludeGlobal" => Ok(FileCategory::PreIncludeGlobal),
+            "preIncludeLocal" => Ok(FileCategory::PreIncludeLocal),
             "other" => Ok(FileCategory::Other),
-            unknown => Err(format_err!("Unknown file catogory {}", unknown)),
+            unknown => Err(format_err!("Unknown file category {}", unknown)),
         }
     }
 }
