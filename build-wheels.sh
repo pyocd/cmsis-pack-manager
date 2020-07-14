@@ -41,7 +41,7 @@ else
     rm -rf /io/dist/* || echo "No old wheels to delete"
 
     # Install libraries needed for compiling the extension
-    yum -q -y install libffi-devel
+    yum -q -y install libffi-devel openssl-devel 
 
     # Compile wheel
     ${PYBIN}/python -m pip wheel /io/ -w /dist/
