@@ -15,7 +15,7 @@ mod device;
 
 pub use crate::pdsc::component::{ComponentBuilders, FileRef};
 pub use crate::pdsc::condition::{Condition, Conditions};
-pub use crate::pdsc::device::{Algorithm, Device, Devices, Memories, Processors};
+pub use crate::pdsc::device::{Algorithm, Core, Device, Devices, Memories, Processors};
 
 pub struct Release {
     pub version: String,
