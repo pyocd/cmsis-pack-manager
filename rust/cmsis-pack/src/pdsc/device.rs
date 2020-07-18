@@ -247,10 +247,10 @@ pub struct MemoryPermissions {
     pub read: bool,
     pub write: bool,
     pub execute: bool,
-    peripheral: bool,
-    secure: bool,
-    non_secure: bool,
-    non_secure_callable: bool,
+    pub peripheral: bool,
+    pub secure: bool,
+    pub non_secure: bool,
+    pub non_secure_callable: bool,
 }
 
 impl MemoryPermissions {
