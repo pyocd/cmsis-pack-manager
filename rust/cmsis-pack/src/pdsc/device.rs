@@ -8,7 +8,7 @@ use minidom::Element;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-enum Core {
+pub enum Core {
     CortexM0,
     CortexM0Plus,
     CortexM1,
@@ -121,7 +121,7 @@ impl FromStr for MPU {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Processor {
     units: u8,
-    core: Core,
+    pub core: Core,
     fpu: FPU,
     mpu: MPU,
 }
@@ -243,14 +243,14 @@ impl FromElem for ProcessorsBuilder {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct MemoryPermissions {
-    read: bool,
-    write: bool,
-    execute: bool,
-    peripheral: bool,
-    secure: bool,
-    non_secure: bool,
-    non_secure_callable: bool,
+pub struct MemoryPermissions {
+    pub read: bool,
+    pub write: bool,
+    pub execute: bool,
+    pub peripheral: bool,
+    pub secure: bool,
+    pub non_secure: bool,
+    pub non_secure_callable: bool,
 }
 
 impl MemoryPermissions {
@@ -311,12 +311,12 @@ impl FromStr for NumberBool {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct Memory {
-    access: MemoryPermissions,
-    start: u64,
-    size: u64,
-    startup: bool,
-    default: bool,
+pub struct Memory {
+    pub access: MemoryPermissions,
+    pub start: u64,
+    pub size: u64,
+    pub startup: bool,
+    pub default: bool,
 }
 
 struct MemElem(String, Memory);
@@ -360,7 +360,7 @@ impl FromElem for MemElem {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Memories(HashMap<String, Memory>);
+pub struct Memories(pub HashMap<String, Memory>);
 
 fn merge_memories(lhs: Memories, rhs: &Memories) -> Memories {
     let rhs: Vec<_> = rhs
