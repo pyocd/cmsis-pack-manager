@@ -19,3 +19,11 @@
 # Editor stuff
 .#*
 **/*.rs.bk
+
+# ctags
+*.tags
+tags
+
+# virtualenvs
+venv*
+.venv*
