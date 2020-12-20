@@ -1,0 +1,64 @@
+name: Wheel Builder
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        required: true
+
+jobs:
+  manylinux:
+    runs-on: ubuntu-latest
+    container: quay.io/pypa/${{ matrix.MANYLINUX.CONTAINER }}
+    strategy:
+      matrix:
+        PYTHON: ["cp36-cp36m"] # "cp27-cp27m", "cp27-cp27mu"
+        MANYLINUX:
+          - NAME: manylinux2014_x86_64
+            CONTAINER: "manylinux2014_x86_64"
+    name: "${{ matrix.PYTHON }} for ${{ matrix.MANYLINUX.NAME }}"
+    steps:
+      - uses: actions/checkout@v2
+      - name: Cache Python modules
+        uses: actions/cache@v2
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-py${{ matrix.PYTHON }}-${{ hashFiles('**/*requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-py${{ matrix.PYTHON }}-
+      - name: Install Python dependencies
+        run: |
+          mkdir -p ~/.cache/pip
+          chown $(whoami) ~/.cache/pip && true
+          /opt/python/${{ matrix.PYTHON }}/bin/pip install virtualenv
+          /opt/python/${{ matrix.PYTHON }}/bin/python -m virtualenv .venv
+          .venv/bin/pip install -U pip setuptools
+          .venv/bin/pip install -U --upgrade-strategy=eager -r requirements.txt
+          .venv/bin/pip install -U --upgrade-strategy=eager -r setup_requirements.txt
+          .venv/bin/pip install -U --upgrade-strategy=eager -r test_requirements.txt
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Build
+        run: |
+          export PATH="$HOME/.cargo/bin:$PATH"
+          REGEX="cp3([0-9])*"
+          if [[ "${{ matrix.PYTHON }}" =~ $REGEX ]]; then
+              PY_LIMITED_API="--py-limited-api=cp3${BASH_REMATCH[1]}"
+          fi
+          .venv/bin/python setup.py bdist_wheel $PY_LIMITED_API
+          mkdir tmp-wheelhouse wheelhouse cpm-wheelhouse
+          mv dist/cmsis*.whl tmp-wheelhouse
+      - name: Run auditwheel
+        run: |
+          auditwheel repair --plat ${{ matrix.MANYLINUX.NAME }} tmp-wheelhouse/cmsis*.whl -w wheelhouse/
+      - name: Install and test
+        run: |
+          .venv/bin/pip install cmsis-pack-manager --no-index -f wheelhouse/
+          .venv/bin/pytest --cache-clear
+      - run: |
+          mv wheelhouse/cmsis*.whl cpm-wheelhouse/
+      - uses: actions/upload-artifact@v1
+        with:
+          name: "cmsis-pack-manager-${{ github.event.inputs.version }}-${{ matrix.MANYLINUX.NAME }}-${{ matrix.PYTHON }}"
+          path: cpm-wheelhouse/
