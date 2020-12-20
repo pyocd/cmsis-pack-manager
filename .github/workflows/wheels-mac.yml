@@ -28,6 +28,13 @@ jobs:
         with:
           toolchain: stable
       - uses: Swatinem/rust-cache@v1
+      - name: Cache Rust Build
+        uses: actions/cache@v2
+        with:
+          path: rust/target
+          key: ${{ runner.os }}-rust-target-${{ hashFiles('rust/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-rust-target-
       - name: Build wheel
         run: |
           python2 setup.py bdist_wheel
@@ -41,5 +48,5 @@ jobs:
           mv dist/cmsis*.whl wheelhouse
       - uses: actions/upload-artifact@v2
         with:
-          name: "cmsis-pack-manager-${{ github.event.inputs.version }}-mac-${{ matrix.PYTHON }}"
+          name: "cmsis-pack-manager-${{ github.event.inputs.version }}-mac"
           path: wheelhouse/
