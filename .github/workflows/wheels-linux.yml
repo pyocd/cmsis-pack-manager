@@ -1,4 +1,4 @@
-name: Wheel Builder
+name: Wheel Builder (Linux)
 on:
   workflow_dispatch:
     inputs:
@@ -35,11 +35,12 @@ jobs:
           .venv/bin/pip install -U --upgrade-strategy=eager -r requirements.txt
           .venv/bin/pip install -U --upgrade-strategy=eager -r setup_requirements.txt
           .venv/bin/pip install -U --upgrade-strategy=eager -r test_requirements.txt
-      - uses: actions-rs/toolchain@v1
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
       - uses: Swatinem/rust-cache@v1
-      - name: Build
+      - name: Build Wheel
         run: |
           export PATH="$HOME/.cargo/bin:$PATH"
           REGEX="cp3([0-9])*"
@@ -58,7 +59,7 @@ jobs:
           .venv/bin/pytest --cache-clear
       - run: |
           mv wheelhouse/cmsis*.whl cpm-wheelhouse/
-      - uses: actions/upload-artifact@v1
+      - uses: actions/upload-artifact@v2
         with:
           name: "cmsis-pack-manager-${{ github.event.inputs.version }}-${{ matrix.MANYLINUX.NAME }}-${{ matrix.PYTHON }}"
           path: cpm-wheelhouse/
