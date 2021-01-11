@@ -18,8 +18,7 @@ where
     P: DownloadProgress,
     D: DownloadConfig,
 {
-    let mut rt = runtime::Builder::new()
-        .threaded_scheduler()
+    let rt = runtime::Builder::new_current_thread()
         .enable_all()
         .build()?;
 
@@ -34,8 +33,7 @@ where
     P: DownloadProgress + 'a,
     D: DownloadConfig,
 {
-    let mut rt = runtime::Builder::new()
-        .threaded_scheduler()
+    let rt = runtime::Builder::new_current_thread()
         .enable_all()
         .build()?;
 
