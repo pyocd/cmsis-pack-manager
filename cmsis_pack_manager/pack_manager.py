@@ -1,5 +1,6 @@
 # ARM Pack Manager
-# Copyright (c) 2017 ARM Limited
+# Copyright (c) 2017-2021 Arm Limited
+# Copyright (c) 2021 Chris Reed
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -127,28 +128,31 @@ CACHE_CHOICES_HELP = (
 )
 def command_cache(cache, action, devices, verbose=False, intersection=True):
     if action in ("everything", "every", "packs"):
+        print("Caching all packs; this will take some time. Press Control-C to quit.")
         cache.cache_everything()
-        print("Packs Cached")
+        print("Packs cached")
         return True
     elif action in ("descriptors", "desc", "pdsc"):
+        print("Caching descriptors")
         cache.cache_descriptors()
-        print("Descriptors Cached")
+        print("Descriptors cached")
         return True
     elif action in ("clean", "rm"):
         cache.cache_clean()
         print("Cache cleaned")
         return True
     elif action in ("devices", "devs"):
+        print("Caching descriptors")
         cache.cache_descriptors()
         devices = [cache.index[dev] for dev in devices]
         packs = cache.packs_for_devices(devices)
-        print("Downloading Packs: ")
+        print("Downloading packs: ")
         for pack in packs:
             print("  {}".format(pack))
-        raw_input("Press Control-C to quit; Press Enter to continue")
+        print("Press Control-C to quit.")
         cache.download_pack_list(packs)
     else:
-        print("No action specified nothing to do")
+        print("No action specified; nothing to do")
 
 
 @subcommand('find-part',
