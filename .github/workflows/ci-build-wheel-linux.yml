@@ -14,7 +14,7 @@ jobs:
       CIBW_SKIP: "cp27-* cp34-* cp35-* pp* *-win32"
       CIBW_ENVIRONMENT: 'PATH="$PATH:/usr/share/rust/.cargo/bin:$HOME/.cargo/bin"'
       CIBW_BEFORE_ALL_LINUX: "curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y && yum install -y openssl-devel"
-      CIBW_BEFORE_BUILD: "python -m pip install --upgrade pip wheel setuptools"
+      CIBW_BEFORE_BUILD: "python -m pip install --upgrade pip wheel setuptools setuptools_scm setuptools_scm_git_archive"
 
     steps:
       - uses: actions/checkout@v2
