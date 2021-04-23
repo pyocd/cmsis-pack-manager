@@ -70,5 +70,6 @@ setup(
         ]
     },
     milksnake_tasks=[build_native],
+    milksnake_universal=False,
     test_suite="tests"
 )
