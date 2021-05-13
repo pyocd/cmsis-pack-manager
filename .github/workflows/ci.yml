@@ -1,9 +1,9 @@
 name: Continuous Integration
 on:
   workflow_dispatch:
-    inputs:
-      version:
-        required: true
+  pull_request:
+    branches:
+      - main
 
 jobs:
   linux:
