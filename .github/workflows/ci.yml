@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [2.7, 3.6, 3.7, 3.8, 3.9]
+        python-version: [3.6, 3.7, 3.8, 3.9]
     name: "${{ matrix.python-version }}"
     timeout-minutes: 30
     steps:
@@ -19,14 +19,17 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
-          # TODO: 'architecture' defaults to x64, invetigate x86 option
       - name: Cache Python modules
         uses: actions/cache@v2
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-py${{ matrix.python-version }}-${{ hashFiles('**/requirements.txt') }}
           restore-keys: |
-            ${{ runner.os }}-pip-
+            ${{ runner.os }}-py${{ matrix.python-version }}-
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
       - name: Install dependencies
         run: |
           rm -rf .cache .eggs rust_fst/_ffi.py build *.egg-info
@@ -36,7 +39,7 @@ jobs:
           pip install -U setuptools pip
           pip install -U --upgrade-strategy=eager -r requirements.txt
           pip install -U --upgrade-strategy=eager -r setup_requirements.txt
-          pip install -U --upgrade-strategy=eager -r test_requirements.txt   
+          pip install -U --upgrade-strategy=eager -r test_requirements.txt
           sudo apt install libffi-dev
       - name: Compile
         run: |

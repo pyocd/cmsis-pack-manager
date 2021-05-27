@@ -19,6 +19,7 @@ jobs:
       CIBW_ARCHS_WINDOWS: auto
       CIBW_ENVIRONMENT_LINUX: 'PATH="$PATH:/usr/share/rust/.cargo/bin:$HOME/.cargo/bin"'
       CIBW_ENVIRONMENT_MACOS: 'PATH="$PATH:/usr/share/rust/.cargo/bin:$HOME/.cargo/bin"'
+      CIBW_ENVIRONMENT_WINDOWS: 'RUSTFLAGS="-Ctarget-feature=+crt-static"'
       CIBW_SKIP: "cp27-* cp34-* cp35-* pp*"
       CIBW_BEFORE_ALL_LINUX: "curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y && yum install -y openssl-devel"
       CIBW_BEFORE_BUILD: "python -m pip install --upgrade pip wheel setuptools setuptools_scm setuptools_scm_git_archive"
