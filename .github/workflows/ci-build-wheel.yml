@@ -15,7 +15,7 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     env:
       CIBW_ARCHS_LINUX: auto aarch64
-      CIBW_ARCHS_MACOS: x86_64 arm64 universal2
+      CIBW_ARCHS_MACOS: x86_64 universal2
       CIBW_ARCHS_WINDOWS: auto
       CIBW_ENVIRONMENT_LINUX: 'PATH="$PATH:/usr/share/rust/.cargo/bin:$HOME/.cargo/bin"'
       CIBW_ENVIRONMENT_MACOS: 'PATH="$PATH:/usr/share/rust/.cargo/bin:$HOME/.cargo/bin"'
