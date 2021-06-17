@@ -150,11 +150,10 @@ where
         let temp = dest.with_extension("part");
         let file = OpenOptions::new().write(true).create(true).open(&temp);
 
-        if let Err(err) = file {
-            return Err(failure::err_msg(err.to_string()));
-        }
-
-        let mut file = file.unwrap();
+        let mut file = match file {
+            Err(err) => { return Err(failure::err_msg(err.to_string())) },
+            Ok(f) => f
+        };
 
         let mut stream = response.bytes_stream();
         while let Some(chunk) = stream.next().await {
