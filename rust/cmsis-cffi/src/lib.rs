@@ -9,6 +9,7 @@ fn cmsis_cffi_init() {
         simplelog::LevelFilter::Info,
         simplelog::Config::default(),
         simplelog::TerminalMode::Mixed,
+        simplelog::ColorChoice::Auto
     )
     .unwrap();
 }
