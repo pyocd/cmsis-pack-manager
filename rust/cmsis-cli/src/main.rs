@@ -1,4 +1,3 @@
-extern crate app_dirs;
 extern crate clap;
 
 use clap::{App, Arg};
