@@ -124,7 +124,7 @@ impl FromElem for ComponentBuilder {
         let sub_group_string = sub_group.clone().unwrap_or_else(|| "SubGroup".into());
         let files = get_child_no_ns(e, "files")
             .map(move |child| {
-                log::info!(
+                log::debug!(
                     "Working on {}::{}::{}::{}",
                     vendor_string,
                     class_string,

@@ -122,7 +122,7 @@ impl FromElem for Package {
         let description: String = child_text(e, "description", "package")?;
         let vendor: String = child_text(e, "vendor", "package")?;
         let url: String = child_text(e, "url", "package")?;
-        log::info!("Working on {}::{}", vendor, name,);
+        log::debug!("Working on {}::{}", vendor, name,);
         let components = get_child_no_ns(e, "components")
             .and_then(|c| ComponentBuilders::from_elem(c).ok_warn())
             .unwrap_or_default();
