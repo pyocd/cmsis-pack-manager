@@ -21,17 +21,41 @@ from os.path import join, dirname
 
 
 def build_native(spec):
-    build = spec.add_external_build(
-        cmd=['cargo', 'build', '--release', '--lib'],
-        path=join(dirname(__file__), 'rust')
-    )
+    arch_flags = getenv("ARCHFLAGS")
+    if arch_flags is not None and ("x86_64" in arch_flags and "arm64" in arch_flags):
+        spec.add_external_build(
+            cmd=['cargo', 'build', '--release', '--lib', '--target=aarch64-apple-darwin'],
+            path=join(dirname(__file__), 'rust')
+        )
+        spec.add_external_build(
+            cmd=['cargo', 'build', '--release', '--lib', '--target=x86_64-apple-darwin'],
+            path=join(dirname(__file__), 'rust')
+        )
+        build = spec.add_external_build(
+            cmd=['lipo', '-create', '-output', 'target/release/libcmsis_cffi.dylib',
+                 'target/x86_64-apple-darwin/release/libcmsis_cffi.dylib',
+                 'target/aarch64-apple-darwin/release/libcmsis_cffi.dylib'],
+            path=join(dirname(__file__), 'rust')
+        )
 
-    spec.add_cffi_module(
-        module_path='cmsis_pack_manager._native',
-        dylib=lambda: build.find_dylib('cmsis_cffi',
-                                       in_path='target/release/deps'),
-        header_filename=lambda: build.find_header('cmsis.h', in_path='cmsis-cffi')
-    )
+        spec.add_cffi_module(
+            module_path='cmsis_pack_manager._native',
+            dylib=lambda: build.find_dylib('cmsis_cffi',
+                                           in_path='target/release'),
+            header_filename=lambda: build.find_header('cmsis.h', in_path='cmsis-cffi')
+        )
+    else:
+        build = spec.add_external_build(
+            cmd=['cargo', 'build', '--release', '--lib'],
+            path=join(dirname(__file__), 'rust')
+        )
+
+        spec.add_cffi_module(
+            module_path='cmsis_pack_manager._native',
+            dylib=lambda: build.find_dylib('cmsis_cffi',
+                                           in_path='target/release/deps'),
+            header_filename=lambda: build.find_header('cmsis.h', in_path='cmsis-cffi')
+        )
 
 def run(cmd):
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
