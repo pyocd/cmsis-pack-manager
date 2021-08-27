@@ -15,6 +15,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
       - name: Setup python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
         with:
