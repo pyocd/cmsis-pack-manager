@@ -13,14 +13,20 @@ jobs:
       CIBW_SKIP: "cp27-* cp34-* cp35-* cp36-* pp* *-win32"
       CIBW_ENVIRONMENT: 'PATH="$PATH:/usr/share/rust/.cargo/bin:$HOME/.cargo/bin"'
       CIBW_BEFORE_BUILD: "python -m pip install --upgrade pip wheel setuptools setuptools_scm setuptools_scm_git_archive"
+      CIBW_BUILD_VERBOSITY: 1
 
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
 
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
+
+      - name: Install Rust aarch64-apple-darwin target
+        run: rustup target add aarch64-apple-darwin      
 
       - uses: actions/setup-python@v2
         name: Install Python
@@ -28,7 +34,7 @@ jobs:
           python-version: '3.7'
 
       - name: Build wheels
-        uses: joerick/cibuildwheel@v1.10.0          
+        uses: pypa/cibuildwheel@v2.1.1
 
       - uses: actions/upload-artifact@v2
         with:
