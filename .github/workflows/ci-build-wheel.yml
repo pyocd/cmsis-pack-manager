@@ -36,7 +36,7 @@ jobs:
           toolchain: stable
 
       - name: Install Rust aarch64-apple-darwin target
-        if: matrix.platform.os == 'macos-latest'
+        if: runner.os == 'macOS'
         run: rustup target add aarch64-apple-darwin
 
       - name: Set up QEMU
