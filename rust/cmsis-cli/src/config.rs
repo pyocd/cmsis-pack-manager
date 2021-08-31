@@ -24,7 +24,7 @@ impl DownloadConfig for Config {
 impl Config {
     pub fn new() -> Result<Config, Error> {
         let app_info = AppInfo {
-            name: "cmsis-pack",
+            name: "cmsis-pack-manager",
             author: "Arm",
         };
         let pack_store = app_root(AppDataType::UserData, &app_info)?;
