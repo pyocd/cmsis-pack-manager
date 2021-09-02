@@ -35,7 +35,7 @@ with open(readme_path, **open_args) as f:
     readme = f.read()
 
 def build_native(spec):
-    arch_flags = getenv("ARCHFLAGS")
+    arch_flags = os.getenv("ARCHFLAGS")
     if arch_flags is not None and ("x86_64" in arch_flags and "arm64" in arch_flags):
         spec.add_external_build(
             cmd=['cargo', 'build', '--release', '--lib', '--target=aarch64-apple-darwin'],
