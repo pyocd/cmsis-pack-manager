@@ -22,7 +22,7 @@ jobs:
       CIBW_ENVIRONMENT_WINDOWS: 'RUSTFLAGS="-Ctarget-feature=+crt-static"'
       CIBW_SKIP: "cp27-* cp34-* cp35-* pp*"
       CIBW_BEFORE_ALL_LINUX: "curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y && yum install -y openssl-devel"
-      CIBW_BEFORE_BUILD: "python -m pip install --upgrade pip wheel setuptools setuptools_scm setuptools_scm_git_archive"
+      CIBW_BEFORE_BUILD: "python -m pip install --upgrade pip wheel setuptools setuptools_scm"
       CIBW_BUILD_VERBOSITY: 1
 
     steps:
