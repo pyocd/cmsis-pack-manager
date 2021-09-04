@@ -1,5 +1,7 @@
-# ARM Pack Manager
-# Copyright (c) 2017 ARM Limited
+# CMSIS Pack Manager
+# Copyright (c) 2017-2020 Arm Limited
+# Copyright (c) 2021 Mathias Brossard
+# Copyright (c) 2021 Chris Reed
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,29 +15,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from os import getenv
-import subprocess
+import os
 from setuptools import setup
-from distutils.version import StrictVersion
-from os.path import join, dirname
+from pathlib import Path
 
+# Get the directory containing this setup.py. Even though full paths are used below, we must
+# chdir in order for setuptools-scm to successfully pick up the version.
+SCRIPT_DIR = Path(__file__).resolve().parent
+os.chdir(SCRIPT_DIR)
+
+RUST_DIR = str(SCRIPT_DIR / "rust")
 
 def build_native(spec):
-    arch_flags = getenv("ARCHFLAGS")
+    arch_flags = os.getenv("ARCHFLAGS")
     if arch_flags is not None and ("x86_64" in arch_flags and "arm64" in arch_flags):
         spec.add_external_build(
             cmd=['cargo', 'build', '--release', '--lib', '--target=aarch64-apple-darwin'],
-            path=join(dirname(__file__), 'rust')
+            path=RUST_DIR
         )
         spec.add_external_build(
             cmd=['cargo', 'build', '--release', '--lib', '--target=x86_64-apple-darwin'],
-            path=join(dirname(__file__), 'rust')
+            path=RUST_DIR
         )
         build = spec.add_external_build(
             cmd=['lipo', '-create', '-output', 'target/release/libcmsis_cffi.dylib',
                  'target/x86_64-apple-darwin/release/libcmsis_cffi.dylib',
                  'target/aarch64-apple-darwin/release/libcmsis_cffi.dylib'],
-            path=join(dirname(__file__), 'rust')
+            path=RUST_DIR
         )
 
         spec.add_cffi_module(
@@ -47,7 +53,7 @@ def build_native(spec):
     else:
         build = spec.add_external_build(
             cmd=['cargo', 'build', '--release', '--lib'],
-            path=join(dirname(__file__), 'rust')
+            path=RUST_DIR
         )
 
         spec.add_cffi_module(
@@ -57,43 +63,7 @@ def build_native(spec):
             header_filename=lambda: build.find_header('cmsis.h', in_path='cmsis-cffi')
         )
 
-def run(cmd):
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-    stdout, stderr = proc.communicate()
-    if proc.returncode != 0:
-        raise subprocess.CalledProcessError(
-            proc.returncode,
-            cmd,
-        )
-    else:
-        return stdout.strip()
-
-
-with open("requirements.txt") as inreq:
-    install_requires = list(inreq)
-with open("setup_requirements.txt") as setreq:
-    setup_requires = list(setreq)
-with open("test_requirements.txt") as testreq:
-    test_require = list(testreq)
-
 setup(
-    name="cmsis-pack-manager",
-    use_scm_version={
-        'local_scheme': 'dirty-tag',
-        'write_to': 'cmsis_pack_manager/_version.py',
-    },
-    packages=["cmsis_pack_manager"],
-    zip_safe=False,
-    platforms='any',
-    setup_requires=setup_requires,
-    install_requires=install_requires,
-    tests_require=test_require,
-    entry_points={
-        'console_scripts': [
-            'pack-manager=cmsis_pack_manager.pack_manager:main'
-        ]
-    },
     milksnake_tasks=[build_native],
     milksnake_universal=False,
-    test_suite="tests"
 )

@@ -12,7 +12,7 @@ jobs:
       CIBW_ARCHS_MACOS: x86_64 universal2
       CIBW_SKIP: "cp27-* cp34-* cp35-* cp36-* pp* *-win32"
       CIBW_ENVIRONMENT: 'PATH="$PATH:/usr/share/rust/.cargo/bin:$HOME/.cargo/bin"'
-      CIBW_BEFORE_BUILD: "python -m pip install --upgrade pip wheel setuptools setuptools_scm setuptools_scm_git_archive"
+      CIBW_BEFORE_BUILD: "python -m pip install --upgrade pip wheel setuptools setuptools_scm"
       CIBW_BUILD_VERBOSITY: 1
 
     steps:
