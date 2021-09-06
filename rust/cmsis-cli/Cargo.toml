@@ -1,7 +1,11 @@
 [package]
-authors = ["Jimmy Brisson <theotherjimmy@gmail.com>"]
 name = "cmsis-cli"
-version = "0.2.0"
+version = "0.3.0"
+authors = ["Jimmy Brisson <theotherjimmy@gmail.com>",
+           "Chris Reed <flit@me.com>",
+           "Mathias Brossard <mathias.brossard@arm.com>"]
+description = "Simple command line interface for CMSIS Pack management"
+license = "Apache-2.0"
 edition = "2018"
 
 [lib]

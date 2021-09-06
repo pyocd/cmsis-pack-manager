@@ -1,15 +1,15 @@
 [package]
-authors = ["Jimmy Brisson <theotherjimmy@gmail.com>",
-           "Chris Reed <chris.reed@arm.com>",
-           "Mathias Brossard <mathias.brossard@arm.com>"]
 name = "cmsis-pack"
-repository = "https://github.com/ARMmbed/cmsis-pack-manager"
-version = "0.2.0"
-edition = "2018"
-description = "Rust crate for managing CMSIS PACKs"
+version = "0.3.0"
+authors = ["Jimmy Brisson <theotherjimmy@gmail.com>",
+           "Chris Reed <flit@me.com>",
+           "Mathias Brossard <mathias.brossard@arm.com>"]
+repository = "https://github.com/pyocd/cmsis-pack-manager"
+description = "Rust crate for managing CMSIS Packs"
 license = "Apache-2.0"
 categories = ["embedded", "hardware-support", "development-tools::debugging"]
 keywords = ["embedded", "cmsis"]
+edition = "2018"
 
 [dependencies]
 failure = "0.1.1"
