@@ -5,7 +5,6 @@ pub mod update;
 pub mod utils;
 
 extern crate failure;
-extern crate futures;
 extern crate log;
 extern crate minidom;
 extern crate quick_xml;

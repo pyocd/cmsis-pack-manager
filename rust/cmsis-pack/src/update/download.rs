@@ -4,10 +4,10 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use failure::Error;
-use futures::future::{ok, result};
-use futures::prelude::Future;
-use futures::stream::{futures_unordered, iter_ok};
-use futures::Stream;
+use futures1::future::{ok, result};
+use futures1::prelude::Future;
+use futures1::stream::{futures_unordered, iter_ok};
+use futures1::Stream;
 use reqwest::r#async::{Chunk, Client, ClientBuilder, Response};
 use reqwest::{RedirectPolicy, Url, UrlError};
 

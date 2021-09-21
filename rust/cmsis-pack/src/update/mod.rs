@@ -1,9 +1,10 @@
 use failure::Error;
 use std::path::PathBuf;
-use tokio::runtime::current_thread::Runtime;
+use tokio::runtime::Runtime;
 
-use futures::stream::iter_ok;
-use futures::Stream;
+use futures::compat::Future01CompatExt;
+use futures1::stream::iter_ok;
+use futures1::Stream;
 
 use crate::pdsc::Package;
 
@@ -30,7 +31,7 @@ where
             .flatten();
         dl_cntx.download_stream(pdsc_list).collect()
     };
-    runtime.block_on(fut)
+    runtime.block_on(fut.compat())
 }
 
 /// Flatten a list of Vidx Urls into a list of updated CMSIS packs
@@ -43,5 +44,5 @@ where
     let mut runtime = Runtime::new().unwrap();
     let dl_cntx = DownloadContext::new(config, progress)?;
     let fut = dl_cntx.download_stream(iter_ok(pdsc_list)).collect();
-    runtime.block_on(fut)
+    runtime.block_on(fut.compat())
 }
