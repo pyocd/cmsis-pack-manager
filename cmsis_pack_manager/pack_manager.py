@@ -1,6 +1,7 @@
 # ARM Pack Manager
 # Copyright (c) 2017-2021 Arm Limited
 # Copyright (c) 2021 Chris Reed
+# Copyright (c) 2021 Noah Pendleton
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -226,6 +227,11 @@ def command_add_packs(cache, path, intersection=False):
     for p in path:
         cache.add_pack_from_path(p)
 
+
+@subcommand('print-cache-dir',
+            help="Print out the cache directory")
+def command_print_cache_dir(cache):
+    print(cache.data_path)
 
 def get_argparse():
     return parser
