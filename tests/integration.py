@@ -161,3 +161,12 @@ def test_panic_handling():
         assert False
     except:
         pass
+
+def test_print_cache_dir_cli(capsys):
+    sys.argv = ["pack-manager", "print-cache-dir"]
+    cmsis_pack_manager.pack_manager.main()
+    captured = capsys.readouterr()
+
+    c = cmsis_pack_manager.Cache(True, True)
+
+    assert (c.data_path ==  captured.out.strip())
