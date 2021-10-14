@@ -14,7 +14,7 @@ mod condition;
 mod device;
 pub use component::{ComponentBuilders, FileRef};
 pub use condition::{Condition, Conditions};
-pub use device::{Device, Devices, Memories, Algorithm, Processors, Core};
+pub use device::{Algorithm, Core, Device, Devices, Memories, Processors, Processor};
 
 pub struct Release {
     pub version: String,
