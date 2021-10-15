@@ -26,7 +26,7 @@ jobs:
           toolchain: stable
 
       - name: Install Rust aarch64-apple-darwin target
-        run: rustup target add aarch64-apple-darwin      
+        run: rustup target add aarch64-apple-darwin
 
       - uses: actions/setup-python@v2
         name: Install Python
@@ -34,7 +34,7 @@ jobs:
           python-version: '3.7'
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2.1.1
+        uses: pypa/cibuildwheel@v2.1.3
 
       - uses: actions/upload-artifact@v2
         with:
