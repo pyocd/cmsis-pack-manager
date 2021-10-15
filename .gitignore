@@ -19,6 +19,8 @@
 # Editor stuff
 .#*
 **/*.rs.bk
+.idea
+.vscode
 
 # ctags
 *.tags
