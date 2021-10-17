@@ -1,5 +1,6 @@
-# ARM Pack Manager
+# CMSIS Pack Manager
 # Copyright (c) 2017-2021 Arm Limited
+# Copyright (c) 2021 Chris Reed
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -46,7 +47,7 @@ class CmsisPackRef(collections.namedtuple(
         return join(self.vendor, self.pack, "{}.pack".format(self.version))
 
     def __str__(self):
-        return "{}::{}::{}".format(self.vendor, self.pack, self.version)
+        return f"{self.vendor}.{self.pack}.{self.version}"
 
 
 class Cache (object):
