@@ -1,12 +1,14 @@
 [package]
 name = "cmsis-cffi"
-version = "0.3.0"
+version = "0.4.0"
 authors = ["Jimmy Brisson <theotherjimmy@gmail.com>",
            "Chris Reed <flit@me.com>",
            "Mathias Brossard <mathias.brossard@arm.com>"]
-description = "FFI for cmsis-pack"
+repository = "https://github.com/pyocd/cmsis-pack-manager"
+description = "Foreign Function Interface for cmsis-pack"
 license = "Apache-2.0"
 edition = "2018"
+readme = "README.md"
 
 [lib]
 name = "cmsis_cffi"

@@ -1,6 +1,6 @@
 [package]
 name = "cmsis-pack"
-version = "0.3.0"
+version = "0.4.0"
 authors = ["Jimmy Brisson <theotherjimmy@gmail.com>",
            "Chris Reed <flit@me.com>",
            "Mathias Brossard <mathias.brossard@arm.com>"]
@@ -9,6 +9,7 @@ description = "Rust crate for managing CMSIS Packs"
 license = "Apache-2.0"
 categories = ["embedded", "hardware-support", "development-tools::debugging"]
 keywords = ["embedded", "cmsis"]
+readme = "README.md"
 edition = "2018"
 
 [dependencies]
