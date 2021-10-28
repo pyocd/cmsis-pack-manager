@@ -19,4 +19,4 @@ ctor = "0.1.15"
 log = "0.4.8"
 simplelog = "0.8.0"
 failure = "0.1.1"
-cmsis-pack = { path = "../cmsis-pack" }
+cmsis-pack = { version = "0.4.0", path = "../cmsis-pack" }

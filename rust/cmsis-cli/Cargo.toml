@@ -24,4 +24,4 @@ failure = "0.1.1"
 log = "0.4.8"
 simplelog = "0.8.0"
 pbr = "^1.0.0"
-cmsis-pack = { path = "../cmsis-pack" }
+cmsis-pack = { version = "0.4.0", path = "../cmsis-pack" }
