@@ -18,7 +18,7 @@ name = "cmsis-cli"
 path = "src/main.rs"
 
 [dependencies]
-directories = "3"
+directories = "4"
 clap = "2.33.1"
 failure = "0.1.1"
 log = "0.4.8"
