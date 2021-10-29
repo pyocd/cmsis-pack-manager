@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -120,37 +120,85 @@ impl FromStr for MPU {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Processor {
-    units: u8,
     pub core: Core,
-    fpu: FPU,
-    mpu: MPU,
+    pub fpu: FPU,
+    pub mpu: MPU,
+    pub ap: u8,
+    pub dp: u8,
+    pub apid: Option<u32>,
+    pub address: Option<u32>,
+    pub svd: Option<String>,
+    pub name: Option<String>,
+    pub unit: usize,
+    pub default_reset_sequence: Option<String>,
 }
 
 #[derive(Debug, Clone)]
 struct ProcessorBuilder {
     core: Option<Core>,
-    units: Option<u8>,
+    units: Option<usize>,
+    name: Option<String>,
     fpu: Option<FPU>,
     mpu: Option<MPU>,
 }
 
 impl ProcessorBuilder {
-    fn merge(self, parent: &Self) -> Self {
-        ProcessorBuilder {
-            core: self.core.or_else(|| parent.core.clone()),
-            units: self.units.or_else(|| parent.units),
-            fpu: self.fpu.or_else(|| parent.fpu.clone()),
-            mpu: self.mpu.or_else(|| parent.mpu.clone()),
-        }
-    }
+    fn build(self, debugs: &Vec<Debug>) -> Result<Vec<Processor>, Error> {
+        let units = self.units.unwrap_or(1);
+        let name = self.name.clone();
 
-    fn build(self) -> Result<Processor, Error> {
-        Ok(Processor {
-            core: self.core.ok_or_else(|| format_err!("No Core found!"))?,
-            units: self.units.unwrap_or(1u8),
-            fpu: self.fpu.unwrap_or(FPU::None),
-            mpu: self.mpu.unwrap_or(MPU::NotPresent),
-        })
+        let map = (0..units)
+            .into_iter()
+            .map(|unit| {
+                let default = Debug {
+                    ap: 0,
+                    dp: 0,
+                    apid: None,
+                    address: None,
+                    svd: None,
+                    name: name.clone(),
+                    unit: None,
+                    default_reset_sequence: None,
+                };
+                let Debug {
+                    ap,
+                    dp,
+                    apid,
+                    address,
+                    svd,
+                    name,
+                    default_reset_sequence,
+                    ..
+                } = debugs
+                    .iter()
+                    .find(|debug| {
+                        // If the <debug> element has a specific unit attribute we compare by that as well.
+                        // If not we just compare the name.
+                        let unit_condition = debug.unit.map(|u| u == unit).unwrap_or(true);
+                        debug.name == name && unit_condition
+                    })
+                    .unwrap_or_else(|| &default);
+
+                Ok(Processor {
+                    core: self
+                        .core
+                        .clone()
+                        .ok_or_else(|| format_err!("No Core found!"))?,
+                    fpu: self.fpu.clone().unwrap_or(FPU::None),
+                    mpu: self.mpu.clone().unwrap_or(MPU::NotPresent),
+                    ap: *ap,
+                    dp: *dp,
+                    apid: *apid,
+                    address: *address,
+                    svd: svd.clone(),
+                    name: name.clone(),
+                    unit,
+                    default_reset_sequence: default_reset_sequence.clone(),
+                })
+            })
+            .collect::<Result<Vec<_>, _>>();
+
+        map
     }
 }
 
@@ -161,84 +209,116 @@ impl FromElem for ProcessorBuilder {
             units: attr_parse(e, "Punits", "processor").ok(),
             fpu: attr_parse(e, "Dfpu", "processor").ok(),
             mpu: attr_parse(e, "Dmpu", "processor").ok(),
+            name: attr_parse(e, "Pname", "processor").ok(),
         })
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub enum Processors {
-    Symmetric(Processor),
-    Asymmetric(BTreeMap<String, Processor>),
-}
-
 #[derive(Debug, Clone)]
-enum ProcessorsBuilder {
-    Symmetric(ProcessorBuilder),
-    Asymmetric(BTreeMap<String, ProcessorBuilder>),
-}
+struct ProcessorsBuilder(Vec<ProcessorBuilder>);
 
 impl ProcessorsBuilder {
-    fn merge(self, parent: &Option<Self>) -> Result<Self, Error> {
-        match self {
-            ProcessorsBuilder::Symmetric(me) => match parent {
-                Some(ProcessorsBuilder::Symmetric(ref single_core)) => {
-                    Ok(ProcessorsBuilder::Symmetric(me.merge(single_core)))
-                }
-                Some(ProcessorsBuilder::Asymmetric(_)) => Err(format_err!(
-                    "Tried to merge symmetric and asymmetric processors"
-                )),
-                None => Ok(ProcessorsBuilder::Symmetric(me)),
-            },
-            ProcessorsBuilder::Asymmetric(mut me) => match parent {
-                Some(ProcessorsBuilder::Symmetric(_)) => Err(format_err!(
-                    "Tried to merge asymmetric and symmetric processors"
-                )),
-                Some(ProcessorsBuilder::Asymmetric(ref par_map)) => {
-                    me.extend(par_map.iter().map(|(k, v)| (k.clone(), v.clone())));
-                    Ok(ProcessorsBuilder::Asymmetric(me))
-                }
-                None => Ok(ProcessorsBuilder::Asymmetric(me)),
-            },
+    fn merge(mut self, parent: &Option<Self>) -> Self {
+        if let Some(parent) = parent {
+            self.0.extend(parent.0.iter().map(|v| v.clone()))
         }
+        self
     }
 
     fn merge_into(&mut self, other: Self) {
-        match self {
-            ProcessorsBuilder::Symmetric(_) => (),
-            ProcessorsBuilder::Asymmetric(ref mut me) => match other {
-                ProcessorsBuilder::Symmetric(_) => (),
-                ProcessorsBuilder::Asymmetric(more) => me.extend(more.into_iter()),
-            },
-        }
+        self.0.extend(other.0.into_iter());
     }
 
-    fn build(self) -> Result<Processors, Error> {
-        match self {
-            ProcessorsBuilder::Symmetric(prc) => prc.build().map(Processors::Symmetric),
-            ProcessorsBuilder::Asymmetric(map) => {
-                let new_map: Result<BTreeMap<String, Processor>, Error> = map
-                    .into_iter()
-                    .map(|(name, prc)| match prc.build() {
-                        Ok(new_prc) => Ok((name, new_prc)),
-                        Err(e) => Err(e),
-                    })
-                    .collect();
-                Ok(Processors::Asymmetric(new_map?))
-            }
+    fn build(self, debugs: Vec<Debug>) -> Result<Vec<Processor>, Error> {
+        let mut vec = vec![];
+        for processor in self.0.into_iter() {
+            vec.extend(processor.build(&debugs)?);
         }
+        Ok(vec)
     }
 }
 
 impl FromElem for ProcessorsBuilder {
     fn from_elem(e: &Element) -> Result<Self, Error> {
-        Ok(match e.attr("Pname") {
-            Some(name) => ProcessorsBuilder::Asymmetric(
-                Some((name.to_string(), ProcessorBuilder::from_elem(e)?))
-                    .into_iter()
-                    .collect(),
-            ),
-            None => ProcessorsBuilder::Symmetric(ProcessorBuilder::from_elem(e)?),
+        Ok(ProcessorsBuilder(vec![ProcessorBuilder::from_elem(e)?]))
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Debug {
+    pub ap: u8,
+    pub dp: u8,
+    pub apid: Option<u32>,
+    pub address: Option<u32>,
+    pub svd: Option<String>,
+    pub name: Option<String>,
+    pub unit: Option<usize>,
+    pub default_reset_sequence: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+struct DebugBuilder {
+    ap: Option<u8>,
+    dp: Option<u8>,
+    apid: Option<u32>,
+    address: Option<u32>,
+    svd: Option<String>,
+    name: Option<String>,
+    unit: Option<usize>,
+    default_reset_sequence: Option<String>,
+}
+
+impl DebugBuilder {
+    fn build(self) -> Debug {
+        Debug {
+            ap: self.ap.unwrap_or_default(),
+            dp: self.dp.unwrap_or_default(),
+            apid: self.apid,
+            address: self.address,
+            svd: self.svd,
+            name: self.name,
+            unit: self.unit,
+            default_reset_sequence: self.default_reset_sequence,
+        }
+    }
+}
+
+impl FromElem for DebugBuilder {
+    fn from_elem(e: &Element) -> Result<Self, Error> {
+        Ok(DebugBuilder {
+            ap: attr_parse(e, "__ap", "debug").ok(),
+            dp: attr_parse(e, "__dp", "debug").ok(),
+            apid: attr_parse(e, "__apid", "debug").ok(),
+            address: attr_parse(e, "address", "debug").ok(),
+            svd: attr_parse(e, "svd", "debug").ok(),
+            name: attr_parse(e, "Pname", "debug").ok(),
+            unit: attr_parse(e, "Punit", "debug").ok(),
+            default_reset_sequence: attr_parse(e, "defaultResetSequence", "debug").ok(),
         })
+    }
+}
+
+#[derive(Debug)]
+struct DebugsBuilder(Vec<DebugBuilder>);
+
+impl FromElem for DebugsBuilder {
+    fn from_elem(e: &Element) -> Result<Self, Error> {
+        Ok(DebugsBuilder(vec![DebugBuilder::from_elem(e)?]))
+    }
+}
+
+impl DebugsBuilder {
+    fn merge(mut self, parent: &Self) -> Self {
+        self.0.extend(parent.0.iter().map(|v| v.clone()));
+        self
+    }
+
+    fn merge_into(&mut self, other: Self) {
+        self.0.extend(other.0.into_iter())
+    }
+
+    fn build(self) -> Vec<Debug> {
+        self.0.into_iter().map(|debug| debug.build()).collect()
     }
 }
 
@@ -413,6 +493,7 @@ struct DeviceBuilder<'dom> {
     algorithms: Vec<Algorithm>,
     memories: Memories,
     processor: Option<ProcessorsBuilder>,
+    debugs: DebugsBuilder,
     vendor: Option<&'dom str>,
     family: Option<&'dom str>,
     sub_family: Option<&'dom str>,
@@ -423,7 +504,7 @@ pub struct Device {
     pub name: String,
     pub memories: Memories,
     pub algorithms: Vec<Algorithm>,
-    pub processor: Processors,
+    pub processors: Vec<Processor>,
     pub vendor: Option<String>,
     pub family: String,
     pub sub_family: Option<String>,
@@ -446,6 +527,7 @@ impl<'dom> DeviceBuilder<'dom> {
             memories,
             algorithms: Vec::new(),
             processor: None,
+            debugs: DebugsBuilder(Vec::new()),
             family,
             sub_family,
         }
@@ -460,11 +542,16 @@ impl<'dom> DeviceBuilder<'dom> {
             .family
             .map(|s| s.into())
             .ok_or_else(|| format_err!("Device found without a family"))?;
+
+        let debugs = self.debugs.build();
+
+        let processors = match self.processor {
+            Some(pb) => pb.build(debugs)?,
+            None => return Err(format_err!("Device found without a processor {}", name)),
+        };
+
         Ok(Device {
-            processor: match self.processor {
-                Some(pb) => pb.build()?,
-                None => return Err(format_err!("Device found without a processor {}", name)),
-            },
+            processors,
             name,
             memories: self.memories,
             algorithms: self.algorithms,
@@ -481,9 +568,10 @@ impl<'dom> DeviceBuilder<'dom> {
             algorithms: self.algorithms,
             memories: merge_memories(self.memories, &parent.memories),
             processor: match self.processor {
-                Some(old_proc) => Some(old_proc.merge(&parent.processor)?),
+                Some(old_proc) => Some(old_proc.merge(&parent.processor)),
                 None => parent.processor.clone(),
             },
+            debugs: self.debugs.merge(&parent.debugs),
             vendor: self.vendor.or(parent.vendor),
             family: self.family.or(parent.family),
             sub_family: self.sub_family.or(parent.sub_family),
@@ -495,6 +583,11 @@ impl<'dom> DeviceBuilder<'dom> {
             None => self.processor = Some(processor),
             Some(ref mut origin) => origin.merge_into(processor),
         };
+        self
+    }
+
+    fn add_debug(&mut self, debug: DebugsBuilder) -> &mut Self {
+        self.debugs.merge_into(debug);
         self
     }
 
@@ -531,6 +624,12 @@ fn parse_device<'dom>(e: &'dom Element) -> Vec<DeviceBuilder<'dom>> {
                 FromElem::from_elem(child)
                     .ok_warn()
                     .map(|prc| device.add_processor(prc));
+                None
+            }
+            "debug" => {
+                FromElem::from_elem(child)
+                    .ok_warn()
+                    .map(|debug| device.add_debug(debug));
                 None
             }
             _ => None,
