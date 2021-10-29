@@ -13,20 +13,19 @@ readme = "README.md"
 edition = "2018"
 
 [dependencies]
+bytes = "1.0"
 failure = "0.1.1"
-futures = "0.1.29"
+futures = "0.3.8"
 log = "0.4.8"
-minidom = "^0.12.0"
-quick-xml = "0.17.2"
-reqwest = { version = "0.9.24", default_features = false, features = ["rustls-tls"] }
+minidom = "0.12.0"
 rustc-demangle = "0.1.16"
-serde = "^1.0.89"
-serde_derive = "^1.0.89"
+serde = { version = "1.0.118", features = ["derive"] }
 serde_json = "1.0"
-tokio-core = "0.1.17"
+tokio = { version = "1.0", features = ["macros", "rt"] }
+reqwest = { version = "0.11.0", default_features = false, features = ["rustls-tls", "trust-dns", "stream"] }
 
 [dev-dependencies]
-time = "0.2.16"
+time = "0.3.3"
 
 [features]
 default = []

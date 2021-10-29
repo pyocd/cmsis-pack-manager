@@ -1,14 +1,14 @@
-extern crate app_dirs;
 extern crate cmsis_pack;
 
 use std::fs::{create_dir_all, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 
-use self::app_dirs::{app_root, AppDataType, AppInfo};
 use failure::Error;
 
 use cmsis_pack::update::DownloadConfig;
+
+use directories::ProjectDirs;
 
 pub struct Config {
     pub pack_store: PathBuf,
@@ -23,16 +23,15 @@ impl DownloadConfig for Config {
 
 impl Config {
     pub fn new() -> Result<Config, Error> {
-        let app_info = AppInfo {
-            name: "cmsis-pack-manager",
-            author: "Arm",
+        let proj_dir = match ProjectDirs::from("", "", "cmsis-pack-manager") {
+            Some(p) => p,
+            None => { return Err(failure::err_msg("Could not determine home directory")) }
         };
-        let pack_store = app_root(AppDataType::UserData, &app_info)?;
-        let vidx_list = {
-            let mut vl = app_root(AppDataType::UserConfig, &app_info)?;
-            vl.push("vendors.list");
-            vl
-        };
+
+        let pack_store = proj_dir.config_dir().to_path_buf();
+        let mut vidx_list = proj_dir.config_dir().to_path_buf();
+        vidx_list.push("vendors.list");
+
         Ok(Config {
             pack_store,
             vidx_list,

@@ -1,9 +1,6 @@
 use failure::Error;
 use std::path::PathBuf;
-
-use futures::stream::iter_ok;
-use futures::Stream;
-use tokio_core::reactor::Core;
+use tokio::runtime;
 
 use crate::pdsc::Package;
 
@@ -21,16 +18,12 @@ where
     P: DownloadProgress,
     D: DownloadConfig,
 {
-    let mut core = Core::new().unwrap();
+    let rt = runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?;
+
     let dl_cntx = DownloadContext::new(config, progress)?;
-    let fut = {
-        let parsed_vidx = dl_cntx.download_vidx_list(vidx_list);
-        let pdsc_list = parsed_vidx
-            .filter_map(|vidx| vidx.map(|v| dl_cntx.flatmap_pdscs(v)))
-            .flatten();
-        dl_cntx.download_stream(pdsc_list).collect()
-    };
-    core.run(fut)
+    rt.block_on(dl_cntx.update_vidx(vidx_list))
 }
 
 /// Flatten a list of Vidx Urls into a list of updated CMSIS packs
@@ -40,8 +33,10 @@ where
     P: DownloadProgress + 'a,
     D: DownloadConfig,
 {
-    let mut core = Core::new().unwrap();
+    let rt = runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?;
+
     let dl_cntx = DownloadContext::new(config, progress)?;
-    let fut = dl_cntx.download_stream(iter_ok(pdsc_list)).collect();
-    core.run(fut)
+    rt.block_on(async { Ok(dl_cntx.download_iterator(pdsc_list).await) })
 }

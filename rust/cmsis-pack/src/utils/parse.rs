@@ -5,7 +5,7 @@ use std::str::FromStr;
 
 use crate::utils::ResultLogExt;
 use minidom::{Children, Element};
-use quick_xml::Reader;
+use minidom::quick_xml::Reader;
 
 use failure::{format_err, Error};
 
