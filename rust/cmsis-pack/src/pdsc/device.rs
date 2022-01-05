@@ -143,6 +143,15 @@ struct ProcessorBuilder {
 }
 
 impl ProcessorBuilder {
+    fn merge(self, other: &Self) -> Self {
+        Self {
+            core: self.core.or(other.core.clone()),
+            units: self.units.or(other.units),
+            name: self.name.or(other.name.clone()),
+            fpu: self.fpu.or(other.fpu.clone()),
+            mpu: self.mpu.or(other.mpu.clone()),
+        }
+    }
     fn build(self, debugs: &Vec<Debug>) -> Result<Vec<Processor>, Error> {
         let units = self.units.unwrap_or(1);
         let name = self.name.clone();
@@ -218,11 +227,17 @@ impl FromElem for ProcessorBuilder {
 struct ProcessorsBuilder(Vec<ProcessorBuilder>);
 
 impl ProcessorsBuilder {
-    fn merge(mut self, parent: &Option<Self>) -> Self {
+    fn merge(mut self, parent: &Option<Self>) -> Result<Self, Error> {
         if let Some(parent) = parent {
-            self.0.extend(parent.0.iter().map(|v| v.clone()))
+            if let [parent] = &parent.0[..] {
+                self.0 = self.0.into_iter().map(|x| x.merge(parent)).collect();
+            } else {
+                Err(format_err!(
+                    "Support for two parent processors not implemented!"
+                ))?;
+            }
         }
-        self
+        Ok(self)
     }
 
     fn merge_into(&mut self, other: Self) {
@@ -568,7 +583,7 @@ impl<'dom> DeviceBuilder<'dom> {
             algorithms: self.algorithms,
             memories: merge_memories(self.memories, &parent.memories),
             processor: match self.processor {
-                Some(old_proc) => Some(old_proc.merge(&parent.processor)),
+                Some(old_proc) => Some(old_proc.merge(&parent.processor)?),
                 None => parent.processor.clone(),
             },
             debugs: self.debugs.merge(&parent.debugs),
