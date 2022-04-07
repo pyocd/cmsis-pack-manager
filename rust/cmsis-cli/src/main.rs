@@ -1,11 +1,11 @@
 extern crate clap;
 
+use anyhow::Error;
 use clap::{App, Arg};
 use cmsis_cli::{
     check_args, check_command, dump_devices_args, dump_devices_command, install_args,
     install_command, update_args, update_command, Config,
 };
-use failure::Error;
 
 fn main() {
     // Note: This argument parser should do nothing more than handle
@@ -25,7 +25,7 @@ fn main() {
         simplelog::LevelFilter::Info,
         simplelog::Config::default(),
         simplelog::TerminalMode::Mixed,
-        simplelog::ColorChoice::Auto
+        simplelog::ColorChoice::Auto,
     )
     .unwrap();
     log::debug!("Logging ready.");

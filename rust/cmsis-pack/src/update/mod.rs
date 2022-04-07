@@ -1,4 +1,4 @@
-use failure::Error;
+use anyhow::Error;
 use std::path::PathBuf;
 use tokio::runtime;
 

@@ -3,8 +3,6 @@ use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
 use std::path::{Path, PathBuf};
 
-use failure::err_msg;
-
 use cmsis_pack::pdsc::{dump_devices, Package};
 use cmsis_pack::utils::FromElem;
 use cmsis_pack::utils::ResultLogExt;
@@ -55,10 +53,10 @@ cffi! {
             if pathbuf.exists() {
                 Ok(Box::into_raw(Box::new(UpdateReturn::from_vec(vec![pathbuf]))))
             } else {
-                Err(err_msg(format!("Could not find file {:?}", &pathbuf)))
+                Err(anyhow::anyhow!(format!("Could not find file {:?}", &pathbuf)))
             }
         } else {
-            Err(err_msg("Null passed into pack_from_path"))
+            Err(anyhow::anyhow!("Null passed into pack_from_path"))
         }
     }
 }
@@ -74,7 +72,7 @@ cffi! {
                         .collect()))))
             })
         } else {
-            Err(err_msg("Null Passed into parse packs."))
+            Err(anyhow::anyhow!("Null Passed into parse packs."))
         }
     }
 }

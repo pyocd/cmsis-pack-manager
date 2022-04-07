@@ -1,5 +1,5 @@
 use crate::utils::prelude::*;
-use failure::Error;
+use anyhow::Error;
 use minidom::Element;
 
 #[derive(Debug, Clone)]

@@ -4,10 +4,10 @@ use std::path::Path;
 use std::str::FromStr;
 
 use crate::utils::ResultLogExt;
-use minidom::{Children, Element};
 use minidom::quick_xml::Reader;
+use minidom::{Children, Element};
 
-use failure::{format_err, Error};
+use anyhow::{format_err, Error};
 
 pub fn attr_map<'a, T>(from: &'a Element, name: &str, elemname: &'static str) -> Result<T, Error>
 where
