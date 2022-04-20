@@ -20,8 +20,10 @@ path = "src/main.rs"
 [dependencies]
 directories = "4"
 clap = "2.33.1"
-failure = "0.1.1"
 log = "0.4.8"
 simplelog = "0.10.0"
 pbr = "^1.0.0"
 cmsis-pack = { version = "0.5.0", path = "../cmsis-pack" }
+anyhow = "1.0.56"
+
+[features]

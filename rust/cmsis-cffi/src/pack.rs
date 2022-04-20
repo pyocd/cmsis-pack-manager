@@ -5,8 +5,6 @@ use std::sync::mpsc::channel;
 use std::sync::Arc;
 use std::thread;
 
-use failure::err_msg;
-
 use crate::config::ConfigBuilder;
 use cmsis_pack::update::install;
 
@@ -51,7 +49,7 @@ cffi! {
                 }))))
             })
         } else {
-            Err(err_msg("update packs received a Null pointer"))
+            Err(anyhow::anyhow!("update packs received a Null pointer"))
         }
     }
 }

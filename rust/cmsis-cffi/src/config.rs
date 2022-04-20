@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use cmsis_pack::update::DownloadConfig;
 
-use failure::{err_msg, Error};
+use anyhow::{anyhow, Error};
 
 pub const DEFAULT_VIDX_LIST: [&str; 1] = ["http://www.keil.com/pack/index.pidx"];
 
@@ -33,7 +33,7 @@ impl ConfigBuilder {
         let pack_store = match self.pack_store {
             Some(ps) => ps,
             None => {
-                return Err(err_msg("Pack Store missing"));
+                return Err(anyhow!("Pack Store missing"));
             }
         };
         Ok(Config { pack_store })

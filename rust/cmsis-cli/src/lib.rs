@@ -1,9 +1,8 @@
 extern crate clap;
-extern crate failure;
 extern crate pbr;
 
+use anyhow::Error;
 use clap::{App, Arg, ArgMatches, SubCommand};
-use failure::Error;
 use pbr::ProgressBar;
 use std::io::Stdout;
 use std::path::Path;

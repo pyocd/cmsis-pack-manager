@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use failure::{format_err, Error};
+use anyhow::{format_err, Error};
 use minidom::Element;
 use serde::Serialize;
 

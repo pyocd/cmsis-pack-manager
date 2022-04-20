@@ -10,7 +10,7 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
 use std::thread;
 
-use failure::{err_msg, Error};
+use anyhow::{anyhow, Error};
 
 use crate::config::{read_vidx_list, ConfigBuilder, DEFAULT_VIDX_LIST};
 use crate::utils::set_last_error;
@@ -134,7 +134,7 @@ pub unsafe extern "C" fn update_pdsc_poll(ptr: *mut UpdatePoll) -> bool {
                         let response = cont.thread_handle.join();
                         let response = match response {
                             Ok(inner) => inner,
-                            Err(_) => Err(err_msg("thread paniced"))
+                            Err(_) => Err(anyhow!("thread paniced"))
                         };
                         (true, UpdatePoll::Complete(response))
                     } else {
@@ -218,14 +218,14 @@ cffi! {
                         Some(osstr) => {
                             Ok(CString::new(osstr).map(|cstr| cstr.into_raw())?)
                         },
-                        None => Err(err_msg("Could not create a C string from a Rust String"))
+                        None => Err(anyhow!("Could not create a C string from a Rust String"))
                     }
                 } else {
                     Ok(null_mut())
                 }
             })
         } else {
-            Err(err_msg("update pdsc index next called with null"))
+            Err(anyhow!("update pdsc index next called with null"))
         }
     }
 }
@@ -239,7 +239,7 @@ cffi! {
                 Ok(())
             })
         } else {
-            Err(err_msg("update pdsc index push called with null"))
+            Err(anyhow!("update pdsc index push called with null"))
         }
     }
 }

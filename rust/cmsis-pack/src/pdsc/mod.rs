@@ -7,7 +7,7 @@ use std::io::Read;
 use std::path::Path;
 
 use crate::utils::prelude::*;
-use failure::{format_err, Error};
+use anyhow::{format_err, Error};
 
 mod component;
 mod condition;

@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use crate::utils::prelude::*;
-use failure::{format_err, Error};
+use anyhow::{format_err, Error};
 use minidom::Element;
 use serde::{Deserialize, Serialize};
 

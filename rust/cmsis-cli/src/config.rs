@@ -4,7 +4,7 @@ use std::fs::{create_dir_all, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 
-use failure::Error;
+use anyhow::Error;
 
 use cmsis_pack::update::DownloadConfig;
 
@@ -25,7 +25,7 @@ impl Config {
     pub fn new() -> Result<Config, Error> {
         let proj_dir = match ProjectDirs::from("", "", "cmsis-pack-manager") {
             Some(p) => p,
-            None => { return Err(failure::err_msg("Could not determine home directory")) }
+            None => return Err(anyhow::anyhow!("Could not determine home directory")),
         };
 
         let pack_store = proj_dir.config_dir().to_path_buf();

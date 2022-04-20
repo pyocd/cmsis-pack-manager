@@ -1,4 +1,4 @@
-use failure::Error;
+use anyhow::Error;
 use minidom::Element;
 
 use crate::utils::prelude::*;

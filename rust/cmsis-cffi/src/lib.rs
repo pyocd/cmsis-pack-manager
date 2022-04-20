@@ -1,5 +1,4 @@
 extern crate cmsis_pack;
-extern crate failure;
 #[macro_use]
 extern crate ctor;
 
@@ -9,7 +8,7 @@ fn cmsis_cffi_init() {
         simplelog::LevelFilter::Info,
         simplelog::Config::default(),
         simplelog::TerminalMode::Mixed,
-        simplelog::ColorChoice::Auto
+        simplelog::ColorChoice::Auto,
     )
     .unwrap();
 }

@@ -3,11 +3,11 @@ use std::fs::{create_dir_all, rename, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-use failure::Error;
+use anyhow::{anyhow, Error};
 use futures::prelude::*;
 use futures::stream::futures_unordered::FuturesUnordered;
-use reqwest::{Client, ClientBuilder, Response};
 use reqwest::{redirect, Url};
+use reqwest::{Client, ClientBuilder, Response};
 
 use crate::pack_index::{PdscRef, Pidx, Vidx};
 use crate::pdsc::Package;
@@ -150,8 +150,8 @@ where
         let file = OpenOptions::new().write(true).create(true).open(&temp);
 
         let mut file = match file {
-            Err(err) => { return Err(failure::err_msg(err.to_string())) },
-            Ok(f) => f
+            Err(err) => return Err(anyhow!(err.to_string())),
+            Ok(f) => f,
         };
 
         let mut stream = response.bytes_stream();
@@ -162,18 +162,18 @@ where
 
                     if let Err(err) = file.write_all(bytes.as_ref()) {
                         std::fs::remove_file(temp);
-                        return Err(failure::err_msg(err.to_string()));
+                        return Err(anyhow!(err.to_string()));
                     }
                 }
                 Err(err) => {
                     std::fs::remove_file(temp);
-                    return Err(failure::err_msg(err.to_string()));
+                    return Err(anyhow!(err.to_string()));
                 }
             }
         }
         if let Err(err) = rename(&temp, &dest) {
             std::fs::remove_file(temp);
-            return Err(failure::err_msg(err.to_string()));
+            return Err(anyhow!(err.to_string()));
         }
         Ok(dest)
     }
@@ -187,7 +187,7 @@ where
 
         match res {
             Ok(r) => self.save_response(r, dest).await,
-            Err(err) => Err(failure::err_msg(err.to_string())),
+            Err(err) => Err(anyhow!(err.to_string())),
         }
     }
 
@@ -208,16 +208,14 @@ where
             .collect();
         self.prog.size(to_dl.len());
 
-        let v = futures::stream::iter(to_dl.into_iter().map(|from| {
-            async move {
-                let r = self.download_file(from.0.clone(), from.1.clone()).await;
-                self.prog.complete();
-                match r {
-                    Ok(p) => Some(p),
-                    Err(e) => {
-                        log::error!("download of {:?} failed: {}", from.0.clone(), e);
-                        None
-                    }
+        let v = futures::stream::iter(to_dl.into_iter().map(|from| async move {
+            let r = self.download_file(from.0.clone(), from.1.clone()).await;
+            self.prog.complete();
+            match r {
+                Ok(p) => Some(p),
+                Err(e) => {
+                    log::error!("download of {:?} failed: {}", from.0.clone(), e);
+                    None
                 }
             }
         }))
@@ -305,17 +303,15 @@ where
             .map(|vidx_ref| {
                 let vidx = vidx_ref.into();
                 println!("{}", vidx);
-                self.download_vidx(vidx.clone()).then(|r| {
-                    async move {
-                        match r {
-                            Ok(v) => {
-                                println!("{} success", vidx);
-                                Some(v)
-                            }
-                            Err(e) => {
-                                log::error!("{}", format!("{}", e).replace("uri", &vidx));
-                                None
-                            }
+                self.download_vidx(vidx.clone()).then(|r| async move {
+                    match r {
+                        Ok(v) => {
+                            println!("{} success", vidx);
+                            Some(v)
+                        }
+                        Err(e) => {
+                            log::error!("{}", format!("{}", e).replace("uri", &vidx));
+                            None
                         }
                     }
                 })

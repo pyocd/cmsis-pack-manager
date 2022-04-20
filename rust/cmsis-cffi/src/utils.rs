@@ -7,7 +7,7 @@ use std::panic;
 use std::ptr;
 use std::thread;
 
-use failure::{err_msg, Error};
+use anyhow::Error;
 
 thread_local! {
     pub static LAST_ERROR: RefCell<Option<Error>> = RefCell::new(None);
@@ -64,7 +64,7 @@ pub unsafe fn set_panic_hook() {
             None => format!("thread '{}' panicked with '{}'", thread, message),
         };
 
-        set_last_error(err_msg(description))
+        set_last_error(anyhow::anyhow!(description))
     }));
 }
 
