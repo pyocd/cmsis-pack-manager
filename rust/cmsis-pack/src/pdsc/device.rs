@@ -407,6 +407,7 @@ impl FromStr for NumberBool {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Memory {
+    pub p_name: Option<String>,
     pub access: MemoryPermissions,
     pub start: u64,
     pub size: u64,
@@ -433,6 +434,7 @@ impl FromElem for MemElem {
             .or_else(|| e.attr("name"))
             .map(|s| s.to_string())
             .ok_or_else(|| format_err!("No name found for memory"))?;
+        let p_name = e.attr("Pname").map(|s| s.to_string());
         let start = attr_parse_hex(e, "start", "memory")?;
         let size = attr_parse_hex(e, "size", "memory")?;
         let startup = attr_parse(e, "startup", "memory")
@@ -444,6 +446,7 @@ impl FromElem for MemElem {
         Ok(MemElem(
             name,
             Memory {
+                p_name,
                 access,
                 start,
                 size,
