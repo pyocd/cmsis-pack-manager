@@ -2,7 +2,7 @@
 
 from os.path import join
 from string import ascii_lowercase, ascii_letters, hexdigits
-from mock import patch, MagicMock, call
+from unittest.mock import patch, MagicMock, call
 from hypothesis import given, settings, example
 from hypothesis.strategies import booleans, text, lists, just, integers, tuples
 from hypothesis.strategies import dictionaries, fixed_dictionaries
