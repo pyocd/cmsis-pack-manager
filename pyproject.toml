@@ -1,7 +1,6 @@
 [build-system]
 requires = [
     "maturin>=0.13,<0.14",
-    "setuptools_scm[toml]>=3.4",
 ]
 build-backend = "maturin"
 
@@ -30,11 +29,11 @@ classifiers = [
     "Operating System :: POSIX",
     "Operating System :: Unix",
     "Programming Language :: Python",
-    "Programming Language :: Python :: 3.6",
     "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "Topic :: Software Development",
     "Topic :: Software Development :: Debuggers",
     "Topic :: Software Development :: Embedded Systems",
@@ -46,7 +45,6 @@ test = [
     "pytest>=6.0",
     "hypothesis",
     "jinja2",
-    "mock",
 ]
 
 [project.urls]
@@ -54,9 +52,6 @@ Documentation = "https://github.com/pyocd/cmsis-pack-manager/"
 "Bug Tracker" = "https://github.com/pyocd/cmsis-pack-manager/issues"
 Discussions = "https://github.com/pyocd/cmsis-pack-manager/discussions"
 Changelog = "https://github.com/pyocd/cmsis-pack-manager/releases"
-
-[tool.setuptools_scm]
-write_to = "cmsis_pack_manager/_version.py"
 
 [tool.maturin]
 bindings = "cffi"
