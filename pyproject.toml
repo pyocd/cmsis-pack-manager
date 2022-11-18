@@ -1,11 +1,62 @@
 [build-system]
 requires = [
-    "setuptools>=42",
+    "maturin>=0.13,<0.14",
     "setuptools_scm[toml]>=3.4",
-    "wheel",
-    "milksnake>=0.1.2"
 ]
-build-backend = "setuptools.build_meta"
+build-backend = "maturin"
+
+[project]
+name = "cmsis-pack-manager"
+requires-python = ">=3.7"
+dependencies = [
+    "appdirs>=1.4,<2.0",
+    "cffi",
+    "pyyaml>=6.0,<7.0",
+]
+description = "Python manager for CMSIS-Pack index and cache with fast Rust backend"
+readme = "README.md"
+url = "https://github.com/pyocd/cmsis-pack-manager"
+maintainers = [
+    { name = "Mathias Brossard", email = "mathias.brossard@arm.com" },
+    { name = "Chris Reed", email = "flit@me.com" },
+]
+license = { file = "LICENSE" }
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX",
+    "Operating System :: Unix",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Topic :: Software Development",
+    "Topic :: Software Development :: Debuggers",
+    "Topic :: Software Development :: Embedded Systems",
+    "Topic :: Utilities",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=6.0",
+    "hypothesis",
+    "jinja2",
+    "mock",
+]
+
+[project.urls]
+Documentation = "https://github.com/pyocd/cmsis-pack-manager/"
+"Bug Tracker" = "https://github.com/pyocd/cmsis-pack-manager/issues"
+Discussions = "https://github.com/pyocd/cmsis-pack-manager/discussions"
+Changelog = "https://github.com/pyocd/cmsis-pack-manager/releases"
 
 [tool.setuptools_scm]
 write_to = "cmsis_pack_manager/_version.py"
+
+[tool.maturin]
+bindings = "cffi"
