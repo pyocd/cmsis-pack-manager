@@ -45,11 +45,11 @@ jobs:
         if: runner.os == 'macOS'
         run: rustup target add aarch64-apple-darwin
 
-      - name: Set up QEMU
-        if: runner.os == 'Linux'
-        uses: docker/setup-qemu-action@v1
-        with:
-          platforms: arm64
+      # - name: Set up QEMU
+      #   if: runner.os == 'Linux'
+      #   uses: docker/setup-qemu-action@v2
+      #   with:
+      #     platforms: arm64,arm
 
       - uses: actions/setup-python@v4
         name: Install Python
@@ -60,6 +60,105 @@ jobs:
         uses: pypa/cibuildwheel@v2.11.2
 
       - uses: actions/upload-artifact@v2
+        with:
+          name: wheels
+          path: ./wheelhouse/*.whl
+
+  linux-armv6:
+    name: Cross-build wheels for linux-armv6
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v4
+        with:
+          python-version: 3.9
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: 1.63.0
+          profile: minimal
+          target: arm-unknown-linux-gnueabihf
+          default: true
+      - name: Install cross toolchain
+        run: |
+          brew tap messense/macos-cross-toolchains
+          brew install arm-unknown-linux-gnueabihf
+          export CC_arm_unknown_linux_gnueabihf=arm-unknown-linux-gnueabihf-gcc
+          export CXX_arm_unknown_linux_gnueabihf=arm-unknown-linux-gnueabihf-g++
+          export AR_arm_unknown_linux_gnueabihf=arm-unknown-linux-gnueabihf-ar
+          export CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-unknown-linux-gnueabihf-gcc
+          pip3 install maturin cffi
+          maturin build --release --target arm-unknown-linux-gnueabihf --out wheelhouse
+      - name: Upload wheels
+        uses: actions/upload-artifact@v2
+        with:
+          name: wheels
+          path: ./wheelhouse/*.whl
+
+  linux-armv7:
+    name: Cross-build wheels for linux-armv7
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v4
+        with:
+          python-version: 3.9
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: 1.63.0
+          profile: minimal
+          target: armv7-unknown-linux-gnueabihf
+          default: true
+      - name: Install cross toolchain
+        run: |
+          brew tap messense/macos-cross-toolchains
+          brew install armv7-unknown-linux-gnueabihf
+          export CC_armv7_unknown_linux_gnueabihf=armv7-unknown-linux-gnueabihf-gcc
+          export CXX_armv7_unknown_linux_gnueabihf=armv7-unknown-linux-gnueabihf-g++
+          export AR_armv7_unknown_linux_gnueabihf=armv7-unknown-linux-gnueabihf-ar
+          export CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER=armv7-unknown-linux-gnueabihf-gcc
+          pip3 install maturin cffi
+          maturin build --release --target armv7-unknown-linux-gnueabihf --out wheelhouse
+      - name: Upload wheels
+        uses: actions/upload-artifact@v2
+        with:
+          name: wheels
+          path: ./wheelhouse/*.whl
+
+  linux-aarch64:
+    name: Cross-build wheels for linux-aarch64
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v4
+        with:
+          python-version: 3.9
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: 1.63.0
+          profile: minimal
+          target: aarch64-unknown-linux-gnu
+          default: true
+      - name: Install cross toolchain
+        run: |
+          brew tap messense/macos-cross-toolchains
+          brew install aarch64-unknown-linux-gnu
+          export CC_aarch64_unknown_linux_gnu=aarch64-unknown-linux-gnu-gcc
+          export CXX_aarch64_unknown_linux_gnu=aarch64-unknown-linux-gnu-g++
+          export AR_aarch64_unknown_linux_gnu=aarch64-unknown-linux-gnu-ar
+          export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-unknown-linux-gnu-gcc
+          pip3 install maturin cffi
+          maturin build --release --target aarch64-unknown-linux-gnu --out wheelhouse
+      - name: Upload wheels
+        uses: actions/upload-artifact@v2
         with:
           name: wheels
           path: ./wheelhouse/*.whl

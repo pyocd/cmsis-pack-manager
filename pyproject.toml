@@ -1,6 +1,7 @@
 [build-system]
 requires = [
     "maturin>=0.13,<0.14",
+    "cffi",
 ]
 build-backend = "maturin"
 
