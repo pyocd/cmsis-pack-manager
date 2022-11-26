@@ -7,7 +7,7 @@ build-backend = "maturin"
 
 [project]
 name = "cmsis-pack-manager"
-requires-python = ">=3.7"
+requires-python = ">=3.6"
 dependencies = [
     "appdirs>=1.4,<2.0",
     "cffi",
@@ -30,6 +30,7 @@ classifiers = [
     "Operating System :: POSIX",
     "Operating System :: Unix",
     "Programming Language :: Python",
+    "Programming Language :: Python :: 3.6",
     "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
