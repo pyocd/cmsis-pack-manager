@@ -81,7 +81,7 @@ jobs:
           profile: minimal
           target: arm-unknown-linux-gnueabihf
           default: true
-      - name: Install cross toolchain
+      - name: Install cross toolchain and build
         run: |
           brew tap messense/macos-cross-toolchains
           brew install arm-unknown-linux-gnueabihf
@@ -114,7 +114,7 @@ jobs:
           profile: minimal
           target: armv7-unknown-linux-gnueabihf
           default: true
-      - name: Install cross toolchain
+      - name: Install cross toolchain and build
         run: |
           brew tap messense/macos-cross-toolchains
           brew install armv7-unknown-linux-gnueabihf
@@ -147,7 +147,7 @@ jobs:
           profile: minimal
           target: aarch64-unknown-linux-gnu
           default: true
-      - name: Install cross toolchain
+      - name: Install cross toolchain and build
         run: |
           brew tap messense/macos-cross-toolchains
           brew install aarch64-unknown-linux-gnu
@@ -162,3 +162,42 @@ jobs:
         with:
           name: wheels
           path: ./wheelhouse/*.whl
+
+  test-cross:
+    name: Test cross-built wheels (${{ matrix.platform.arch }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - distro: ubuntu22.04
+            arch: aarch64
+          # - distro: bullseye
+          #   arch: armv7
+          - distro: bullseye
+            arch: armv6
+    needs: [linux-armv6, linux-armv7, linux-aarch64]
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v3
+        with:
+          name: wheels
+          path: ./wheelhouse
+      - uses: uraimo/run-on-arch-action@v2.3.0
+        name: Install built wheel
+        with:
+          arch: ${{ matrix.platform.arch }}
+          distro: ${{ matrix.platform.distro }}
+          githubToken: ${{ github.token }}
+          install: |
+              apt-get update
+              apt-get install -y --no-install-recommends python3 python3-pip
+              pip3 install -U pip
+          run: |
+              pip3 install -U 'appdirs>=1.4,<2.0' cffi 'pyyaml>=6.0,<7.0' 'pytest>=6.0' hypothesis jinja2
+              pip3 install cmsis-pack-manager --no-index --find-links ./wheelhouse
+              rm -rf cmsis_pack_manager
+              python3 -c "import cmsis_pack_manager"
+              pytest --cache-clear
