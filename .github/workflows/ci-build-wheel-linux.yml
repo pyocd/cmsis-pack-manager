@@ -9,22 +9,20 @@ jobs:
       matrix:
         os: [ubuntu-latest]
     env:
-      CIBW_ARCHS_LINUX: auto aarch64
-      CIBW_SKIP: "cp27-* cp34-* cp35-* pp* *-win32"
+      CIBW_ARCHS_LINUX: auto # aarch64
+      CIBW_BUILD: "cp39-*"
       CIBW_ENVIRONMENT: 'PATH="$PATH:/usr/share/rust/.cargo/bin:$HOME/.cargo/bin"'
-      CIBW_BEFORE_ALL_LINUX: "curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y && yum install -y openssl-devel"
-      CIBW_BEFORE_BUILD: "python -m pip install --upgrade pip wheel setuptools setuptools_scm"
+      CIBW_BEFORE_ALL_LINUX: >
+        yum install -y libffi-devel openssl-devel &&
+        curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain 1.63.0 -y --profile=minimal &&
+        rustup show &&
+        cargo install empty-library || true
       CIBW_BUILD_VERBOSITY: 1
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
 
       - name: Set up QEMU
         if: runner.os == 'Linux'
@@ -32,13 +30,13 @@ jobs:
         with:
           platforms: arm64
 
-      - uses: actions/setup-python@v2
+      - uses: actions/setup-python@v4
         name: Install Python
         with:
-          python-version: '3.9'
+          python-version: 3.9
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2.1.3
+        uses: pypa/cibuildwheel@v2.11.2
 
       - uses: actions/upload-artifact@v2
         with:

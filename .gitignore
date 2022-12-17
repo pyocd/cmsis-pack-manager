@@ -2,6 +2,8 @@
 /rust/Cargo.lock
 /rust/target/
 /rust/*/target/
+/target/
+!/target/header.h
 /build
 /dist
 /cmsis_pack_manager/_version.py

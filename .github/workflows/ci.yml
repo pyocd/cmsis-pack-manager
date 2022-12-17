@@ -10,15 +10,15 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.6", "3.7", "3.8", "3.9", "3.10"]
+        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
     name: "${{ matrix.python-version }}"
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
       - name: Setup python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
       - name: Cache Python modules
@@ -32,13 +32,14 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
+          profile: minimal
       - name: Install dependencies
         run: |
           rm -rf .cache .eggs rust_fst/_ffi.py build *.egg-info
           find ./ -name "__pycache__" -type d -print0 |xargs -0 rm -rf
           find ./ -name "*.pyc" -type f -print0 |xargs -0 rm -rf
           find ./ -name "*.so" -type f -print0 |xargs -0 rm -rf
-          pip install -U setuptools pip wheel
+          pip install -U pip maturin
           sudo apt install libffi-dev
       - name: Compile
         run: |

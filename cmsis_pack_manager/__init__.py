@@ -22,7 +22,7 @@ from shutil import rmtree
 from json import load
 from zipfile import ZipFile
 from appdirs import user_data_dir
-from ._native import ffi, lib
+from .cmsis_pack_manager import ffi, lib
 
 
 class _RaiseRust(object):
