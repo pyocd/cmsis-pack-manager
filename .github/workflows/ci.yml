@@ -25,7 +25,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-py${{ matrix.python-version }}-${{ hashFiles('**/requirements.txt') }}
+          key: ${{ runner.os }}-py${{ matrix.python-version }}-${{ hashFiles('**/setup.cfg') }}
           restore-keys: |
             ${{ runner.os }}-py${{ matrix.python-version }}-
       - name: Install Rust
