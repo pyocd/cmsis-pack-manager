@@ -186,7 +186,14 @@ where
         let res = self.client.get(source).send().await;
 
         match res {
-            Ok(r) => self.save_response(r, dest).await,
+            Ok(r) => {
+                let rc = r.status().as_u16();
+                if rc >= 400 {
+                    Err(anyhow!(format!("Response code in invalid range: {}", rc).to_string()))
+                } else {
+                    self.save_response(r, dest).await
+                }
+            },
             Err(err) => Err(anyhow!(err.to_string())),
         }
     }
