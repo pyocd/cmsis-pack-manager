@@ -37,6 +37,7 @@ pub enum Core {
     CortexA57,
     CortexA72,
     CortexA73,
+    StarMC1,
 }
 
 impl FromStr for Core {
@@ -71,6 +72,7 @@ impl FromStr for Core {
             "Cortex-A57" => Ok(Core::CortexA57),
             "Cortex-A72" => Ok(Core::CortexA72),
             "Cortex-A73" => Ok(Core::CortexA73),
+            "Star-MC1" => Ok(Core::StarMC1),
             unknown => Err(format_err!("Unknown core {}", unknown)),
         }
     }
