@@ -18,6 +18,7 @@ use std::collections::HashMap;
 
 const CONCURRENCY : usize = 32;
 const HOST_LIMIT : usize = 6;
+const MAX_RETRIES : usize = 3;
 
 fn pdsc_url(pdsc: &mut PdscRef) -> String {
     if pdsc.url.ends_with('/') {
@@ -290,7 +291,8 @@ where
         I: IntoIterator + 'a,
         <I as IntoIterator>::Item: Into<String>,
     {
-        let mut downloaded: HashMap<String, i8> = HashMap::new();
+        let mut downloaded: HashMap<String, bool> = HashMap::new();
+        let mut failures: HashMap<String, usize> = HashMap::new();
         let mut urls: Vec<String> = list.into_iter().map(|x| x.into()).collect();
         let mut vidxs: Vec<Vidx> = Vec::new();
         loop {
@@ -298,30 +300,30 @@ where
             urls.dedup();
             urls = urls
                 .into_iter()
-                .filter(|u| downloaded.get(u).unwrap_or(&0) < &1)
+                .filter(|u| !*downloaded.get(u).unwrap_or(&false))
                 .collect();
 
             // TODO: Make this section asynchronous
             let mut next: Vec<String> = Vec::new();
-            for url in &urls {
+            for url in urls {
                 match self.download_vidx(url.clone()).await {
                     Ok(t) => {
                         log::info!("Downloaded {}", url);
-                        downloaded.insert(url.to_string(), 1);
+                        downloaded.insert(url, true);
                         for v in &t.vendor_index {
                             let u = format!("{}{}.pidx", v.url, v.vendor);
                             if !downloaded.contains_key(&u) {
-                                downloaded.insert(u.to_string(), 0);
+                                downloaded.insert(u.clone(), false);
                                 next.push(u);
                             }
                         }
                         vidxs.push(t);
                     }
                     Err(_err) => {
-                        let r = downloaded.get(&url.to_string()).unwrap_or(&0);
-                        if r > &-3 {
-                            next.push(url.clone());
-                            downloaded.insert(url.to_string(), r - &1);
+                        let tries = failures.entry(url.clone()).or_insert(0);
+                        *tries += 1;
+                        if *tries < MAX_RETRIES {
+                            next.push(url);
                         }
                     }
                 }
