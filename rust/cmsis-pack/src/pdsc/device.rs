@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Core {
+    Any,
     CortexM0,
     CortexM0Plus,
     CortexM1,
@@ -17,10 +18,15 @@ pub enum Core {
     CortexM7,
     CortexM23,
     CortexM33,
+    CortexM35P,
+    CortexM55,
+    CortexM85,
+    StarMC1,
     SC000,
     SC300,
     ARMV8MBL,
     ARMV8MML,
+    ARMV81MML,
     CortexR4,
     CortexR5,
     CortexR7,
@@ -37,7 +43,6 @@ pub enum Core {
     CortexA57,
     CortexA72,
     CortexA73,
-    StarMC1,
 }
 
 impl FromStr for Core {
@@ -52,6 +57,10 @@ impl FromStr for Core {
             "Cortex-M7" => Ok(Core::CortexM7),
             "Cortex-M23" => Ok(Core::CortexM23),
             "Cortex-M33" => Ok(Core::CortexM33),
+            "Cortex-M35P" => Ok(Core::CortexM35P),
+            "Cortex-M55" => Ok(Core::CortexM55),
+            "Cortex-M85" => Ok(Core::CortexM85),
+            "Star-MC1" => Ok(Core::StarMC1),
             "SC000" => Ok(Core::SC000),
             "SC300" => Ok(Core::SC300),
             "ARMV8MBL" => Ok(Core::ARMV8MBL),
@@ -72,7 +81,7 @@ impl FromStr for Core {
             "Cortex-A57" => Ok(Core::CortexA57),
             "Cortex-A72" => Ok(Core::CortexA72),
             "Cortex-A73" => Ok(Core::CortexA73),
-            "Star-MC1" => Ok(Core::StarMC1),
+            "*" => Ok(Core::Any),
             unknown => Err(format_err!("Unknown core {}", unknown)),
         }
     }
