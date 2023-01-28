@@ -489,6 +489,25 @@ fn merge_memories(lhs: Memories, rhs: &Memories) -> Memories {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum AlgorithmStyle {
+    Keil,
+    IAR,
+    CMSIS,
+}
+
+impl FromStr for AlgorithmStyle {
+    type Err = Error;
+    fn from_str(from: &str) -> Result<Self, Error> {
+        match from {
+            "Keil" => Ok(AlgorithmStyle::Keil),
+            "IAR" => Ok(AlgorithmStyle::IAR),
+            "CMSIS" => Ok(AlgorithmStyle::CMSIS),
+            unknown => Err(format_err!("Unknown algorithm style {}", unknown)),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Algorithm {
     pub file_name: PathBuf,
     pub start: u64,
@@ -496,6 +515,7 @@ pub struct Algorithm {
     pub default: bool,
     pub ram_start: Option<u64>,
     pub ram_size: Option<u64>,
+    pub style: AlgorithmStyle,
 }
 
 impl FromElem for Algorithm {
@@ -505,6 +525,8 @@ impl FromElem for Algorithm {
             .unwrap_or_default();
 
         let file_name: &str = attr_map(e, "name", "algorithm")?;
+        let style = attr_parse(e, "style", "algorithm").ok()
+            .unwrap_or(AlgorithmStyle::Keil);
         Ok(Self {
             file_name: file_name.replace("\\", "/").into(),
             start: attr_parse_hex(e, "start", "algorithm")?,
@@ -512,6 +534,7 @@ impl FromElem for Algorithm {
             ram_start: attr_parse_hex(e, "RAMstart", "algorithm").ok(),
             ram_size: attr_parse_hex(e, "RAMsize", "algorithm").ok(),
             default,
+            style,
         })
     }
 }
