@@ -1,6 +1,6 @@
 [package]
 name = "cmsis-pack-manager"
-version = "0.5.1"
+version = "0.5.2"
 authors = ["Jimmy Brisson <theotherjimmy@gmail.com>",
            "Chris Reed <flit@me.com>",
            "Mathias Brossard <mathias.brossard@arm.com>"]
