@@ -142,7 +142,7 @@ pub unsafe extern "C" fn update_pdsc_poll(ptr: *mut UpdatePoll) -> bool {
                     }
                 }
             };
-            mem::replace(boxed.borrow_mut(), next_state);
+            let _ = mem::replace(boxed.borrow_mut(), next_state);
             ret
         })
     } else {
@@ -188,7 +188,7 @@ pub unsafe extern "C" fn update_pdsc_result(ptr: *mut UpdatePoll) -> *mut Update
                 UpdatePoll::Drained => (None, UpdatePoll::Drained),
                 UpdatePoll::Running(cont) => (None, UpdatePoll::Running(cont))
             };
-            mem::replace(boxed.borrow_mut(), next_state);
+            let _ = mem::replace(boxed.borrow_mut(), next_state);
             match ret {
                 Some(Ok(inner)) => Box::into_raw(Box::new(inner)),
                 Some(Err(inner)) => {

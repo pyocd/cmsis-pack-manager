@@ -93,7 +93,7 @@ impl FromElem for FileRef {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ComponentBuilder {
     pub vendor: Option<String>,
     pub class: Option<String>,
@@ -155,7 +155,7 @@ impl FromElem for ComponentBuilder {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct Bundle {
     name: String,
     class: String,

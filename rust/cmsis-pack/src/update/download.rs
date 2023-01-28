@@ -1,4 +1,3 @@
-use std::borrow::Borrow;
 use std::fs::{create_dir_all, rename, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -11,20 +10,14 @@ use reqwest::{Client, ClientBuilder, Response};
 use tokio::task::JoinHandle;
 use tokio::time::{sleep, Duration};
 
-use crate::pack_index::{PdscRef, Pidx, Vidx};
+use crate::pack_index::{PdscRef, Vidx};
 use crate::pdsc::Package;
 use crate::utils::parse::FromElem;
-use bytes::Bytes;
 use futures::StreamExt;
 use std::collections::HashMap;
 
 const CONCURRENCY : usize = 32;
 const HOST_LIMIT : usize = 6;
-
-fn parse_vidx(body: Bytes) -> Result<Vidx, Error> {
-    let string = String::from_utf8_lossy(body.as_ref());
-    Vidx::from_string(string.borrow())
-}
 
 fn pdsc_url(pdsc: &mut PdscRef) -> String {
     if pdsc.url.ends_with('/') {
@@ -361,6 +354,7 @@ where
         Vidx::from_string(req.text().await?.as_str())
     }
 
+    #[allow(dead_code)]
     pub(crate) fn download_vidx_list<I>(&'a self, list: I) -> impl Stream<Item = Option<Vidx>> + 'a
     where
         I: IntoIterator + 'a,
