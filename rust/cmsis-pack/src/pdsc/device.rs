@@ -525,7 +525,8 @@ impl FromElem for Algorithm {
             .unwrap_or_default();
 
         let file_name: &str = attr_map(e, "name", "algorithm")?;
-        let style = attr_parse(e, "style", "algorithm").ok()
+        let style = attr_parse(e, "style", "algorithm")
+            .ok()
             .unwrap_or(AlgorithmStyle::Keil);
         Ok(Self {
             file_name: file_name.replace("\\", "/").into(),
@@ -719,6 +720,12 @@ fn parse_sub_family<'dom>(e: &'dom Element) -> Vec<DeviceBuilder<'dom>> {
                 FromElem::from_elem(child)
                     .ok_warn()
                     .map(|prc| sub_family_device.add_processor(prc));
+                Vec::new()
+            }
+            "debug" => {
+                FromElem::from_elem(child)
+                    .ok_warn()
+                    .map(|debug| sub_family_device.add_debug(debug));
                 Vec::new()
             }
             _ => Vec::new(),
