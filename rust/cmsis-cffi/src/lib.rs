@@ -5,7 +5,7 @@ extern crate ctor;
 #[ctor]
 fn cmsis_cffi_init() {
     simplelog::TermLogger::init(
-        simplelog::LevelFilter::Info,
+        simplelog::LevelFilter::Error,
         simplelog::Config::default(),
         simplelog::TerminalMode::Mixed,
         simplelog::ColorChoice::Auto,

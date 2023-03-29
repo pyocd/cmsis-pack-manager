@@ -261,7 +261,7 @@ where
                                     (host, r.0, Some(r.1))
                                 },
                                 Err(err) => {
-                                    log::error!("download of {:?} failed: {}", source, err);
+                                    log::warn!("Download of {} failed: {}", source.to_string(), err);
                                     (host, 0, None)
                                 }
                             }
