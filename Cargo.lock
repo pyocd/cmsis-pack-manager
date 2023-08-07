@@ -99,7 +99,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "cmsis-pack"
-version = "0.6.2"
+version = "0.6.3"
 dependencies = [
  "anyhow",
  "bytes",
@@ -114,7 +114,7 @@ dependencies = [
 
 [[package]]
 name = "cmsis-pack-manager"
-version = "0.5.2"
+version = "0.5.3"
 dependencies = [
  "anyhow",
  "cmsis-pack",
