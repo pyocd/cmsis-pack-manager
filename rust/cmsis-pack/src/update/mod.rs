@@ -1,3 +1,5 @@
+#![cfg(feature = "pack-download")]
+
 use anyhow::Error;
 use std::path::PathBuf;
 use tokio::runtime;
