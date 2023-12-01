@@ -60,3 +60,6 @@ Changelog = "https://github.com/pyocd/cmsis-pack-manager/releases"
 
 [tool.maturin]
 bindings = "cffi"
+
+[tool.pytest.ini_options]
+python_files = "tests/*.py"
