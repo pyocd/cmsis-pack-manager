@@ -2,6 +2,7 @@ use std::fs::{create_dir_all, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 
+#[cfg(feature = "pack-download")]
 use cmsis_pack::update::DownloadConfig;
 
 use anyhow::{anyhow, Error};
@@ -16,6 +17,7 @@ pub struct ConfigBuilder {
     pack_store: Option<PathBuf>,
 }
 
+#[cfg(feature = "pack-download")]
 impl DownloadConfig for Config {
     fn pack_store(&self) -> PathBuf {
         self.pack_store.clone()

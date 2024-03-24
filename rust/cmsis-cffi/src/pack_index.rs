@@ -1,4 +1,5 @@
 #![allow(clippy::missing_safety_doc)]
+
 use std::borrow::{Borrow, BorrowMut};
 use std::ffi::{CStr, CString};
 use std::mem;
@@ -6,15 +7,23 @@ use std::os::raw::c_char;
 use std::path::PathBuf;
 use std::ptr::null_mut;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{channel, Receiver, Sender};
+
+#[cfg(feature = "pack-download")]
+use std::sync::mpsc::{channel, Sender};
+use std::sync::mpsc::Receiver;
 use std::sync::Arc;
 use std::thread;
 
 use anyhow::{anyhow, Error};
 
+#[cfg(feature = "pack-download")]
 use crate::config::{read_vidx_list, ConfigBuilder, DEFAULT_VIDX_LIST};
 use crate::utils::set_last_error;
+
+#[cfg(feature = "pack-download")]
 use cmsis_pack::update::update;
+
+#[cfg(feature = "pack-download")]
 use cmsis_pack::update::DownloadProgress;
 
 pub struct UpdateReturn(pub(crate) Vec<PathBuf>);
@@ -31,14 +40,18 @@ pub struct DownloadUpdate {
     pub size: usize,
 }
 
+
+#[cfg(feature = "pack-download")]
 pub(crate) struct DownloadSender(Sender<DownloadUpdate>);
 
+#[cfg(feature = "pack-download")]
 impl DownloadSender {
     pub(crate) fn from_sender(from: Sender<DownloadUpdate>) -> Self {
         DownloadSender(from)
     }
 }
 
+#[cfg(feature = "pack-download")]
 impl DownloadProgress for DownloadSender {
     fn size(&self, size: usize) {
         let _ = self.0.send(DownloadUpdate {
@@ -81,6 +94,7 @@ impl UpdateReturn {
     }
 }
 
+#[cfg(feature = "pack-download")]
 cffi! {
     fn update_pdsc_index(
         pack_store: *const c_char,
