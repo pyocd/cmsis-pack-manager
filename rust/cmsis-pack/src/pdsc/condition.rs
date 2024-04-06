@@ -14,11 +14,11 @@ pub struct ConditionComponent {
 impl FromElem for ConditionComponent {
     fn from_elem(e: &Element) -> Result<Self, Error> {
         Ok(ConditionComponent {
-            device_family: attr_map(e, "Dfamily", "condition").ok(),
-            device_sub_family: attr_map(e, "Dsubfamily", "condition").ok(),
-            device_variant: attr_map(e, "Dvariant", "condition").ok(),
-            device_vendor: attr_map(e, "Dvendor", "condition").ok(),
-            device_name: attr_map(e, "Dname", "condition").ok(),
+            device_family: attr_map(e, "Dfamily").ok(),
+            device_sub_family: attr_map(e, "Dsubfamily").ok(),
+            device_variant: attr_map(e, "Dvariant").ok(),
+            device_vendor: attr_map(e, "Dvendor").ok(),
+            device_name: attr_map(e, "Dname").ok(),
         })
     }
 }
@@ -54,7 +54,7 @@ impl FromElem for Condition {
             }
         }
         Ok(Condition {
-            id: attr_map(e, "id", "condition")?,
+            id: attr_map(e, "id")?,
             accept,
             deny,
             require,

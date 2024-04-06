@@ -9,22 +9,18 @@ use minidom::{Children, Element};
 
 use anyhow::{format_err, Error};
 
-pub fn attr_map<'a, T>(from: &'a Element, name: &str, elemname: &'static str) -> Result<T, Error>
+pub fn attr_map<'a, T>(from: &'a Element, name: &str) -> Result<T, Error>
 where
     T: From<&'a str>,
 {
     from.attr(name)
         .map(T::from)
-        .ok_or_else(|| format_err!("{} not found in {} element", name, elemname))
+        .ok_or_else(|| format_err!("{} not found in {} element", name, from.name()))
 }
 
-pub fn attr_parse_hex<'a>(
-    from: &'a Element,
-    name: &str,
-    elemname: &'static str,
-) -> Result<u64, Error> {
+pub fn attr_parse_hex<'a>(from: &'a Element, name: &str) -> Result<u64, Error> {
     from.attr(name)
-        .ok_or_else(|| format_err!("{} not found in {} element", name, elemname))
+        .ok_or_else(|| format_err!("{} not found in {} element", name, from.name()))
         .and_then(|st| {
             if st.starts_with("0x") {
                 u64::from_str_radix(&st[2..], 16).map_err(|e| format_err!("{}", e))
@@ -36,31 +32,23 @@ pub fn attr_parse_hex<'a>(
         })
 }
 
-pub fn attr_parse<'a, T, E>(
-    from: &'a Element,
-    name: &str,
-    elemname: &'static str,
-) -> Result<T, Error>
+pub fn attr_parse<'a, T, E>(from: &'a Element, name: &str) -> Result<T, Error>
 where
     T: FromStr<Err = E>,
     E: Display,
 {
     from.attr(name)
-        .ok_or_else(|| format_err!("{} not found in {} element", name, elemname))
+        .ok_or_else(|| format_err!("{} not found in {} element", name, from.name()))
         .and_then(|st| st.parse::<T>().map_err(|e| format_err!("{}", e)))
 }
 
-pub fn child_text<'a>(
-    from: &'a Element,
-    name: &str,
-    elemname: &'static str,
-) -> Result<String, Error> {
+pub fn child_text<'a>(from: &'a Element, name: &str) -> Result<String, Error> {
     match get_child_no_ns(from, name) {
         Some(child) => Ok(child.text()),
         None => Err(format_err!(
             "child element \"{}\" not found in \"{}\" element",
             name,
-            elemname
+            from.name()
         )),
     }
 }

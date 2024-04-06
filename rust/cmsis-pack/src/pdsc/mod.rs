@@ -25,7 +25,7 @@ impl FromElem for Release {
     fn from_elem(e: &Element) -> Result<Self, Error> {
         assert_root_name(e, "release")?;
         Ok(Self {
-            version: attr_map(e, "version", "release")?,
+            version: attr_map(e, "version")?,
             text: e.text(),
         })
     }
@@ -117,10 +117,10 @@ pub struct Package {
 impl FromElem for Package {
     fn from_elem(e: &Element) -> Result<Self, Error> {
         assert_root_name(e, "package")?;
-        let name: String = child_text(e, "name", "package")?;
-        let description: String = child_text(e, "description", "package")?;
-        let vendor: String = child_text(e, "vendor", "package")?;
-        let url: String = child_text(e, "url", "package")?;
+        let name: String = child_text(e, "name")?;
+        let description: String = child_text(e, "description")?;
+        let vendor: String = child_text(e, "vendor")?;
+        let url: String = child_text(e, "url")?;
         log::debug!("Working on {}::{}", vendor, name,);
         let components = get_child_no_ns(e, "components")
             .and_then(|c| ComponentBuilders::from_elem(c).ok_warn())
@@ -143,7 +143,7 @@ impl FromElem for Package {
             vendor,
             url,
             components,
-            license: child_text(e, "license", "package").ok(),
+            license: child_text(e, "license").ok(),
             releases,
             conditions,
             devices,
@@ -161,11 +161,11 @@ pub struct Board {
 impl FromElem for Board {
     fn from_elem(e: &Element) -> Result<Self, Error> {
         Ok(Self {
-            name: attr_map(e, "name", "board")?,
+            name: attr_map(e, "name")?,
             mounted_devices: e
                 .children()
                 .flat_map(|c| match c.name() {
-                    "mountedDevice" => attr_map(c, "Dname", "mountedDevice").ok(),
+                    "mountedDevice" => attr_map(c, "Dname").ok(),
                     _ => None,
                 })
                 .collect(),
