@@ -139,7 +139,7 @@ pub fn dump_devices_args<'a, 'b>() -> App<'a, 'b> {
 pub fn dump_devices_command<'a>(c: &Config, args: &ArgMatches<'a>) -> Result<(), Error> {
     let files = args
         .value_of("INPUT")
-        .map(|input| vec![Box::new(Path::new(input)).to_path_buf()]);
+        .map(|input| vec![Path::new(input).to_path_buf()]);
     let filenames = files
         .or_else(|| {
             c.pack_store.read_dir().ok().map(|rd| {
