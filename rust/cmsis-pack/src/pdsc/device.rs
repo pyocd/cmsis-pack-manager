@@ -225,11 +225,11 @@ impl ProcessorBuilder {
 impl FromElem for ProcessorBuilder {
     fn from_elem(e: &Element) -> Result<Self, Error> {
         Ok(ProcessorBuilder {
-            core: attr_parse(e, "Dcore", "processor").ok(),
-            units: attr_parse(e, "Punits", "processor").ok(),
-            fpu: attr_parse(e, "Dfpu", "processor").ok(),
-            mpu: attr_parse(e, "Dmpu", "processor").ok(),
-            name: attr_parse(e, "Pname", "processor").ok(),
+            core: attr_parse(e, "Dcore").ok(),
+            units: attr_parse(e, "Punits").ok(),
+            fpu: attr_parse(e, "Dfpu").ok(),
+            mpu: attr_parse(e, "Dmpu").ok(),
+            name: attr_parse(e, "Pname").ok(),
         })
     }
 }
@@ -312,14 +312,14 @@ impl DebugBuilder {
 impl FromElem for DebugBuilder {
     fn from_elem(e: &Element) -> Result<Self, Error> {
         Ok(DebugBuilder {
-            ap: attr_parse(e, "__ap", "debug").ok(),
-            dp: attr_parse(e, "__dp", "debug").ok(),
-            apid: attr_parse(e, "__apid", "debug").ok(),
-            address: attr_parse(e, "address", "debug").ok(),
-            svd: attr_parse(e, "svd", "debug").ok(),
-            name: attr_parse(e, "Pname", "debug").ok(),
-            unit: attr_parse(e, "Punit", "debug").ok(),
-            default_reset_sequence: attr_parse(e, "defaultResetSequence", "debug").ok(),
+            ap: attr_parse(e, "__ap").ok(),
+            dp: attr_parse(e, "__dp").ok(),
+            apid: attr_parse(e, "__apid").ok(),
+            address: attr_parse(e, "address").ok(),
+            svd: attr_parse(e, "svd").ok(),
+            name: attr_parse(e, "Pname").ok(),
+            unit: attr_parse(e, "Punit").ok(),
+            default_reset_sequence: attr_parse(e, "defaultResetSequence").ok(),
         })
     }
 }
@@ -446,12 +446,12 @@ impl FromElem for MemElem {
             .map(|s| s.to_string())
             .ok_or_else(|| format_err!("No name found for memory"))?;
         let p_name = e.attr("Pname").map(|s| s.to_string());
-        let start = attr_parse_hex(e, "start", "memory")?;
-        let size = attr_parse_hex(e, "size", "memory")?;
-        let startup = attr_parse(e, "startup", "memory")
+        let start = attr_parse_hex(e, "start")?;
+        let size = attr_parse_hex(e, "size")?;
+        let startup = attr_parse(e, "startup")
             .map(|nb: NumberBool| nb.into())
             .unwrap_or_default();
-        let default = attr_parse(e, "default", "memory")
+        let default = attr_parse(e, "default")
             .map(|nb: NumberBool| nb.into())
             .unwrap_or_default();
         Ok(MemElem(
@@ -520,20 +520,18 @@ pub struct Algorithm {
 
 impl FromElem for Algorithm {
     fn from_elem(e: &Element) -> Result<Self, Error> {
-        let default = attr_parse(e, "default", "memory")
+        let default = attr_parse(e, "default")
             .map(|nb: NumberBool| nb.into())
             .unwrap_or_default();
 
-        let file_name: &str = attr_map(e, "name", "algorithm")?;
-        let style = attr_parse(e, "style", "algorithm")
-            .ok()
-            .unwrap_or(AlgorithmStyle::Keil);
+        let file_name: &str = attr_map(e, "name")?;
+        let style = attr_parse(e, "style").ok().unwrap_or(AlgorithmStyle::Keil);
         Ok(Self {
             file_name: file_name.replace("\\", "/").into(),
-            start: attr_parse_hex(e, "start", "algorithm")?,
-            size: attr_parse_hex(e, "size", "algorithm")?,
-            ram_start: attr_parse_hex(e, "RAMstart", "algorithm").ok(),
-            ram_size: attr_parse_hex(e, "RAMsize", "algorithm").ok(),
+            start: attr_parse_hex(e, "start")?,
+            size: attr_parse_hex(e, "size")?,
+            ram_start: attr_parse_hex(e, "RAMstart").ok(),
+            ram_size: attr_parse_hex(e, "RAMsize").ok(),
             default,
             style,
         })

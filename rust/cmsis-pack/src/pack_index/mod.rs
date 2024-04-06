@@ -34,14 +34,14 @@ impl FromElem for PdscRef {
     fn from_elem(e: &Element) -> Result<Self, Error> {
         assert_root_name(e, "pdsc")?;
         Ok(Self {
-            url: attr_map(e, "url", "pdsc")?,
-            vendor: attr_map(e, "vendor", "pdsc")?,
-            name: attr_map(e, "name", "pdsc")?,
-            version: attr_map(e, "version", "pdsc")?,
-            date: attr_map(e, "date", "pdsc").ok(),
-            deprecated: attr_map(e, "deprecated", "pdsc").ok(),
-            replacement: attr_map(e, "replacement", "pdsc").ok(),
-            size: attr_map(e, "size", "pdsc").ok(),
+            url: attr_map(e, "url")?,
+            vendor: attr_map(e, "vendor")?,
+            name: attr_map(e, "name")?,
+            version: attr_map(e, "version")?,
+            date: attr_map(e, "date").ok(),
+            deprecated: attr_map(e, "deprecated").ok(),
+            replacement: attr_map(e, "replacement").ok(),
+            size: attr_map(e, "size").ok(),
         })
     }
 }
@@ -50,9 +50,9 @@ impl FromElem for Pidx {
     fn from_elem(e: &Element) -> Result<Self, Error> {
         assert_root_name(e, "pidx")?;
         Ok(Self {
-            url: attr_map(e, "url", "pidx")?,
-            vendor: attr_map(e, "vendor", "pidx")?,
-            date: attr_map(e, "date", "pidx").ok(),
+            url: attr_map(e, "url")?,
+            vendor: attr_map(e, "vendor")?,
+            date: attr_map(e, "date").ok(),
         })
     }
 }
@@ -60,8 +60,8 @@ impl FromElem for Pidx {
 impl FromElem for Vidx {
     fn from_elem(root: &Element) -> Result<Self, Error> {
         assert_root_name(root, "index")?;
-        let vendor = child_text(root, "vendor", "index")?;
-        let url = child_text(root, "url", "index")?;
+        let vendor = child_text(root, "vendor")?;
+        let url = child_text(root, "url")?;
         Ok(Vidx {
             vendor,
             url,
