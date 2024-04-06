@@ -4,7 +4,7 @@ use std::str::FromStr;
 
 use crate::utils::prelude::*;
 use anyhow::{format_err, Error};
-use minidom::Element;
+use minidom::{Element, NSChoice};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -134,9 +134,8 @@ pub struct Processor {
     pub core: Core,
     pub fpu: FPU,
     pub mpu: MPU,
-    pub ap: u8,
+    pub ap: AccessPort,
     pub dp: u8,
-    pub apid: Option<u32>,
     pub address: Option<u32>,
     pub svd: Option<String>,
     pub name: Option<String>,
@@ -171,9 +170,8 @@ impl ProcessorBuilder {
             .into_iter()
             .map(|unit| {
                 let default = Debug {
-                    ap: 0,
+                    ap: AccessPort::Index(0),
                     dp: 0,
-                    apid: None,
                     address: None,
                     svd: None,
                     name: name.clone(),
@@ -183,7 +181,6 @@ impl ProcessorBuilder {
                 let Debug {
                     ap,
                     dp,
-                    apid,
                     address,
                     svd,
                     name,
@@ -206,9 +203,8 @@ impl ProcessorBuilder {
                         .ok_or_else(|| format_err!("No Core found!"))?,
                     fpu: self.fpu.clone().unwrap_or(FPU::None),
                     mpu: self.mpu.clone().unwrap_or(MPU::NotPresent),
-                    ap: *ap,
                     dp: *dp,
-                    apid: *apid,
+                    ap: *ap,
                     address: *address,
                     svd: svd.clone(),
                     name: name.clone(),
@@ -270,11 +266,20 @@ impl FromElem for ProcessorsBuilder {
     }
 }
 
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+pub enum AccessPort {
+    Index(u8),
+    Address(u64),
+}
+impl Default for AccessPort {
+    fn default() -> Self {
+        Self::Index(0)
+    }
+}
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Debug {
-    pub ap: u8,
     pub dp: u8,
-    pub apid: Option<u32>,
+    pub ap: AccessPort,
     pub address: Option<u32>,
     pub svd: Option<String>,
     pub name: Option<String>,
@@ -284,9 +289,8 @@ pub struct Debug {
 
 #[derive(Debug, Clone)]
 struct DebugBuilder {
-    ap: Option<u8>,
     dp: Option<u8>,
-    apid: Option<u32>,
+    ap: Option<AccessPort>,
     address: Option<u32>,
     svd: Option<String>,
     name: Option<String>,
@@ -297,9 +301,8 @@ struct DebugBuilder {
 impl DebugBuilder {
     fn build(self) -> Debug {
         Debug {
-            ap: self.ap.unwrap_or_default(),
             dp: self.dp.unwrap_or_default(),
-            apid: self.apid,
+            ap: self.ap.unwrap_or_default(),
             address: self.address,
             svd: self.svd,
             name: self.name,
@@ -309,12 +312,42 @@ impl DebugBuilder {
     }
 }
 
-impl FromElem for DebugBuilder {
-    fn from_elem(e: &Element) -> Result<Self, Error> {
+impl DebugBuilder {
+    fn from_elem_and_parent(e: &Element, p: &Element) -> Result<Self, Error> {
+        let (dp, ap) = if p.has_child("accessportV1", NSChoice::None)
+            || p.has_child("accessportV2", NSChoice::None)
+        {
+            let __apid: u32 = attr_parse(e, "__apid")?;
+            let ap = p
+                .children()
+                .find(|c| {
+                    c.name().starts_with("accessportV")
+                        && attr_parse(c, "__apid")
+                            .map(|apid: u32| apid == __apid)
+                            .unwrap_or(false)
+                })
+                .ok_or_else(|| anyhow::anyhow!("Unable do find Access Port with id {__apid:?}."))?;
+            match ap.name() {
+                "accessportV1" => (
+                    attr_parse(ap, "__dp").ok(),
+                    attr_parse(ap, "index").ok().map(AccessPort::Index),
+                ),
+                "accessportV2" => (
+                    attr_parse(ap, "__dp").ok(),
+                    attr_parse(ap, "address").ok().map(AccessPort::Address),
+                ),
+                _ => unreachable!(),
+            }
+        } else {
+            (
+                attr_parse(e, "__dp").ok(),
+                attr_parse(e, "__ap").ok().map(AccessPort::Index),
+            )
+        };
+
         Ok(DebugBuilder {
-            ap: attr_parse(e, "__ap").ok(),
-            dp: attr_parse(e, "__dp").ok(),
-            apid: attr_parse(e, "__apid").ok(),
+            dp,
+            ap,
             address: attr_parse(e, "address").ok(),
             svd: attr_parse(e, "svd").ok(),
             name: attr_parse(e, "Pname").ok(),
@@ -327,9 +360,11 @@ impl FromElem for DebugBuilder {
 #[derive(Debug)]
 struct DebugsBuilder(Vec<DebugBuilder>);
 
-impl FromElem for DebugsBuilder {
-    fn from_elem(e: &Element) -> Result<Self, Error> {
-        Ok(DebugsBuilder(vec![DebugBuilder::from_elem(e)?]))
+impl DebugsBuilder {
+    fn from_elem_and_parent(e: &Element, p: &Element) -> Result<Self, Error> {
+        Ok(DebugsBuilder(vec![DebugBuilder::from_elem_and_parent(
+            e, p,
+        )?]))
     }
 }
 
@@ -678,7 +713,7 @@ fn parse_device<'dom>(e: &'dom Element) -> Vec<DeviceBuilder<'dom>> {
                 None
             }
             "debug" => {
-                FromElem::from_elem(child)
+                DebugsBuilder::from_elem_and_parent(child, e)
                     .ok_warn()
                     .map(|debug| device.add_debug(debug));
                 None
@@ -721,7 +756,7 @@ fn parse_sub_family<'dom>(e: &'dom Element) -> Vec<DeviceBuilder<'dom>> {
                 Vec::new()
             }
             "debug" => {
-                FromElem::from_elem(child)
+                DebugsBuilder::from_elem_and_parent(child, e)
                     .ok_warn()
                     .map(|debug| sub_family_device.add_debug(debug));
                 Vec::new()
