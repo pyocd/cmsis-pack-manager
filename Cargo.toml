@@ -18,7 +18,7 @@ crate-type = ["cdylib"]
 ctor = "0.2"
 log = "0.4.8"
 simplelog = { version = "0.12.0", default-features = false, features = [ "termcolor" ] }
-cmsis-pack = { version = "0.6.2", path = "rust/cmsis-pack" }
+cmsis-pack = { version = "0.7.0", path = "rust/cmsis-pack" }
 anyhow = { version = "1.0.56", features = ["backtrace"] }
 
 [features]
