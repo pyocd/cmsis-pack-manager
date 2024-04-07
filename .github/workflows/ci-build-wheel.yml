@@ -30,7 +30,7 @@ jobs:
       CIBW_BUILD_VERBOSITY: 1
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -57,7 +57,7 @@ jobs:
           python-version: 3.9
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2.11.2
+        uses: pypa/cibuildwheel@v2.17.0
 
       - uses: actions/upload-artifact@v2
         with:
@@ -68,7 +68,7 @@ jobs:
     name: Cross-build wheels for linux-armv6
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: actions/setup-python@v4
@@ -101,7 +101,7 @@ jobs:
     name: Cross-build wheels for linux-armv7
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: actions/setup-python@v4
@@ -134,7 +134,7 @@ jobs:
     name: Cross-build wheels for linux-aarch64
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: actions/setup-python@v4
@@ -178,14 +178,14 @@ jobs:
             arch: armv6
     needs: [linux-armv6, linux-armv7, linux-aarch64]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: actions/download-artifact@v3
         with:
           name: wheels
           path: ./wheelhouse
-      - uses: uraimo/run-on-arch-action@v2.3.0
+      - uses: uraimo/run-on-arch-action@v2.7.1
         name: Install built wheel
         with:
           arch: ${{ matrix.platform.arch }}
