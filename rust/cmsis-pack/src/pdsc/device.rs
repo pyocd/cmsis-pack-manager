@@ -167,34 +167,18 @@ impl ProcessorBuilder {
         let name = self.name.clone();
 
         let map = (0..units)
-            .into_iter()
             .map(|unit| {
-                let default = Debug {
-                    ap: AccessPort::Index(0),
-                    dp: 0,
-                    address: None,
-                    svd: None,
-                    name: name.clone(),
-                    unit: None,
-                    default_reset_sequence: None,
-                };
-                let Debug {
-                    ap,
-                    dp,
-                    address,
-                    svd,
-                    name,
-                    default_reset_sequence,
-                    ..
-                } = debugs
-                    .iter()
-                    .find(|debug| {
-                        // If the <debug> element has a specific unit attribute we compare by that as well.
-                        // If not we just compare the name.
-                        let unit_condition = debug.unit.map(|u| u == unit).unwrap_or(true);
-                        debug.name == name && unit_condition
-                    })
-                    .unwrap_or_else(|| &default);
+                // The attributes we're interested in may be spread across multiple debug
+                // attributes defined in the family, subfamily, or device; and which may or may not
+                // be specific to a given Pname or Punit.
+                //
+                // We'll prioritize the first element with the attribute we're interested in, since
+                // family and subfamily debug elements are appended after device debug elements.
+                let debugs_iterator = debugs.iter().filter(|debug| {
+                    // If Pname or Punit are present on the <debug> element, they must match.
+                    debug.name.as_ref().is_none_or(|n| Some(n) == name.as_ref())
+                        && debug.unit.is_none_or(|u| u == unit)
+                });
 
                 Ok(Processor {
                     core: self
@@ -203,13 +187,21 @@ impl ProcessorBuilder {
                         .ok_or_else(|| format_err!("No Core found!"))?,
                     fpu: self.fpu.clone().unwrap_or(FPU::None),
                     mpu: self.mpu.clone().unwrap_or(MPU::NotPresent),
-                    dp: *dp,
-                    ap: *ap,
-                    address: *address,
-                    svd: svd.clone(),
+                    dp: debugs_iterator
+                        .clone()
+                        .find_map(|d| d.dp)
+                        .unwrap_or_default(),
+                    ap: debugs_iterator
+                        .clone()
+                        .find_map(|d| d.ap)
+                        .unwrap_or_default(),
+                    address: debugs_iterator.clone().find_map(|d| d.address),
+                    svd: debugs_iterator.clone().find_map(|d| d.svd.clone()),
                     name: name.clone(),
                     unit,
-                    default_reset_sequence: default_reset_sequence.clone(),
+                    default_reset_sequence: debugs_iterator
+                        .clone()
+                        .find_map(|d| d.default_reset_sequence.clone()),
                 })
             })
             .collect::<Result<Vec<_>, _>>();
@@ -278,8 +270,8 @@ impl Default for AccessPort {
 }
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Debug {
-    pub dp: u8,
-    pub ap: AccessPort,
+    pub dp: Option<u8>,
+    pub ap: Option<AccessPort>,
     pub address: Option<u32>,
     pub svd: Option<String>,
     pub name: Option<String>,
@@ -301,8 +293,8 @@ struct DebugBuilder {
 impl DebugBuilder {
     fn build(self) -> Debug {
         Debug {
-            dp: self.dp.unwrap_or_default(),
-            ap: self.ap.unwrap_or_default(),
+            dp: self.dp,
+            ap: self.ap,
             address: self.address,
             svd: self.svd,
             name: self.name,
@@ -793,6 +785,12 @@ fn parse_family(e: &Element) -> Result<Vec<Device>, Error> {
                 FromElem::from_elem(child)
                     .ok_warn()
                     .map(|prc| family_device.add_processor(prc));
+                Vec::new()
+            }
+            "debug" => {
+                DebugsBuilder::from_elem_and_parent(child, e)
+                    .ok_warn()
+                    .map(|debug| family_device.add_debug(debug));
                 Vec::new()
             }
             _ => Vec::new(),
