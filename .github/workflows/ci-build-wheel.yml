@@ -41,9 +41,11 @@ jobs:
           toolchain: 1.67.0
           profile: minimal
 
-      - name: Install Rust aarch64-apple-darwin target
+      - name: Install Rust *-apple-darwin targets
         if: runner.os == 'macOS'
-        run: rustup target add aarch64-apple-darwin
+        run: |
+          rustup target add aarch64-apple-darwin
+          rustup target add x86_64-apple-darwin
 
       # - name: Set up QEMU
       #   if: runner.os == 'Linux'
