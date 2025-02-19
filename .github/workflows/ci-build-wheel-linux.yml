@@ -14,7 +14,7 @@ jobs:
       CIBW_ENVIRONMENT: 'PATH="$PATH:/usr/share/rust/.cargo/bin:$HOME/.cargo/bin"'
       CIBW_BEFORE_ALL_LINUX: >
         yum install -y libffi-devel openssl-devel &&
-        curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain 1.63.0 -y --profile=minimal &&
+        curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain 1.67.0 -y --profile=minimal &&
         rustup show &&
         cargo install empty-library || true
       CIBW_BUILD_VERBOSITY: 1
@@ -36,7 +36,7 @@ jobs:
           python-version: 3.9
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2.17.0
+        uses: pypa/cibuildwheel@v2.22.0
 
       - uses: actions/upload-artifact@v4
         with:
