@@ -320,7 +320,7 @@ impl DebugBuilder {
                 ),
                 "accessportV2" => (
                     attr_parse(ap, "__dp").ok(),
-                    attr_parse(ap, "address").ok().map(AccessPort::Address),
+                    attr_parse_hex(ap, "address").ok().map(AccessPort::Address),
                 ),
                 _ => unreachable!(),
             }
