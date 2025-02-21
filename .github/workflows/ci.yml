@@ -11,7 +11,8 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
-    name: "${{ matrix.python-version }}"
+        rust-version: ["stable", "1.67.1"]
+    name: "Rust ${{ matrix.rust-version }} Python ${{ matrix.python-version }}"
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -31,10 +32,11 @@ jobs:
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
+          toolchain: ${{ matrix.rust-version }}
           profile: minimal
       - name: Install dependencies
         run: |
+          rustup default ${{ matrix.rust-version }}
           rm -rf .cache .eggs rust_fst/_ffi.py build *.egg-info
           find ./ -name "__pycache__" -type d -print0 |xargs -0 rm -rf
           find ./ -name "*.pyc" -type f -print0 |xargs -0 rm -rf
