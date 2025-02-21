@@ -15,7 +15,7 @@ jobs:
       CIBW_ENVIRONMENT: 'PATH="$PATH:/usr/share/rust/.cargo/bin:$HOME/.cargo/bin"'
       CIBW_BEFORE_ALL_LINUX: >
         yum install -y libffi-devel openssl-devel &&
-        curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain 1.67.0 -y --profile=minimal &&
+        curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain 1.67.1 -y --profile=minimal &&
         rustup show &&
         cargo install empty-library || true
       CIBW_BUILD_VERBOSITY: 1

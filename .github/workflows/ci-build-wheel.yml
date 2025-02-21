@@ -24,7 +24,7 @@ jobs:
       CIBW_SKIP: "cp39-musl*"
       CIBW_BEFORE_ALL_LINUX: >
         yum install -y libffi-devel openssl-devel &&
-        curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain 1.67.0 --profile=minimal -y &&
+        curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain 1.67.1 --profile=minimal -y &&
         rustup show &&
         cargo install empty-library || true
       CIBW_BUILD_VERBOSITY: 1
@@ -39,7 +39,7 @@ jobs:
         if: runner.os != 'Linux'
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.67.0
+          toolchain: 1.67.1
           profile: minimal
 
       - name: Install Rust *-apple-darwin targets
@@ -80,7 +80,7 @@ jobs:
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.67.0
+          toolchain: 1.67.1
           profile: minimal
           target: arm-unknown-linux-gnueabihf
           default: true
@@ -113,7 +113,7 @@ jobs:
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.67.0
+          toolchain: 1.67.1
           profile: minimal
           target: armv7-unknown-linux-gnueabihf
           default: true
@@ -146,7 +146,7 @@ jobs:
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.67.0
+          toolchain: 1.67.1
           profile: minimal
           target: aarch64-unknown-linux-gnu
           default: true
