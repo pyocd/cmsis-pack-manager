@@ -7,10 +7,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-22.04]
     env:
       CIBW_ARCHS_LINUX: auto # aarch64
       CIBW_BUILD: "cp39-*"
+      CIBW_SKIP: "cp39-musl*"
       CIBW_ENVIRONMENT: 'PATH="$PATH:/usr/share/rust/.cargo/bin:$HOME/.cargo/bin"'
       CIBW_BEFORE_ALL_LINUX: >
         yum install -y libffi-devel openssl-devel &&

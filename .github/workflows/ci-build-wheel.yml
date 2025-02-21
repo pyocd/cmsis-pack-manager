@@ -12,10 +12,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-22.04, macos-13, windows-latest]
     env:
       CIBW_ARCHS_LINUX: auto # aarch64
-      CIBW_ARCHS_MACOS: x86_64 universal2
+      CIBW_ARCHS_MACOS: universal2
       CIBW_ARCHS_WINDOWS: auto
       CIBW_ENVIRONMENT_LINUX: 'PATH="$PATH:/usr/share/rust/.cargo/bin:$HOME/.cargo/bin"'
       CIBW_ENVIRONMENT_MACOS: 'PATH="$PATH:/usr/share/rust/.cargo/bin:$HOME/.cargo/bin"'
@@ -28,6 +28,7 @@ jobs:
         rustup show &&
         cargo install empty-library || true
       CIBW_BUILD_VERBOSITY: 1
+      MACOSX_DEPLOYMENT_TARGET: 10.12
 
     steps:
       - uses: actions/checkout@v4
@@ -68,7 +69,7 @@ jobs:
 
   linux-armv6:
     name: Cross-build wheels for linux-armv6
-    runs-on: macos-latest
+    runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
         with:
@@ -101,7 +102,7 @@ jobs:
 
   linux-armv7:
     name: Cross-build wheels for linux-armv7
-    runs-on: macos-latest
+    runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
         with:
@@ -134,7 +135,7 @@ jobs:
 
   linux-aarch64:
     name: Cross-build wheels for linux-aarch64
-    runs-on: macos-latest
+    runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
         with:
@@ -188,7 +189,7 @@ jobs:
           path: ./wheelhouse
           pattern: wheels-*
           merge-multiple: true
-      - uses: uraimo/run-on-arch-action@v2.7.1
+      - uses: uraimo/run-on-arch-action@v2.8.1
         name: Install built wheel
         with:
           arch: ${{ matrix.platform.arch }}
