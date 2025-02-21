@@ -176,8 +176,8 @@ impl ProcessorBuilder {
                 // family and subfamily debug elements are appended after device debug elements.
                 let debugs_iterator = debugs.iter().filter(|debug| {
                     // If Pname or Punit are present on the <debug> element, they must match.
-                    debug.name.as_ref().is_none_or(|n| Some(n) == name.as_ref())
-                        && debug.unit.is_none_or(|u| u == unit)
+                    debug.name.as_ref().map_or(true, |n| Some(n) == name.as_ref())
+                        && debug.unit.map_or(true, |u| u == unit)
                 });
 
                 Ok(Processor {
