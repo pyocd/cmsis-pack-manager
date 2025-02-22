@@ -27,7 +27,7 @@ where
 }
 
 /// Flatten a list of Vidx Urls into a list of updated CMSIS packs
-pub fn install<'a, I: 'a, P, D>(config: &'a D, pdsc_list: I, progress: P) -> Result<Vec<PathBuf>>
+pub fn install<'a, I, P, D>(config: &'a D, pdsc_list: I, progress: P) -> Result<Vec<PathBuf>>
 where
     I: IntoIterator<Item = &'a Package>,
     P: DownloadProgress + 'a,

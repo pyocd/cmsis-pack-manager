@@ -220,8 +220,8 @@ impl Package {
             .collect()
     }
 
-    pub fn make_condition_lookup<'a>(&'a self) -> HashMap<&'a str, &'a Condition> {
-        let mut map = HashMap::with_capacity(self.conditions.0.iter().count());
+    pub fn make_condition_lookup(&self) -> HashMap<&str, &Condition> {
+        let mut map = HashMap::with_capacity(self.conditions.0.len());
         for cond in self.conditions.0.iter() {
             if let Some(dup) = map.insert(cond.id.as_str(), cond) {
                 log::warn!("Duplicate Condition found {}", dup.id);
@@ -230,7 +230,7 @@ impl Package {
         map
     }
 
-    pub fn make_dump_devices<'a>(&'a self) -> Vec<(&'a str, DumpDevice<'a>)> {
+    pub fn make_dump_devices(&self) -> Vec<(&str, DumpDevice<'_>)> {
         let from_pack = FromPack::new(
             &self.vendor,
             &self.name,

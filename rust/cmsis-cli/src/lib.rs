@@ -62,7 +62,7 @@ pub fn install_args() -> App<'static, 'static> {
         )
 }
 
-pub fn install_command<'a>(conf: &Config, args: &ArgMatches<'a>) -> Result<(), Error> {
+pub fn install_command(conf: &Config, args: &ArgMatches<'_>) -> Result<(), Error> {
     let pdsc_list: Vec<_> = args
         .values_of("PDSC")
         .unwrap()
@@ -91,7 +91,7 @@ pub fn update_args<'a, 'b>() -> App<'a, 'b> {
         .version("0.1.0")
 }
 
-pub fn update_command<'a>(conf: &Config, _: &ArgMatches<'a>) -> Result<(), Error> {
+pub fn update_command(conf: &Config, _: &ArgMatches<'_>) -> Result<(), Error> {
     let vidx_list = conf.read_vidx_list();
     for url in vidx_list.iter() {
         log::info!("Updating registry from `{}`", url);
@@ -136,7 +136,7 @@ pub fn dump_devices_args<'a, 'b>() -> App<'a, 'b> {
         )
 }
 
-pub fn dump_devices_command<'a>(c: &Config, args: &ArgMatches<'a>) -> Result<(), Error> {
+pub fn dump_devices_command(c: &Config, args: &ArgMatches<'_>) -> Result<(), Error> {
     let files = args
         .value_of("INPUT")
         .map(|input| vec![Path::new(input).to_path_buf()]);
@@ -175,27 +175,27 @@ pub fn check_args<'a, 'b>() -> App<'a, 'b> {
         )
 }
 
-pub fn check_command<'a>(_: &Config, args: &ArgMatches<'a>) -> Result<(), Error> {
+pub fn check_command(_: &Config, args: &ArgMatches<'_>) -> Result<(), Error> {
     let filename = args.value_of("INPUT").unwrap();
     match Package::from_path(Path::new(filename)) {
         Ok(c) => {
             log::info!("Parsing succedded");
-            log::info!("{} Valid Conditions", c.conditions.0.iter().count());
+            log::info!("{} Valid Conditions", c.conditions.0.len());
             let cond_lookup = c.make_condition_lookup();
             let mut num_components = 0;
             let mut num_files = 0;
-            for &Component {
-                ref class,
-                ref group,
-                ref condition,
-                ref files,
+            for Component {
+                class,
+                group,
+                condition,
+                files,
                 ..
             } in c.make_components().iter()
             {
                 num_components += 1;
-                num_files += files.iter().count();
+                num_files += files.len();
                 if let Some(ref cond_name) = condition {
-                    if cond_lookup.get(cond_name.as_str()).is_none() {
+                    if !cond_lookup.contains_key(cond_name.as_str()) {
                         log::warn!(
                             "Component {}::{} references an unknown condition '{}'",
                             class,
@@ -204,14 +204,12 @@ pub fn check_command<'a>(_: &Config, args: &ArgMatches<'a>) -> Result<(), Error>
                         );
                     }
                 }
-                for &FileRef {
-                    ref path,
-                    ref condition,
-                    ..
+                for FileRef {
+                    path, condition, ..
                 } in files.iter()
                 {
                     if let Some(ref cond_name) = condition {
-                        if cond_lookup.get(cond_name.as_str()).is_none() {
+                        if !cond_lookup.contains_key(cond_name.as_str()) {
                             log::warn!(
                                 "File {:?} Component {}::{} references an unknown condition '{}'",
                                 path,

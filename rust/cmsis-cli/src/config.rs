@@ -68,6 +68,7 @@ impl Config {
                 }
                 match OpenOptions::new()
                     .create(true)
+                    .truncate(true)
                     .write(true)
                     .open(&self.vidx_list)
                 {

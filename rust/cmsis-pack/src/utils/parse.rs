@@ -18,21 +18,21 @@ where
         .ok_or_else(|| format_err!("{} not found in {} element", name, from.name()))
 }
 
-pub fn attr_parse_hex<'a>(from: &'a Element, name: &str) -> Result<u64, Error> {
+pub fn attr_parse_hex(from: &Element, name: &str) -> Result<u64, Error> {
     from.attr(name)
         .ok_or_else(|| format_err!("{} not found in {} element", name, from.name()))
         .and_then(|st| {
-            if st.starts_with("0x") {
-                u64::from_str_radix(&st[2..], 16).map_err(|e| format_err!("{}", e))
-            } else if st.starts_with('0') {
-                u64::from_str_radix(&st[1..], 8).map_err(|e| format_err!("{}", e))
+            if let Some(hex) = st.strip_prefix("0x") {
+                u64::from_str_radix(hex, 16).map_err(|e| format_err!("{}", e))
+            } else if let Some(oct) = st.strip_prefix('0') {
+                u64::from_str_radix(oct, 8).map_err(|e| format_err!("{}", e))
             } else {
-                u64::from_str_radix(st, 10).map_err(|e| format_err!("{}", e))
+                st.parse::<u64>().map_err(|e| format_err!("{}", e))
             }
         })
 }
 
-pub fn attr_parse<'a, T, E>(from: &'a Element, name: &str) -> Result<T, Error>
+pub fn attr_parse<T, E>(from: &Element, name: &str) -> Result<T, Error>
 where
     T: FromStr<Err = E>,
     E: Display,
@@ -42,7 +42,7 @@ where
         .and_then(|st| st.parse::<T>().map_err(|e| format_err!("{}", e)))
 }
 
-pub fn child_text<'a>(from: &'a Element, name: &str) -> Result<String, Error> {
+pub fn child_text(from: &Element, name: &str) -> Result<String, Error> {
     match get_child_no_ns(from, name) {
         Some(child) => Ok(child.text()),
         None => Err(format_err!(
@@ -54,12 +54,7 @@ pub fn child_text<'a>(from: &'a Element, name: &str) -> Result<String, Error> {
 }
 
 pub fn get_child_no_ns<'a>(from: &'a Element, name: &str) -> Option<&'a Element> {
-    for child in from.children() {
-        if child.name() == name {
-            return Some(child);
-        }
-    }
-    None
+    from.children().find(|&child| child.name() == name)
 }
 
 pub fn assert_root_name(from: &Element, name: &str) -> Result<(), Error> {
