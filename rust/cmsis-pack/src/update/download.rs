@@ -16,9 +16,9 @@ use crate::utils::parse::FromElem;
 use futures::StreamExt;
 use std::collections::HashMap;
 
-const CONCURRENCY : usize = 32;
-const HOST_LIMIT : usize = 6;
-const MAX_RETRIES : usize = 3;
+const CONCURRENCY: usize = 32;
+const HOST_LIMIT: usize = 6;
+const MAX_RETRIES: usize = 3;
 
 fn pdsc_url(pdsc: &mut PdscRef) -> String {
     if pdsc.url.ends_with('/') {
@@ -32,6 +32,7 @@ pub trait DownloadConfig {
     fn pack_store(&self) -> PathBuf;
 }
 
+#[allow(clippy::wrong_self_convention)]
 pub trait IntoDownload {
     fn into_uri(&self) -> Result<Url, Error>;
     fn into_fd<D: DownloadConfig>(&self, _: &D) -> PathBuf;
@@ -39,11 +40,8 @@ pub trait IntoDownload {
 
 impl IntoDownload for PdscRef {
     fn into_uri(&self) -> Result<Url, Error> {
-        let &PdscRef {
-            ref url,
-            ref vendor,
-            ref name,
-            ..
+        let PdscRef {
+            url, vendor, name, ..
         } = self;
         let uri = if url.ends_with('/') {
             format!("{}{}.{}.pdsc", url, vendor, name)
@@ -55,10 +53,10 @@ impl IntoDownload for PdscRef {
     }
 
     fn into_fd<D: DownloadConfig>(&self, config: &D) -> PathBuf {
-        let &PdscRef {
-            ref vendor,
-            ref name,
-            ref version,
+        let PdscRef {
+            vendor,
+            name,
+            version,
             ..
         } = self;
         let mut filename = config.pack_store();
@@ -68,13 +66,13 @@ impl IntoDownload for PdscRef {
     }
 }
 
-impl<'a> IntoDownload for &'a Package {
+impl IntoDownload for &Package {
     fn into_uri(&self) -> Result<Url, Error> {
-        let &Package {
-            ref name,
-            ref vendor,
-            ref url,
-            ref releases,
+        let Package {
+            name,
+            vendor,
+            url,
+            releases,
             ..
         } = *self;
         let version: &str = releases.latest_release().version.as_ref();
@@ -88,10 +86,10 @@ impl<'a> IntoDownload for &'a Package {
     }
 
     fn into_fd<D: DownloadConfig>(&self, config: &D) -> PathBuf {
-        let &Package {
-            ref name,
-            ref vendor,
-            ref releases,
+        let Package {
+            name,
+            vendor,
+            releases,
             ..
         } = *self;
         let version: &str = releases.latest_release().version.as_ref();
@@ -103,10 +101,13 @@ impl<'a> IntoDownload for &'a Package {
     }
 }
 
-
 async fn save_response(response: Response, dest: PathBuf) -> Result<(usize, PathBuf), Error> {
     let temp = dest.with_extension("part");
-    let file = OpenOptions::new().write(true).create(true).open(&temp);
+    let file = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(&temp);
 
     let mut file = match file {
         Err(err) => return Err(anyhow!(err.to_string())),
@@ -137,7 +138,6 @@ async fn save_response(response: Response, dest: PathBuf) -> Result<(usize, Path
     }
     Ok((fsize, dest))
 }
-
 
 pub trait DownloadProgress: Send {
     fn size(&self, files: usize);
@@ -190,11 +190,8 @@ where
             .filter_map(|i| {
                 if let Ok(uri) = i.into_uri() {
                     let c = uri.clone();
-                    if let Some(host) = c.host_str() {
-                        Some((uri, host.to_string(), i.into_fd(self.config)))
-                    } else {
-                        None
-                    }
+                    c.host_str()
+                        .map(|host| (uri, host.to_string(), i.into_fd(self.config)))
                 } else {
                     None
                 }
@@ -203,8 +200,8 @@ where
         self.prog.size(to_dl.len());
 
         let mut hosts: HashMap<String, usize> = HashMap::new();
-        let mut results : Vec<PathBuf> = vec![];
-        let mut started : usize = 0;
+        let mut results: Vec<PathBuf> = vec![];
+        let mut started: usize = 0;
         let mut handles: Vec<JoinHandle<(String, usize, Option<PathBuf>)>> = vec![];
 
         while !to_dl.is_empty() || !handles.is_empty() {
@@ -226,11 +223,11 @@ where
                 }
             }
 
-            while ! to_dl.is_empty() && started < CONCURRENCY {
+            while !to_dl.is_empty() && started < CONCURRENCY {
                 let from = to_dl.pop().unwrap();
                 let host = from.1.clone();
                 let entry = hosts.entry(host).or_insert(0);
-                if *entry >= HOST_LIMIT  {
+                if *entry >= HOST_LIMIT {
                     wait_list.push(from);
                 } else {
                     let source = from.0.clone();
@@ -240,32 +237,37 @@ where
                         results.push(dest);
                     } else {
                         let client = self.client.clone();
-                        let handle: JoinHandle<(String, usize, Option<PathBuf>)> = tokio::spawn(async move {
-                            dest.parent().map(create_dir_all);
-                            let res = client.get(source.clone()).send().await;
-                            let res: Result<(usize, PathBuf), Error> = match res {
-                                Ok(r) => {
-                                    let rc = r.status().as_u16();
-                                    if rc >= 400 {
-                                        Err(anyhow!(format!("Response code in invalid range: {}", rc).to_string()))
-                                    } else {
-                                        save_response(r, dest).await
+                        let handle: JoinHandle<(String, usize, Option<PathBuf>)> =
+                            tokio::spawn(async move {
+                                dest.parent().map(create_dir_all);
+                                let res = client.get(source.clone()).send().await;
+                                let res: Result<(usize, PathBuf), Error> = match res {
+                                    Ok(r) => {
+                                        let rc = r.status().as_u16();
+                                        if rc >= 400 {
+                                            Err(anyhow!(format!(
+                                                "Response code in invalid range: {}",
+                                                rc
+                                            )
+                                            .to_string()))
+                                        } else {
+                                            save_response(r, dest).await
+                                        }
                                     }
-                                },
-                                Err(err) => {
-                                    Err(anyhow!(err.to_string()))
-                                },
-                            };
-                            match res {
-                                Ok(r) => {
-                                    (host, r.0, Some(r.1))
-                                },
-                                Err(err) => {
-                                    log::warn!("Download of {} failed: {}", source.to_string(), err);
-                                    (host, 0, None)
+                                    Err(err) => Err(anyhow!(err.to_string())),
+                                };
+                                match res {
+                                    Ok(r) => (host, r.0, Some(r.1)),
+                                    Err(err) => {
+                                        log::warn!(
+                                            "Download of {} failed: {}",
+                                            source.to_string(),
+                                            err
+                                        );
+                                        (host, 0, None)
+                                    }
                                 }
-                            }
-                        });
+                            });
                         handles.push(handle);
                         started += 1;
                         *entry += 1;
@@ -298,10 +300,7 @@ where
         loop {
             // Remove from list all duplicate URLs and those already downloaded
             urls.dedup();
-            urls = urls
-                .into_iter()
-                .filter(|u| !*downloaded.get(u).unwrap_or(&false))
-                .collect();
+            urls.retain(|u| !*downloaded.get(u).unwrap_or(&false));
 
             // TODO: Make this section asynchronous
             let mut next: Vec<String> = Vec::new();
@@ -339,7 +338,7 @@ where
             pdscs.append(&mut v.pdsc_index);
         }
 
-        pdscs.dedup_by_key(|pdsc| pdsc_url(pdsc));
+        pdscs.dedup_by_key(pdsc_url);
         log::info!("Found {} Pdsc entries", pdscs.len());
 
         Ok(self.download_iterator(pdscs.into_iter()).await)

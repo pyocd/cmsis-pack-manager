@@ -1,3 +1,5 @@
+#![allow(clippy::upper_case_acronyms)]
+
 pub mod pack_index;
 pub mod pdsc;
 pub mod update;

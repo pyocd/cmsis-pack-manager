@@ -12,6 +12,7 @@ pub struct Config {
     pack_store: PathBuf,
 }
 
+#[derive(Default)]
 pub struct ConfigBuilder {
     pack_store: Option<PathBuf>,
 }
@@ -37,12 +38,6 @@ impl ConfigBuilder {
             }
         };
         Ok(Config { pack_store })
-    }
-}
-
-impl Default for ConfigBuilder {
-    fn default() -> Self {
-        Self { pack_store: None }
     }
 }
 

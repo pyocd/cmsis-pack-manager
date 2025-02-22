@@ -162,11 +162,13 @@ impl ProcessorBuilder {
             mpu: self.mpu.or(other.mpu.clone()),
         }
     }
-    fn build(self, debugs: &Vec<Debug>) -> Result<Vec<Processor>, Error> {
+    fn build(self, debugs: &[Debug]) -> Result<Vec<Processor>, Error> {
         let units = self.units.unwrap_or(1);
         let name = self.name.clone();
 
-        let map = (0..units)
+        
+
+        (0..units)
             .map(|unit| {
                 // The attributes we're interested in may be spread across multiple debug
                 // attributes defined in the family, subfamily, or device; and which may or may not
@@ -176,7 +178,10 @@ impl ProcessorBuilder {
                 // family and subfamily debug elements are appended after device debug elements.
                 let debugs_iterator = debugs.iter().filter(|debug| {
                     // If Pname or Punit are present on the <debug> element, they must match.
-                    debug.name.as_ref().map_or(true, |n| Some(n) == name.as_ref())
+                    debug
+                        .name
+                        .as_ref()
+                        .map_or(true, |n| Some(n) == name.as_ref())
                         && debug.unit.map_or(true, |u| u == unit)
                 });
 
@@ -204,9 +209,7 @@ impl ProcessorBuilder {
                         .find_map(|d| d.default_reset_sequence.clone()),
                 })
             })
-            .collect::<Result<Vec<_>, _>>();
-
-        map
+            .collect::<Result<Vec<_>, _>>()
     }
 }
 
@@ -240,7 +243,7 @@ impl ProcessorsBuilder {
     }
 
     fn merge_into(&mut self, other: Self) {
-        self.0.extend(other.0.into_iter());
+        self.0.extend(other.0);
     }
 
     fn build(self, debugs: Vec<Debug>) -> Result<Vec<Processor>, Error> {
@@ -362,12 +365,12 @@ impl DebugsBuilder {
 
 impl DebugsBuilder {
     fn merge(mut self, parent: &Self) -> Self {
-        self.0.extend(parent.0.iter().map(|v| v.clone()));
+        self.0.extend(parent.0.iter().cloned());
         self
     }
 
     fn merge_into(&mut self, other: Self) {
-        self.0.extend(other.0.into_iter())
+        self.0.extend(other.0)
     }
 
     fn build(self) -> Vec<Debug> {
@@ -418,9 +421,9 @@ enum NumberBool {
     True,
 }
 
-impl Into<bool> for NumberBool {
-    fn into(self) -> bool {
-        match self {
+impl From<NumberBool> for bool {
+    fn from(val: NumberBool) -> Self {
+        match val {
             NumberBool::True => true,
             NumberBool::False => false,
         }
@@ -554,7 +557,7 @@ impl FromElem for Algorithm {
         let file_name: &str = attr_map(e, "name")?;
         let style = attr_parse(e, "style").ok().unwrap_or(AlgorithmStyle::Keil);
         Ok(Self {
-            file_name: file_name.replace("\\", "/").into(),
+            file_name: file_name.replace('\\', "/").into(),
             start: attr_parse_hex(e, "start")?,
             size: attr_parse_hex(e, "size")?,
             ram_start: attr_parse_hex(e, "RAMstart").ok(),
@@ -680,7 +683,7 @@ impl<'dom> DeviceBuilder<'dom> {
     }
 }
 
-fn parse_device<'dom>(e: &'dom Element) -> Vec<DeviceBuilder<'dom>> {
+fn parse_device(e: &Element) -> Vec<DeviceBuilder<'_>> {
     let mut device = DeviceBuilder::from_elem(e);
     let variants = e
         .children()
@@ -723,7 +726,7 @@ fn parse_device<'dom>(e: &'dom Element) -> Vec<DeviceBuilder<'dom>> {
     }
 }
 
-fn parse_sub_family<'dom>(e: &'dom Element) -> Vec<DeviceBuilder<'dom>> {
+fn parse_sub_family(e: &Element) -> Vec<DeviceBuilder<'_>> {
     let mut sub_family_device = DeviceBuilder::from_elem(e);
     let devices = e
         .children()
@@ -808,14 +811,10 @@ pub struct Devices(pub HashMap<String, Device>);
 impl FromElem for Devices {
     fn from_elem(e: &Element) -> Result<Self, Error> {
         e.children()
-            .fold(Ok(HashMap::new()), |res, c| match (res, parse_family(c)) {
-                (Ok(mut devs), Ok(add_this)) => {
-                    devs.extend(add_this.into_iter().map(|dev| (dev.name.clone(), dev)));
-                    Ok(devs)
-                }
-                (Ok(_), Err(e)) => Err(e),
-                (Err(e), Ok(_)) => Err(e),
-                (Err(e), Err(_)) => Err(e),
+            .try_fold(HashMap::new(), |mut res, c| {
+                let add_this = parse_family(c)?;
+                res.extend(add_this.into_iter().map(|dev| (dev.name.clone(), dev)));
+                Ok(res)
             })
             .map(Devices)
     }
