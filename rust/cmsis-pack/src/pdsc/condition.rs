@@ -1,5 +1,5 @@
 use anyhow::Error;
-use minidom::Element;
+use roxmltree::Node;
 
 use crate::utils::prelude::*;
 
@@ -12,7 +12,7 @@ pub struct ConditionComponent {
 }
 
 impl FromElem for ConditionComponent {
-    fn from_elem(e: &Element) -> Result<Self, Error> {
+    fn from_elem(e: &Node) -> Result<Self, Error> {
         Ok(ConditionComponent {
             device_family: attr_map(e, "Dfamily").ok(),
             device_sub_family: attr_map(e, "Dsubfamily").ok(),
@@ -31,13 +31,13 @@ pub struct Condition {
 }
 
 impl FromElem for Condition {
-    fn from_elem(e: &Element) -> Result<Self, Error> {
+    fn from_elem(e: &Node) -> Result<Self, Error> {
         assert_root_name(e, "condition")?;
         let mut accept = Vec::new();
         let mut deny = Vec::new();
         let mut require = Vec::new();
-        for elem in e.children() {
-            match elem.name() {
+        for elem in e.children().filter(|e| e.is_element()) {
+            match elem.tag_name().name() {
                 "accept" => {
                     accept.push(ConditionComponent::from_elem(e)?);
                 }
@@ -49,7 +49,10 @@ impl FromElem for Condition {
                 }
                 "description" => {}
                 _ => {
-                    log::warn!("Found unkonwn element {} in components", elem.name());
+                    log::warn!(
+                        "Found unkonwn element {} in components",
+                        elem.tag_name().name()
+                    );
                 }
             }
         }
@@ -66,11 +69,12 @@ impl FromElem for Condition {
 pub struct Conditions(pub Vec<Condition>);
 
 impl FromElem for Conditions {
-    fn from_elem(e: &Element) -> Result<Self, Error> {
+    fn from_elem(e: &Node) -> Result<Self, Error> {
         assert_root_name(e, "conditions")?;
         Ok(Conditions(
             e.children()
-                .flat_map(|c| Condition::from_elem(c).ok_warn())
+                .filter(|e| e.is_element())
+                .flat_map(|c| Condition::from_elem(&c).ok_warn())
                 .collect(),
         ))
     }

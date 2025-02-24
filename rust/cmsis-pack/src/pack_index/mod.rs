@@ -1,6 +1,6 @@
 use crate::utils::prelude::*;
 use anyhow::Error;
-use minidom::Element;
+use roxmltree::Node;
 
 #[derive(Debug, Clone)]
 pub struct PdscRef {
@@ -31,7 +31,7 @@ pub struct Vidx {
 }
 
 impl FromElem for PdscRef {
-    fn from_elem(e: &Element) -> Result<Self, Error> {
+    fn from_elem(e: &Node) -> Result<Self, Error> {
         assert_root_name(e, "pdsc")?;
         Ok(Self {
             url: attr_map(e, "url")?,
@@ -47,7 +47,7 @@ impl FromElem for PdscRef {
 }
 
 impl FromElem for Pidx {
-    fn from_elem(e: &Element) -> Result<Self, Error> {
+    fn from_elem(e: &Node) -> Result<Self, Error> {
         assert_root_name(e, "pidx")?;
         Ok(Self {
             url: attr_map(e, "url")?,
@@ -58,20 +58,35 @@ impl FromElem for Pidx {
 }
 
 impl FromElem for Vidx {
-    fn from_elem(root: &Element) -> Result<Self, Error> {
+    fn from_elem(root: &Node) -> Result<Self, Error> {
         assert_root_name(root, "index")?;
         let vendor = child_text(root, "vendor")?;
         let url = child_text(root, "url")?;
+
+        let mut timestamp: Option<String> = None;
+        let mut vendor_index: Vec<Pidx> = Vec::new();
+        let mut pdsc_index: Vec<PdscRef> = Vec::new();
+        for child in root.children() {
+            match child.tag_name().name() {
+                "timestamp" => {
+                    timestamp = Some(child).map(|e| e.text().unwrap_or_default().to_string())
+                }
+                "vindex" => {
+                    vendor_index = Pidx::vec_from_children(child.children());
+                }
+                "pindex" => {
+                    pdsc_index = PdscRef::vec_from_children(child.children());
+                }
+                _ => continue,
+            }
+        }
+
         Ok(Vidx {
             vendor,
             url,
-            timestamp: get_child_no_ns(root, "timestamp").map(Element::text),
-            vendor_index: get_child_no_ns(root, "vindex")
-                .map(|e| Pidx::vec_from_children(e.children()))
-                .unwrap_or_default(),
-            pdsc_index: get_child_no_ns(root, "pindex")
-                .map(|e| PdscRef::vec_from_children(e.children()))
-                .unwrap_or_default(),
+            timestamp,
+            vendor_index,
+            pdsc_index,
         })
     }
 }
@@ -200,5 +215,9 @@ mod test {
         let response = Vidx::from_string(good_string).unwrap();
         assert_eq!(response.vendor, String::from("Vendor"));
         assert_eq!(response.url, "Url");
+        assert_eq!(
+            response.timestamp,
+            Some(String::from("Fri Sep  1 13:26:41 CDT"))
+        );
     }
 }
