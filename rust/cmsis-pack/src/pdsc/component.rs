@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use anyhow::{format_err, Error};
-use minidom::Element;
+use roxmltree::Node;
 use serde::Serialize;
 
 use crate::utils::prelude::*;
@@ -79,7 +79,7 @@ pub struct FileRef {
 }
 
 impl FromElem for FileRef {
-    fn from_elem(e: &Element) -> Result<Self, Error> {
+    fn from_elem(e: &Node) -> Result<Self, Error> {
         assert_root_name(e, "file")?;
         Ok(Self {
             path: attr_map(e, "name")?,
@@ -112,7 +112,7 @@ pub struct ComponentBuilder {
 }
 
 impl FromElem for ComponentBuilder {
-    fn from_elem(e: &Element) -> Result<Self, Error> {
+    fn from_elem(e: &Node) -> Result<Self, Error> {
         assert_root_name(e, "component")?;
         let vendor: Option<String> = attr_map(e, "Cvendor").ok();
         let class: Option<String> = attr_map(e, "Cclass").ok();
@@ -122,18 +122,18 @@ impl FromElem for ComponentBuilder {
         let class_string = class.clone().unwrap_or_else(|| "Class".into());
         let group_string = group.clone().unwrap_or_else(|| "Group".into());
         let sub_group_string = sub_group.clone().unwrap_or_else(|| "SubGroup".into());
-        let files = get_child_no_ns(e, "files")
-            .map(move |child| {
-                log::debug!(
-                    "Working on {}::{}::{}::{}",
-                    vendor_string,
-                    class_string,
-                    group_string,
-                    sub_group_string,
-                );
-                FileRef::vec_from_children(child.children())
-            })
-            .unwrap_or_default();
+        let files = if let Some(node) = e.children().find(|c| c.tag_name().name() == "files") {
+            log::debug!(
+                "Working on {}::{}::{}::{}",
+                vendor_string,
+                class_string,
+                group_string,
+                sub_group_string,
+            );
+            FileRef::vec_from_children(node.children())
+        } else {
+            Vec::new()
+        };
         Ok(Self {
             vendor,
             class,
@@ -187,7 +187,7 @@ impl Bundle {
 }
 
 impl FromElem for Bundle {
-    fn from_elem(e: &Element) -> Result<Self, Error> {
+    fn from_elem(e: &Node) -> Result<Self, Error> {
         assert_root_name(e, "bundle")?;
         let name: String = attr_map(e, "Cbundle")?;
         let class: String = attr_map(e, "Cclass")?;
@@ -198,8 +198,8 @@ impl FromElem for Bundle {
         let components = e
             .children()
             .filter_map(move |chld| {
-                if chld.name() == "component" {
-                    ComponentBuilder::from_elem(chld).ok()
+                if chld.tag_name().name() == "component" {
+                    ComponentBuilder::from_elem(&chld).ok()
                 } else {
                     None
                 }
@@ -217,10 +217,8 @@ impl FromElem for Bundle {
     }
 }
 
-fn child_to_component_iter(
-    e: &Element,
-) -> Result<Box<dyn Iterator<Item = ComponentBuilder>>, Error> {
-    match e.name() {
+fn child_to_component_iter(e: &Node) -> Result<Box<dyn Iterator<Item = ComponentBuilder>>, Error> {
+    match e.tag_name().name() {
         "bundle" => {
             let bundle = Bundle::from_elem(e)?;
             Ok(Box::new(bundle.into_components().into_iter()))
@@ -230,8 +228,9 @@ fn child_to_component_iter(
             Ok(Box::new(Some(component).into_iter()))
         }
         _ => Err(format_err!(
-            "element of name {} is not allowed as a descendant of components",
-            e.name()
+            "element of name {} is not allowed as a descendant of components ({:?})",
+            e.tag_name().name(),
+            e
         )),
     }
 }
@@ -240,11 +239,12 @@ fn child_to_component_iter(
 pub struct ComponentBuilders(pub(crate) Vec<ComponentBuilder>);
 
 impl FromElem for ComponentBuilders {
-    fn from_elem(e: &Element) -> Result<Self, Error> {
+    fn from_elem(e: &Node) -> Result<Self, Error> {
         assert_root_name(e, "components")?;
         Ok(ComponentBuilders(
             e.children()
-                .flat_map(move |c| match child_to_component_iter(c) {
+                .filter(|e| e.is_element())
+                .flat_map(move |c| match child_to_component_iter(&c) {
                     Ok(iter) => iter,
                     Err(e) => {
                         log::error!("when trying to parse component: {}", e);

@@ -1,4 +1,4 @@
-use minidom::Element;
+use roxmltree::Node;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::collections::{BTreeMap, HashMap};
@@ -22,11 +22,11 @@ pub struct Release {
 }
 
 impl FromElem for Release {
-    fn from_elem(e: &Element) -> Result<Self, Error> {
+    fn from_elem(e: &Node) -> Result<Self, Error> {
         assert_root_name(e, "release")?;
         Ok(Self {
             version: attr_map(e, "version")?,
-            text: e.text(),
+            text: e.text().unwrap().to_string(),
         })
     }
 }
@@ -41,11 +41,12 @@ impl Releases {
 }
 
 impl FromElem for Releases {
-    fn from_elem(e: &Element) -> Result<Self, Error> {
+    fn from_elem(e: &Node) -> Result<Self, Error> {
         assert_root_name(e, "releases")?;
         let to_ret: Vec<_> = e
             .children()
-            .flat_map(|c| Release::from_elem(c).ok_warn())
+            .filter(|e| e.is_element())
+            .flat_map(|c| Release::from_elem(&c).ok_warn())
             .collect();
         if to_ret.is_empty() {
             Err(format_err!("There must be at least one release!"))
@@ -115,28 +116,40 @@ pub struct Package {
 }
 
 impl FromElem for Package {
-    fn from_elem(e: &Element) -> Result<Self, Error> {
+    fn from_elem(e: &Node) -> Result<Self, Error> {
         assert_root_name(e, "package")?;
         let name: String = child_text(e, "name")?;
         let description: String = child_text(e, "description")?;
         let vendor: String = child_text(e, "vendor")?;
         let url: String = child_text(e, "url")?;
         log::debug!("Working on {}::{}", vendor, name,);
-        let components = get_child_no_ns(e, "components")
-            .and_then(|c| ComponentBuilders::from_elem(c).ok_warn())
-            .unwrap_or_default();
-        let releases = get_child_no_ns(e, "releases")
-            .and_then(|c| Releases::from_elem(c).ok_warn())
-            .unwrap_or_default();
-        let conditions = get_child_no_ns(e, "conditions")
-            .and_then(|c| Conditions::from_elem(c).ok_warn())
-            .unwrap_or_default();
-        let devices = get_child_no_ns(e, "devices")
-            .and_then(|c| Devices::from_elem(c).ok_warn())
-            .unwrap_or_default();
-        let boards = get_child_no_ns(e, "boards")
-            .map(|c| Board::vec_from_children(c.children()))
-            .unwrap_or_default();
+        let mut components = ComponentBuilders::default();
+        let mut releases = Releases::default();
+        let mut conditions = Conditions::default();
+        let mut devices = Devices::default();
+        let mut boards: Vec<Board> = Vec::new();
+        for child in e.children() {
+            match child.tag_name().name() {
+                "components" => {
+                    components = ComponentBuilders::from_elem(&child)
+                        .ok_warn()
+                        .unwrap_or_default();
+                }
+                "releases" => {
+                    releases = Releases::from_elem(&child).ok_warn().unwrap_or_default();
+                }
+                "conditions" => {
+                    conditions = Conditions::from_elem(&child).ok_warn().unwrap_or_default();
+                }
+                "devices" => {
+                    devices = Devices::from_elem(&child).ok_warn().unwrap_or_default();
+                }
+                "boards" => {
+                    boards = Board::vec_from_children(child.children());
+                }
+                _ => {}
+            }
+        }
         Ok(Self {
             name,
             description,
@@ -159,13 +172,13 @@ pub struct Board {
 }
 
 impl FromElem for Board {
-    fn from_elem(e: &Element) -> Result<Self, Error> {
+    fn from_elem(e: &Node) -> Result<Self, Error> {
         Ok(Self {
             name: attr_map(e, "name")?,
             mounted_devices: e
                 .children()
-                .flat_map(|c| match c.name() {
-                    "mountedDevice" => attr_map(c, "Dname").ok(),
+                .flat_map(|c| match c.tag_name().name() {
+                    "mountedDevice" => attr_map(&c, "Dname").ok(),
                     _ => None,
                 })
                 .collect(),

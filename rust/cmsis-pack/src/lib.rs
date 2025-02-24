@@ -8,8 +8,8 @@ pub mod utils;
 
 extern crate futures;
 extern crate log;
-extern crate minidom;
 extern crate reqwest;
+extern crate roxmltree;
 extern crate serde;
 extern crate serde_json;
 extern crate tokio;

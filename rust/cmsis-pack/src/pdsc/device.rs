@@ -4,7 +4,7 @@ use std::str::FromStr;
 
 use crate::utils::prelude::*;
 use anyhow::{format_err, Error};
-use minidom::{Element, NSChoice};
+use roxmltree::Node;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -166,8 +166,6 @@ impl ProcessorBuilder {
         let units = self.units.unwrap_or(1);
         let name = self.name.clone();
 
-        
-
         (0..units)
             .map(|unit| {
                 // The attributes we're interested in may be spread across multiple debug
@@ -214,7 +212,7 @@ impl ProcessorBuilder {
 }
 
 impl FromElem for ProcessorBuilder {
-    fn from_elem(e: &Element) -> Result<Self, Error> {
+    fn from_elem(e: &Node) -> Result<Self, Error> {
         Ok(ProcessorBuilder {
             core: attr_parse(e, "Dcore").ok(),
             units: attr_parse(e, "Punits").ok(),
@@ -256,7 +254,7 @@ impl ProcessorsBuilder {
 }
 
 impl FromElem for ProcessorsBuilder {
-    fn from_elem(e: &Element) -> Result<Self, Error> {
+    fn from_elem(e: &Node) -> Result<Self, Error> {
         Ok(ProcessorsBuilder(vec![ProcessorBuilder::from_elem(e)?]))
     }
 }
@@ -308,28 +306,30 @@ impl DebugBuilder {
 }
 
 impl DebugBuilder {
-    fn from_elem_and_parent(e: &Element, p: &Element) -> Result<Self, Error> {
-        let (dp, ap) = if p.has_child("accessportV1", NSChoice::None)
-            || p.has_child("accessportV2", NSChoice::None)
-        {
+    fn from_elem_and_parent(e: &Node, p: &Node) -> Result<Self, Error> {
+        let c = p
+            .children()
+            .map(|n| n.tag_name().name())
+            .collect::<Vec<_>>();
+        let (dp, ap) = if c.contains(&"accessportV1") || c.contains(&"accessportV2") {
             let __apid: u32 = attr_parse(e, "__apid")?;
             let ap = p
                 .children()
                 .find(|c| {
-                    c.name().starts_with("accessportV")
+                    c.tag_name().name().starts_with("accessportV")
                         && attr_parse(c, "__apid")
                             .map(|apid: u32| apid == __apid)
                             .unwrap_or(false)
                 })
                 .ok_or_else(|| anyhow::anyhow!("Unable do find Access Port with id {__apid:?}."))?;
-            match ap.name() {
+            match ap.tag_name().name() {
                 "accessportV1" => (
-                    attr_parse(ap, "__dp").ok(),
-                    attr_parse(ap, "index").ok().map(AccessPort::Index),
+                    attr_parse(&ap, "__dp").ok(),
+                    attr_parse(&ap, "index").ok().map(AccessPort::Index),
                 ),
                 "accessportV2" => (
-                    attr_parse(ap, "__dp").ok(),
-                    attr_parse_hex(ap, "address").ok().map(AccessPort::Address),
+                    attr_parse(&ap, "__dp").ok(),
+                    attr_parse_hex(&ap, "address").ok().map(AccessPort::Address),
                 ),
                 _ => unreachable!(),
             }
@@ -356,7 +356,7 @@ impl DebugBuilder {
 struct DebugsBuilder(Vec<DebugBuilder>);
 
 impl DebugsBuilder {
-    fn from_elem_and_parent(e: &Element, p: &Element) -> Result<Self, Error> {
+    fn from_elem_and_parent(e: &Node, p: &Node) -> Result<Self, Error> {
         Ok(DebugsBuilder(vec![DebugBuilder::from_elem_and_parent(
             e, p,
         )?]))
@@ -459,9 +459,9 @@ pub struct Memory {
 struct MemElem(String, Memory);
 
 impl FromElem for MemElem {
-    fn from_elem(e: &Element) -> Result<Self, Error> {
-        let access = MemoryPermissions::from_str(e.attr("access").unwrap_or_else(|| {
-            let memtype = e.attr("id").unwrap_or_default();
+    fn from_elem(e: &Node) -> Result<Self, Error> {
+        let access = MemoryPermissions::from_str(e.attribute("access").unwrap_or_else(|| {
+            let memtype = e.attribute("id").unwrap_or_default();
             if memtype.contains("ROM") {
                 "rx"
             } else if memtype.contains("RAM") {
@@ -471,11 +471,11 @@ impl FromElem for MemElem {
             }
         }));
         let name = e
-            .attr("id")
-            .or_else(|| e.attr("name"))
+            .attribute("id")
+            .or_else(|| e.attribute("name"))
             .map(|s| s.to_string())
             .ok_or_else(|| format_err!("No name found for memory"))?;
-        let p_name = e.attr("Pname").map(|s| s.to_string());
+        let p_name = e.attribute("Pname").map(|s| s.to_string());
         let start = attr_parse_hex(e, "start")?;
         let size = attr_parse_hex(e, "size")?;
         let startup = attr_parse(e, "startup")
@@ -549,7 +549,7 @@ pub struct Algorithm {
 }
 
 impl FromElem for Algorithm {
-    fn from_elem(e: &Element) -> Result<Self, Error> {
+    fn from_elem(e: &Node) -> Result<Self, Error> {
         let default = attr_parse(e, "default")
             .map(|nb: NumberBool| nb.into())
             .unwrap_or_default();
@@ -569,15 +569,15 @@ impl FromElem for Algorithm {
 }
 
 #[derive(Debug)]
-struct DeviceBuilder<'dom> {
-    name: Option<&'dom str>,
+struct DeviceBuilder {
+    name: Option<String>,
     algorithms: Vec<Algorithm>,
     memories: Memories,
     processor: Option<ProcessorsBuilder>,
     debugs: DebugsBuilder,
-    vendor: Option<&'dom str>,
-    family: Option<&'dom str>,
-    sub_family: Option<&'dom str>,
+    vendor: Option<String>,
+    family: Option<String>,
+    sub_family: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -591,20 +591,24 @@ pub struct Device {
     pub sub_family: Option<String>,
 }
 
-impl<'dom> DeviceBuilder<'dom> {
-    fn from_elem(e: &'dom Element) -> Self {
+impl DeviceBuilder {
+    fn from_elem(e: &Node) -> Self {
         let memories = Memories(HashMap::new());
         let mut family = None;
         let mut sub_family = None;
-        if e.name() == "family" {
-            family = e.attr("Dfamily");
+        if e.tag_name().name() == "family" {
+            family = e.attribute("Dfamily").map(|f| f.to_string());
         }
-        if e.name() == "subFamily" {
-            sub_family = e.attr("DsubFamily");
+        if e.tag_name().name() == "subFamily" {
+            sub_family = e.attribute("DsubFamily").map(|f| f.to_string());
         }
+
         DeviceBuilder {
-            name: e.attr("Dname").or_else(|| e.attr("Dvariant")),
-            vendor: e.attr("Dvendor"),
+            name: e
+                .attribute("Dname")
+                .or_else(|| e.attribute("Dvariant"))
+                .map(|f| f.to_string()),
+            vendor: e.attribute("Dvendor").map(|f| f.to_string()),
             memories,
             algorithms: Vec::new(),
             processor: None,
@@ -617,11 +621,9 @@ impl<'dom> DeviceBuilder<'dom> {
     fn build(self) -> Result<Device, Error> {
         let name = self
             .name
-            .map(|s| s.into())
             .ok_or_else(|| format_err!("Device found without a name"))?;
         let family = self
             .family
-            .map(|s| s.into())
             .ok_or_else(|| format_err!("Device found without a family"))?;
 
         let debugs = self.debugs.build();
@@ -636,16 +638,16 @@ impl<'dom> DeviceBuilder<'dom> {
             name,
             memories: self.memories,
             algorithms: self.algorithms,
-            vendor: self.vendor.map(str::to_string),
+            vendor: self.vendor,
             family,
-            sub_family: self.sub_family.map(str::to_string),
+            sub_family: self.sub_family,
         })
     }
 
     fn add_parent(mut self, parent: &Self) -> Result<Self, Error> {
         self.algorithms.extend_from_slice(&parent.algorithms);
         Ok(Self {
-            name: self.name.or(parent.name),
+            name: self.name.or(parent.name.clone()),
             algorithms: self.algorithms,
             memories: merge_memories(self.memories, &parent.memories),
             processor: match self.processor {
@@ -653,9 +655,9 @@ impl<'dom> DeviceBuilder<'dom> {
                 None => parent.processor.clone(),
             },
             debugs: self.debugs.merge(&parent.debugs),
-            vendor: self.vendor.or(parent.vendor),
-            family: self.family.or(parent.family),
-            sub_family: self.sub_family.or(parent.sub_family),
+            vendor: self.vendor.or(parent.vendor.clone()),
+            family: self.family.or(parent.family.clone()),
+            sub_family: self.sub_family.or(parent.sub_family.clone()),
         })
     }
 
@@ -683,32 +685,32 @@ impl<'dom> DeviceBuilder<'dom> {
     }
 }
 
-fn parse_device(e: &Element) -> Vec<DeviceBuilder<'_>> {
+fn parse_device(e: &Node) -> Vec<DeviceBuilder> {
     let mut device = DeviceBuilder::from_elem(e);
-    let variants = e
+    let variants: Vec<DeviceBuilder> = e
         .children()
-        .filter_map(|child| match child.name() {
-            "variant" => Some(DeviceBuilder::from_elem(child)),
+        .filter_map(|child| match child.tag_name().name() {
+            "variant" => Some(DeviceBuilder::from_elem(&child)),
             "memory" => {
-                FromElem::from_elem(child)
+                FromElem::from_elem(&child)
                     .ok_warn()
                     .map(|mem| device.add_memory(mem));
                 None
             }
             "algorithm" => {
-                FromElem::from_elem(child)
+                FromElem::from_elem(&child)
                     .ok_warn()
                     .map(|alg| device.add_algorithm(alg));
                 None
             }
             "processor" => {
-                FromElem::from_elem(child)
+                FromElem::from_elem(&child)
                     .ok_warn()
                     .map(|prc| device.add_processor(prc));
                 None
             }
             "debug" => {
-                DebugsBuilder::from_elem_and_parent(child, e)
+                DebugsBuilder::from_elem_and_parent(&child, e)
                     .ok_warn()
                     .map(|debug| device.add_debug(debug));
                 None
@@ -726,72 +728,71 @@ fn parse_device(e: &Element) -> Vec<DeviceBuilder<'_>> {
     }
 }
 
-fn parse_sub_family(e: &Element) -> Vec<DeviceBuilder<'_>> {
+fn parse_sub_family(e: &Node) -> Vec<DeviceBuilder> {
     let mut sub_family_device = DeviceBuilder::from_elem(e);
-    let devices = e
-        .children()
-        .flat_map(|child| match child.name() {
-            "device" => parse_device(child),
+    let mut devices: Vec<DeviceBuilder> = Vec::new();
+
+    for child in e.children() {
+        match child.tag_name().name() {
+            "device" => {
+                devices.extend(parse_device(&child));
+            }
             "memory" => {
-                FromElem::from_elem(child)
+                FromElem::from_elem(&child)
                     .ok_warn()
                     .map(|mem| sub_family_device.add_memory(mem));
-                Vec::new()
             }
             "algorithm" => {
-                FromElem::from_elem(child)
+                FromElem::from_elem(&child)
                     .ok_warn()
                     .map(|alg| sub_family_device.add_algorithm(alg));
-                Vec::new()
             }
             "processor" => {
-                FromElem::from_elem(child)
+                FromElem::from_elem(&child)
                     .ok_warn()
                     .map(|prc| sub_family_device.add_processor(prc));
-                Vec::new()
             }
             "debug" => {
-                DebugsBuilder::from_elem_and_parent(child, e)
+                DebugsBuilder::from_elem_and_parent(&child, e)
                     .ok_warn()
                     .map(|debug| sub_family_device.add_debug(debug));
-                Vec::new()
             }
-            _ => Vec::new(),
-        })
-        .collect::<Vec<_>>();
+            _ => continue,
+        }
+    }
     devices
         .into_iter()
         .flat_map(|bldr| bldr.add_parent(&sub_family_device).ok_warn())
         .collect()
 }
 
-fn parse_family(e: &Element) -> Result<Vec<Device>, Error> {
+fn parse_family(e: &Node) -> Result<Vec<Device>, Error> {
     let mut family_device = DeviceBuilder::from_elem(e);
-    let all_devices = e
+    let all_devices: Vec<DeviceBuilder> = e
         .children()
-        .flat_map(|child| match child.name() {
-            "subFamily" => parse_sub_family(child),
-            "device" => parse_device(child),
+        .flat_map(|child| match child.tag_name().name() {
+            "subFamily" => parse_sub_family(&child),
+            "device" => parse_device(&child),
             "memory" => {
-                FromElem::from_elem(child)
+                FromElem::from_elem(&child)
                     .ok_warn()
                     .map(|mem| family_device.add_memory(mem));
                 Vec::new()
             }
             "algorithm" => {
-                FromElem::from_elem(child)
+                FromElem::from_elem(&child)
                     .ok_warn()
                     .map(|alg| family_device.add_algorithm(alg));
                 Vec::new()
             }
             "processor" => {
-                FromElem::from_elem(child)
+                FromElem::from_elem(&child)
                     .ok_warn()
                     .map(|prc| family_device.add_processor(prc));
                 Vec::new()
             }
             "debug" => {
-                DebugsBuilder::from_elem_and_parent(child, e)
+                DebugsBuilder::from_elem_and_parent(&child, e)
                     .ok_warn()
                     .map(|debug| family_device.add_debug(debug));
                 Vec::new()
@@ -809,10 +810,10 @@ fn parse_family(e: &Element) -> Result<Vec<Device>, Error> {
 pub struct Devices(pub HashMap<String, Device>);
 
 impl FromElem for Devices {
-    fn from_elem(e: &Element) -> Result<Self, Error> {
+    fn from_elem(e: &Node) -> Result<Self, Error> {
         e.children()
             .try_fold(HashMap::new(), |mut res, c| {
-                let add_this = parse_family(c)?;
+                let add_this = parse_family(&c)?;
                 res.extend(add_this.into_iter().map(|dev| (dev.name.clone(), dev)));
                 Ok(res)
             })
