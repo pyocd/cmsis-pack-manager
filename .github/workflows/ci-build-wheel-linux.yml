@@ -14,7 +14,7 @@ jobs:
       CIBW_SKIP: "cp39-musl*"
       CIBW_ENVIRONMENT: 'PATH="$PATH:/usr/share/rust/.cargo/bin:$HOME/.cargo/bin"'
       CIBW_BEFORE_ALL_LINUX: >
-        yum install -y libffi-devel openssl-devel &&
+        yum install -y libffi-devel openssl-devel libatomic &&
         curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain 1.71.1 -y --profile=minimal &&
         rustup show &&
         cargo install empty-library || true
