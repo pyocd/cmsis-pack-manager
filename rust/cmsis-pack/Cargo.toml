@@ -12,7 +12,8 @@ license = "Apache-2.0"
 categories = ["embedded", "hardware-support", "development-tools::debugging"]
 keywords = ["embedded", "cmsis"]
 readme = "README.md"
-edition = "2018"
+edition = "2021"
+rust-version = "1.71"
 
 [dependencies]
 bytes = "1.0"
