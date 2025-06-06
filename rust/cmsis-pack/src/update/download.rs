@@ -19,6 +19,8 @@ use std::collections::HashMap;
 const CONCURRENCY: usize = 32;
 const HOST_LIMIT: usize = 6;
 const MAX_RETRIES: usize = 3;
+const CONNECT_TIMEOUT: u64 = 15;
+const TIMEOUT: u64 = 60;
 
 fn pdsc_url(pdsc: &mut PdscRef) -> String {
     if pdsc.url.ends_with('/') {
@@ -171,6 +173,8 @@ where
     pub fn new(config: &'a Conf, prog: Prog) -> Result<Self, Error> {
         let client = ClientBuilder::new()
             .redirect(redirect::Policy::limited(5))
+            .connect_timeout(Duration::from_secs(CONNECT_TIMEOUT))
+            .timeout(Duration::from_secs(TIMEOUT))
             .build()?;
 
         Ok(DownloadContext {
