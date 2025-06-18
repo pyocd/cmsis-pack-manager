@@ -234,6 +234,7 @@ where
                     let host = from.1.clone();
                     let dest = from.2.clone();
                     if dest.exists() {
+                        self.prog.complete();
                         results.push(dest);
                     } else {
                         let client = self.client.clone();
