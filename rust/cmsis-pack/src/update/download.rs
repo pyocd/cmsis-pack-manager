@@ -20,7 +20,7 @@ const CONCURRENCY: usize = 32;
 const HOST_LIMIT: usize = 6;
 const MAX_RETRIES: usize = 3;
 const CONNECT_TIMEOUT: u64 = 15;
-const TIMEOUT: u64 = 60;
+const READ_TIMEOUT: u64 = 15;
 
 fn pdsc_url(pdsc: &mut PdscRef) -> String {
     if pdsc.url.ends_with('/') {
@@ -174,7 +174,7 @@ where
         let client = ClientBuilder::new()
             .redirect(redirect::Policy::limited(5))
             .connect_timeout(Duration::from_secs(CONNECT_TIMEOUT))
-            .timeout(Duration::from_secs(TIMEOUT))
+            .read_timeout(Duration::from_secs(READ_TIMEOUT))
             .build()?;
 
         Ok(DownloadContext {
