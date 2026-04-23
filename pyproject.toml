@@ -41,6 +41,7 @@ classifiers = [
     "Topic :: Software Development :: Embedded Systems",
     "Topic :: Utilities",
 ]
+dynamic = ["version"]
 
 [project.optional-dependencies]
 test = [
