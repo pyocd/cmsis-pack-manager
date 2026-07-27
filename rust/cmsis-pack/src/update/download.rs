@@ -354,7 +354,7 @@ where
         vidx_ref: I,
     ) -> Result<Vidx, Error> {
         let vidx = vidx_ref.into();
-        let uri = vidx.parse::<Url>().unwrap();
+        let uri = vidx.parse::<Url>()?;
 
         let req: reqwest::Response = self.client.get(uri).send().await?;
         Vidx::from_string(req.text().await?.as_str())
@@ -384,5 +384,31 @@ where
                 })
             })
             .collect::<FuturesUnordered<_>>()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct TestConfig;
+
+    impl DownloadConfig for TestConfig {
+        fn pack_store(&self) -> PathBuf {
+            PathBuf::new()
+        }
+    }
+
+    #[tokio::test]
+    async fn relative_vidx_url_returns_error() {
+        let config = TestConfig;
+        let context = DownloadContext::new(&config, ()).unwrap();
+
+        let error = context
+            .download_vidx("relative/vendor.pidx")
+            .await
+            .unwrap_err();
+
+        assert!(error.to_string().contains("relative URL without a base"));
     }
 }
