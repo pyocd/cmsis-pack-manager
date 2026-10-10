@@ -320,33 +320,35 @@ impl DebugBuilder {
     }
 }
 
-impl DebugBuilder {
-    fn from_elem_and_parent(e: &Node, p: &Node) -> Result<Self, Error> {
-        let c = p
-            .children()
-            .map(|n| n.tag_name().name())
-            .collect::<Vec<_>>();
-        let (dp, ap) = if c.contains(&"accessportV1") || c.contains(&"accessportV2") {
+impl FromElem for DebugBuilder {
+    fn from_elem(e: &Node) -> Result<Self, Error> {
+        let (dp, ap) = if e.has_attribute("__apid") {
             let __apid: u32 = attr_parse(e, "__apid")?;
-            let ap = p
-                .children()
+            // The access port may be declared at this level or any enclosing one.
+            let ap = e
+                .ancestors()
+                .skip(1)
+                .flat_map(|level| level.children())
                 .find(|c| {
                     c.tag_name().name().starts_with("accessportV")
                         && attr_parse(c, "__apid")
                             .map(|apid: u32| apid == __apid)
                             .unwrap_or(false)
-                })
-                .ok_or_else(|| anyhow::anyhow!("Unable do find Access Port with id {__apid:?}."))?;
-            match ap.tag_name().name() {
-                "accessportV1" => (
+                });
+            match ap {
+                Some(ap) if ap.tag_name().name() == "accessportV1" => (
                     attr_parse(&ap, "__dp").ok(),
                     attr_parse(&ap, "index").ok().map(AccessPort::Index),
                 ),
-                "accessportV2" => (
+                Some(ap) => (
                     attr_parse(&ap, "__dp").ok(),
                     attr_parse_hex(&ap, "address").ok().map(AccessPort::Address),
                 ),
-                _ => unreachable!(),
+                // Keep the rest of the debug element, such as the SVD file.
+                None => {
+                    log::warn!("Unable to find Access Port with id {__apid:?}.");
+                    (None, None)
+                }
             }
         } else {
             (
@@ -370,11 +372,9 @@ impl DebugBuilder {
 #[derive(Debug)]
 struct DebugsBuilder(Vec<DebugBuilder>);
 
-impl DebugsBuilder {
-    fn from_elem_and_parent(e: &Node, p: &Node) -> Result<Self, Error> {
-        Ok(DebugsBuilder(vec![DebugBuilder::from_elem_and_parent(
-            e, p,
-        )?]))
+impl FromElem for DebugsBuilder {
+    fn from_elem(e: &Node) -> Result<Self, Error> {
+        Ok(DebugsBuilder(vec![DebugBuilder::from_elem(e)?]))
     }
 }
 
@@ -700,8 +700,8 @@ impl DeviceBuilder {
     }
 
     /// Adds `child` if it is a `memory`, `algorithm`, `processor` or `debug` element, which
-    /// may appear in a `family`, `subFamily`, `device` or `variant` element `parent`.
-    fn add_child(&mut self, child: &Node, parent: &Node) {
+    /// may appear in a `family`, `subFamily`, `device` or `variant` element.
+    fn add_child(&mut self, child: &Node) {
         match child.tag_name().name() {
             "memory" => {
                 FromElem::from_elem(child)
@@ -719,7 +719,7 @@ impl DeviceBuilder {
                     .map(|prc| self.add_processor(prc));
             }
             "debug" => {
-                DebugsBuilder::from_elem_and_parent(child, parent)
+                DebugsBuilder::from_elem(child)
                     .ok_warn()
                     .map(|debug| self.add_debug(debug));
             }
@@ -731,7 +731,7 @@ impl DeviceBuilder {
 fn parse_variant(e: &Node) -> DeviceBuilder {
     let mut variant = DeviceBuilder::from_elem(e);
     for child in e.children() {
-        variant.add_child(&child, e);
+        variant.add_child(&child);
     }
     variant
 }
@@ -742,7 +742,7 @@ fn parse_device(e: &Node) -> Vec<DeviceBuilder> {
     for child in e.children() {
         match child.tag_name().name() {
             "variant" => variants.push(parse_variant(&child)),
-            _ => device.add_child(&child, e),
+            _ => device.add_child(&child),
         }
     }
     if variants.is_empty() {
@@ -762,7 +762,7 @@ fn parse_sub_family(e: &Node) -> Vec<DeviceBuilder> {
     for child in e.children() {
         match child.tag_name().name() {
             "device" => devices.extend(parse_device(&child)),
-            _ => sub_family_device.add_child(&child, e),
+            _ => sub_family_device.add_child(&child),
         }
     }
     devices
@@ -778,7 +778,7 @@ fn parse_family(e: &Node) -> Result<Vec<Device>, Error> {
         match child.tag_name().name() {
             "subFamily" => all_devices.extend(parse_sub_family(&child)),
             "device" => all_devices.extend(parse_device(&child)),
-            _ => family_device.add_child(&child, e),
+            _ => family_device.add_child(&child),
         }
     }
     all_devices
@@ -848,5 +848,44 @@ mod test {
             .collect();
         names.sort();
         assert_eq!(names, ["Flash/Device.FLM", "Flash/DeviceB_Data.FLM"]);
+    }
+
+    const ENCLOSING_ACCESS_PORTS: &str = r#"
+<devices>
+  <family Dfamily="Family" Dvendor="Vendor:1">
+    <processor Dcore="Cortex-M33" DcoreVersion="r0p4" Dfpu="SP_FPU" Dmpu="MPU" Dendian="Little-endian"/>
+    <accessportV1 __apid="0" __dp="0" index="2"/>
+    <device Dname="DeviceV1">
+      <debug __apid="0" svd="DeviceV1.svd"/>
+    </device>
+    <device Dname="DeviceUnresolved">
+      <debug __apid="7" svd="DeviceUnresolved.svd"/>
+    </device>
+    <device Dname="Device">
+      <accessportV2 __apid="1" __dp="0" address="0x80000"/>
+      <variant Dvariant="DeviceV2">
+        <debug __apid="1" svd="DeviceV2.svd"/>
+      </variant>
+    </device>
+  </family>
+</devices>
+"#;
+
+    #[test]
+    fn debug_access_port_is_found_at_an_enclosing_level() {
+        let devices = Devices::from_string(ENCLOSING_ACCESS_PORTS).unwrap().0;
+
+        let v1 = &devices["DeviceV1"].processors[0];
+        assert!(matches!(v1.ap, AccessPort::Index(2)));
+        assert_eq!(v1.svd.as_deref(), Some("DeviceV1.svd"));
+
+        let v2 = &devices["DeviceV2"].processors[0];
+        assert!(matches!(v2.ap, AccessPort::Address(0x80000)));
+        assert_eq!(v2.svd.as_deref(), Some("DeviceV2.svd"));
+
+        // An unknown access port id leaves the AP unset but keeps the rest of the debug element.
+        let unresolved = &devices["DeviceUnresolved"].processors[0];
+        assert!(matches!(unresolved.ap, AccessPort::Index(0)));
+        assert_eq!(unresolved.svd.as_deref(), Some("DeviceUnresolved.svd"));
     }
 }
