@@ -698,41 +698,53 @@ impl DeviceBuilder {
         self.algorithms.push(alg);
         self
     }
+
+    /// Adds `child` if it is a `memory`, `algorithm`, `processor` or `debug` element, which
+    /// may appear in a `family`, `subFamily`, `device` or `variant` element `parent`.
+    fn add_child(&mut self, child: &Node, parent: &Node) {
+        match child.tag_name().name() {
+            "memory" => {
+                FromElem::from_elem(child)
+                    .ok_warn()
+                    .map(|mem| self.add_memory(mem));
+            }
+            "algorithm" => {
+                FromElem::from_elem(child)
+                    .ok_warn()
+                    .map(|alg| self.add_algorithm(alg));
+            }
+            "processor" => {
+                FromElem::from_elem(child)
+                    .ok_warn()
+                    .map(|prc| self.add_processor(prc));
+            }
+            "debug" => {
+                DebugsBuilder::from_elem_and_parent(child, parent)
+                    .ok_warn()
+                    .map(|debug| self.add_debug(debug));
+            }
+            _ => {}
+        }
+    }
+}
+
+fn parse_variant(e: &Node) -> DeviceBuilder {
+    let mut variant = DeviceBuilder::from_elem(e);
+    for child in e.children() {
+        variant.add_child(&child, e);
+    }
+    variant
 }
 
 fn parse_device(e: &Node) -> Vec<DeviceBuilder> {
     let mut device = DeviceBuilder::from_elem(e);
-    let variants: Vec<DeviceBuilder> = e
-        .children()
-        .filter_map(|child| match child.tag_name().name() {
-            "variant" => Some(DeviceBuilder::from_elem(&child)),
-            "memory" => {
-                FromElem::from_elem(&child)
-                    .ok_warn()
-                    .map(|mem| device.add_memory(mem));
-                None
-            }
-            "algorithm" => {
-                FromElem::from_elem(&child)
-                    .ok_warn()
-                    .map(|alg| device.add_algorithm(alg));
-                None
-            }
-            "processor" => {
-                FromElem::from_elem(&child)
-                    .ok_warn()
-                    .map(|prc| device.add_processor(prc));
-                None
-            }
-            "debug" => {
-                DebugsBuilder::from_elem_and_parent(&child, e)
-                    .ok_warn()
-                    .map(|debug| device.add_debug(debug));
-                None
-            }
-            _ => None,
-        })
-        .collect::<Vec<_>>();
+    let mut variants = Vec::new();
+    for child in e.children() {
+        match child.tag_name().name() {
+            "variant" => variants.push(parse_variant(&child)),
+            _ => device.add_child(&child, e),
+        }
+    }
     if variants.is_empty() {
         vec![device]
     } else {
@@ -749,30 +761,8 @@ fn parse_sub_family(e: &Node) -> Vec<DeviceBuilder> {
 
     for child in e.children() {
         match child.tag_name().name() {
-            "device" => {
-                devices.extend(parse_device(&child));
-            }
-            "memory" => {
-                FromElem::from_elem(&child)
-                    .ok_warn()
-                    .map(|mem| sub_family_device.add_memory(mem));
-            }
-            "algorithm" => {
-                FromElem::from_elem(&child)
-                    .ok_warn()
-                    .map(|alg| sub_family_device.add_algorithm(alg));
-            }
-            "processor" => {
-                FromElem::from_elem(&child)
-                    .ok_warn()
-                    .map(|prc| sub_family_device.add_processor(prc));
-            }
-            "debug" => {
-                DebugsBuilder::from_elem_and_parent(&child, e)
-                    .ok_warn()
-                    .map(|debug| sub_family_device.add_debug(debug));
-            }
-            _ => continue,
+            "device" => devices.extend(parse_device(&child)),
+            _ => sub_family_device.add_child(&child, e),
         }
     }
     devices
@@ -783,38 +773,14 @@ fn parse_sub_family(e: &Node) -> Vec<DeviceBuilder> {
 
 fn parse_family(e: &Node) -> Result<Vec<Device>, Error> {
     let mut family_device = DeviceBuilder::from_elem(e);
-    let all_devices: Vec<DeviceBuilder> = e
-        .children()
-        .flat_map(|child| match child.tag_name().name() {
-            "subFamily" => parse_sub_family(&child),
-            "device" => parse_device(&child),
-            "memory" => {
-                FromElem::from_elem(&child)
-                    .ok_warn()
-                    .map(|mem| family_device.add_memory(mem));
-                Vec::new()
-            }
-            "algorithm" => {
-                FromElem::from_elem(&child)
-                    .ok_warn()
-                    .map(|alg| family_device.add_algorithm(alg));
-                Vec::new()
-            }
-            "processor" => {
-                FromElem::from_elem(&child)
-                    .ok_warn()
-                    .map(|prc| family_device.add_processor(prc));
-                Vec::new()
-            }
-            "debug" => {
-                DebugsBuilder::from_elem_and_parent(&child, e)
-                    .ok_warn()
-                    .map(|debug| family_device.add_debug(debug));
-                Vec::new()
-            }
-            _ => Vec::new(),
-        })
-        .collect::<Vec<_>>();
+    let mut all_devices: Vec<DeviceBuilder> = Vec::new();
+    for child in e.children() {
+        match child.tag_name().name() {
+            "subFamily" => all_devices.extend(parse_sub_family(&child)),
+            "device" => all_devices.extend(parse_device(&child)),
+            _ => family_device.add_child(&child, e),
+        }
+    }
     all_devices
         .into_iter()
         .map(|bldr| bldr.add_parent(&family_device).and_then(|dev| dev.build()))
@@ -833,5 +799,54 @@ impl FromElem for Devices {
                 Ok(res)
             })
             .map(Devices)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    const VARIANT_MEMORY: &str = r#"
+<devices>
+  <family Dfamily="Family" Dvendor="Vendor:1">
+    <processor Dcore="Cortex-M0+" DcoreVersion="r0p1" Dfpu="NO_FPU" Dmpu="NO_MPU" Dendian="Little-endian"/>
+    <device Dname="Device">
+      <memory id="IROM1" start="0x00000000" size="0x00040000" default="1" startup="1"/>
+      <algorithm name="Flash/Device.FLM" start="0x00000000" size="0x00040000" default="1"/>
+      <variant Dvariant="DeviceA">
+        <processor Dclock="48000000"/>
+        <memory id="IRAM1" start="0x20000000" size="0x00003000" init="0" default="1"/>
+      </variant>
+      <variant Dvariant="DeviceB">
+        <processor Dclock="48000000"/>
+        <memory id="IRAM1" start="0x20000000" size="0x00002000" init="0" default="1"/>
+        <algorithm name="Flash/DeviceB_Data.FLM" start="0x10000000" size="0x00008000"/>
+      </variant>
+    </device>
+  </family>
+</devices>
+"#;
+
+    #[test]
+    fn variant_children_are_parsed() {
+        let devices = Devices::from_string(VARIANT_MEMORY).unwrap().0;
+        assert_eq!(devices.len(), 2);
+
+        let a = &devices["DeviceA"];
+        assert_eq!(a.memories.0["IROM1"].size, 0x40000);
+        assert_eq!(a.memories.0["IRAM1"].size, 0x3000);
+        assert_eq!(a.algorithms.len(), 1);
+        assert_eq!(a.processors.len(), 1);
+
+        let b = &devices["DeviceB"];
+        assert_eq!(b.memories.0["IROM1"].size, 0x40000);
+        assert_eq!(b.memories.0["IRAM1"].size, 0x2000);
+        let mut names: Vec<_> = b
+            .algorithms
+            .iter()
+            .map(|alg| alg.file_name.to_str().unwrap())
+            .collect();
+        names.sort();
+        assert_eq!(names, ["Flash/Device.FLM", "Flash/DeviceB_Data.FLM"]);
     }
 }
