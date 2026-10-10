@@ -320,33 +320,35 @@ impl DebugBuilder {
     }
 }
 
-impl DebugBuilder {
-    fn from_elem_and_parent(e: &Node, p: &Node) -> Result<Self, Error> {
-        let c = p
-            .children()
-            .map(|n| n.tag_name().name())
-            .collect::<Vec<_>>();
-        let (dp, ap) = if c.contains(&"accessportV1") || c.contains(&"accessportV2") {
+impl FromElem for DebugBuilder {
+    fn from_elem(e: &Node) -> Result<Self, Error> {
+        let (dp, ap) = if e.has_attribute("__apid") {
             let __apid: u32 = attr_parse(e, "__apid")?;
-            let ap = p
-                .children()
+            // The access port may be declared at this level or any enclosing one.
+            let ap = e
+                .ancestors()
+                .skip(1)
+                .flat_map(|level| level.children())
                 .find(|c| {
                     c.tag_name().name().starts_with("accessportV")
                         && attr_parse(c, "__apid")
                             .map(|apid: u32| apid == __apid)
                             .unwrap_or(false)
-                })
-                .ok_or_else(|| anyhow::anyhow!("Unable do find Access Port with id {__apid:?}."))?;
-            match ap.tag_name().name() {
-                "accessportV1" => (
+                });
+            match ap {
+                Some(ap) if ap.tag_name().name() == "accessportV1" => (
                     attr_parse(&ap, "__dp").ok(),
                     attr_parse(&ap, "index").ok().map(AccessPort::Index),
                 ),
-                "accessportV2" => (
+                Some(ap) => (
                     attr_parse(&ap, "__dp").ok(),
                     attr_parse_hex(&ap, "address").ok().map(AccessPort::Address),
                 ),
-                _ => unreachable!(),
+                // Keep the rest of the debug element, such as the SVD file.
+                None => {
+                    log::warn!("Unable to find Access Port with id {__apid:?}.");
+                    (None, None)
+                }
             }
         } else {
             (
@@ -370,11 +372,9 @@ impl DebugBuilder {
 #[derive(Debug)]
 struct DebugsBuilder(Vec<DebugBuilder>);
 
-impl DebugsBuilder {
-    fn from_elem_and_parent(e: &Node, p: &Node) -> Result<Self, Error> {
-        Ok(DebugsBuilder(vec![DebugBuilder::from_elem_and_parent(
-            e, p,
-        )?]))
+impl FromElem for DebugsBuilder {
+    fn from_elem(e: &Node) -> Result<Self, Error> {
+        Ok(DebugsBuilder(vec![DebugBuilder::from_elem(e)?]))
     }
 }
 
@@ -698,41 +698,53 @@ impl DeviceBuilder {
         self.algorithms.push(alg);
         self
     }
+
+    /// Adds `child` if it is a `memory`, `algorithm`, `processor` or `debug` element, which
+    /// may appear in a `family`, `subFamily`, `device` or `variant` element.
+    fn add_child(&mut self, child: &Node) {
+        match child.tag_name().name() {
+            "memory" => {
+                FromElem::from_elem(child)
+                    .ok_warn()
+                    .map(|mem| self.add_memory(mem));
+            }
+            "algorithm" => {
+                FromElem::from_elem(child)
+                    .ok_warn()
+                    .map(|alg| self.add_algorithm(alg));
+            }
+            "processor" => {
+                FromElem::from_elem(child)
+                    .ok_warn()
+                    .map(|prc| self.add_processor(prc));
+            }
+            "debug" => {
+                DebugsBuilder::from_elem(child)
+                    .ok_warn()
+                    .map(|debug| self.add_debug(debug));
+            }
+            _ => {}
+        }
+    }
+}
+
+fn parse_variant(e: &Node) -> DeviceBuilder {
+    let mut variant = DeviceBuilder::from_elem(e);
+    for child in e.children() {
+        variant.add_child(&child);
+    }
+    variant
 }
 
 fn parse_device(e: &Node) -> Vec<DeviceBuilder> {
     let mut device = DeviceBuilder::from_elem(e);
-    let variants: Vec<DeviceBuilder> = e
-        .children()
-        .filter_map(|child| match child.tag_name().name() {
-            "variant" => Some(DeviceBuilder::from_elem(&child)),
-            "memory" => {
-                FromElem::from_elem(&child)
-                    .ok_warn()
-                    .map(|mem| device.add_memory(mem));
-                None
-            }
-            "algorithm" => {
-                FromElem::from_elem(&child)
-                    .ok_warn()
-                    .map(|alg| device.add_algorithm(alg));
-                None
-            }
-            "processor" => {
-                FromElem::from_elem(&child)
-                    .ok_warn()
-                    .map(|prc| device.add_processor(prc));
-                None
-            }
-            "debug" => {
-                DebugsBuilder::from_elem_and_parent(&child, e)
-                    .ok_warn()
-                    .map(|debug| device.add_debug(debug));
-                None
-            }
-            _ => None,
-        })
-        .collect::<Vec<_>>();
+    let mut variants = Vec::new();
+    for child in e.children() {
+        match child.tag_name().name() {
+            "variant" => variants.push(parse_variant(&child)),
+            _ => device.add_child(&child),
+        }
+    }
     if variants.is_empty() {
         vec![device]
     } else {
@@ -749,30 +761,8 @@ fn parse_sub_family(e: &Node) -> Vec<DeviceBuilder> {
 
     for child in e.children() {
         match child.tag_name().name() {
-            "device" => {
-                devices.extend(parse_device(&child));
-            }
-            "memory" => {
-                FromElem::from_elem(&child)
-                    .ok_warn()
-                    .map(|mem| sub_family_device.add_memory(mem));
-            }
-            "algorithm" => {
-                FromElem::from_elem(&child)
-                    .ok_warn()
-                    .map(|alg| sub_family_device.add_algorithm(alg));
-            }
-            "processor" => {
-                FromElem::from_elem(&child)
-                    .ok_warn()
-                    .map(|prc| sub_family_device.add_processor(prc));
-            }
-            "debug" => {
-                DebugsBuilder::from_elem_and_parent(&child, e)
-                    .ok_warn()
-                    .map(|debug| sub_family_device.add_debug(debug));
-            }
-            _ => continue,
+            "device" => devices.extend(parse_device(&child)),
+            _ => sub_family_device.add_child(&child),
         }
     }
     devices
@@ -783,38 +773,14 @@ fn parse_sub_family(e: &Node) -> Vec<DeviceBuilder> {
 
 fn parse_family(e: &Node) -> Result<Vec<Device>, Error> {
     let mut family_device = DeviceBuilder::from_elem(e);
-    let all_devices: Vec<DeviceBuilder> = e
-        .children()
-        .flat_map(|child| match child.tag_name().name() {
-            "subFamily" => parse_sub_family(&child),
-            "device" => parse_device(&child),
-            "memory" => {
-                FromElem::from_elem(&child)
-                    .ok_warn()
-                    .map(|mem| family_device.add_memory(mem));
-                Vec::new()
-            }
-            "algorithm" => {
-                FromElem::from_elem(&child)
-                    .ok_warn()
-                    .map(|alg| family_device.add_algorithm(alg));
-                Vec::new()
-            }
-            "processor" => {
-                FromElem::from_elem(&child)
-                    .ok_warn()
-                    .map(|prc| family_device.add_processor(prc));
-                Vec::new()
-            }
-            "debug" => {
-                DebugsBuilder::from_elem_and_parent(&child, e)
-                    .ok_warn()
-                    .map(|debug| family_device.add_debug(debug));
-                Vec::new()
-            }
-            _ => Vec::new(),
-        })
-        .collect::<Vec<_>>();
+    let mut all_devices: Vec<DeviceBuilder> = Vec::new();
+    for child in e.children() {
+        match child.tag_name().name() {
+            "subFamily" => all_devices.extend(parse_sub_family(&child)),
+            "device" => all_devices.extend(parse_device(&child)),
+            _ => family_device.add_child(&child),
+        }
+    }
     all_devices
         .into_iter()
         .map(|bldr| bldr.add_parent(&family_device).and_then(|dev| dev.build()))
@@ -833,5 +799,93 @@ impl FromElem for Devices {
                 Ok(res)
             })
             .map(Devices)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    const VARIANT_MEMORY: &str = r#"
+<devices>
+  <family Dfamily="Family" Dvendor="Vendor:1">
+    <processor Dcore="Cortex-M0+" DcoreVersion="r0p1" Dfpu="NO_FPU" Dmpu="NO_MPU" Dendian="Little-endian"/>
+    <device Dname="Device">
+      <memory id="IROM1" start="0x00000000" size="0x00040000" default="1" startup="1"/>
+      <algorithm name="Flash/Device.FLM" start="0x00000000" size="0x00040000" default="1"/>
+      <variant Dvariant="DeviceA">
+        <processor Dclock="48000000"/>
+        <memory id="IRAM1" start="0x20000000" size="0x00003000" init="0" default="1"/>
+      </variant>
+      <variant Dvariant="DeviceB">
+        <processor Dclock="48000000"/>
+        <memory id="IRAM1" start="0x20000000" size="0x00002000" init="0" default="1"/>
+        <algorithm name="Flash/DeviceB_Data.FLM" start="0x10000000" size="0x00008000"/>
+      </variant>
+    </device>
+  </family>
+</devices>
+"#;
+
+    #[test]
+    fn variant_children_are_parsed() {
+        let devices = Devices::from_string(VARIANT_MEMORY).unwrap().0;
+        assert_eq!(devices.len(), 2);
+
+        let a = &devices["DeviceA"];
+        assert_eq!(a.memories.0["IROM1"].size, 0x40000);
+        assert_eq!(a.memories.0["IRAM1"].size, 0x3000);
+        assert_eq!(a.algorithms.len(), 1);
+        assert_eq!(a.processors.len(), 1);
+
+        let b = &devices["DeviceB"];
+        assert_eq!(b.memories.0["IROM1"].size, 0x40000);
+        assert_eq!(b.memories.0["IRAM1"].size, 0x2000);
+        let mut names: Vec<_> = b
+            .algorithms
+            .iter()
+            .map(|alg| alg.file_name.to_str().unwrap())
+            .collect();
+        names.sort();
+        assert_eq!(names, ["Flash/Device.FLM", "Flash/DeviceB_Data.FLM"]);
+    }
+
+    const ENCLOSING_ACCESS_PORTS: &str = r#"
+<devices>
+  <family Dfamily="Family" Dvendor="Vendor:1">
+    <processor Dcore="Cortex-M33" DcoreVersion="r0p4" Dfpu="SP_FPU" Dmpu="MPU" Dendian="Little-endian"/>
+    <accessportV1 __apid="0" __dp="0" index="2"/>
+    <device Dname="DeviceV1">
+      <debug __apid="0" svd="DeviceV1.svd"/>
+    </device>
+    <device Dname="DeviceUnresolved">
+      <debug __apid="7" svd="DeviceUnresolved.svd"/>
+    </device>
+    <device Dname="Device">
+      <accessportV2 __apid="1" __dp="0" address="0x80000"/>
+      <variant Dvariant="DeviceV2">
+        <debug __apid="1" svd="DeviceV2.svd"/>
+      </variant>
+    </device>
+  </family>
+</devices>
+"#;
+
+    #[test]
+    fn debug_access_port_is_found_at_an_enclosing_level() {
+        let devices = Devices::from_string(ENCLOSING_ACCESS_PORTS).unwrap().0;
+
+        let v1 = &devices["DeviceV1"].processors[0];
+        assert!(matches!(v1.ap, AccessPort::Index(2)));
+        assert_eq!(v1.svd.as_deref(), Some("DeviceV1.svd"));
+
+        let v2 = &devices["DeviceV2"].processors[0];
+        assert!(matches!(v2.ap, AccessPort::Address(0x80000)));
+        assert_eq!(v2.svd.as_deref(), Some("DeviceV2.svd"));
+
+        // An unknown access port id leaves the AP unset but keeps the rest of the debug element.
+        let unresolved = &devices["DeviceUnresolved"].processors[0];
+        assert!(matches!(unresolved.ap, AccessPort::Index(0)));
+        assert_eq!(unresolved.svd.as_deref(), Some("DeviceUnresolved.svd"));
     }
 }
